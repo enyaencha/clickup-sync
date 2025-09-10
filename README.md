@@ -191,3 +191,4 @@ For issues and feature requests, please check the documentation or create an iss
 ## License
 
 MIT License - see LICENSE file for details.
+# clickup-sync
