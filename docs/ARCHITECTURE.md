@@ -79,13 +79,13 @@ Program (M&E Concept)           →    Space (ClickUp)
 └── Results                     →    Goals
 ```
 
-### 5 Standard Programs
+### 5 Caritas Programs
 
-1. **Health & Nutrition**
-2. **Education & Livelihoods**
-3. **WASH (Water, Sanitation, Hygiene)**
-4. **Protection & Advocacy**
-5. **Emergency Response**
+1. **🌾 Food & Environment** - Sustainable agriculture and environmental conservation
+2. **💼 Socio-Economic** - Economic empowerment and poverty alleviation
+3. **👥 Gender & Youth** - Gender equality and youth empowerment
+4. **🏥 Relief Services** - Emergency relief and health services
+5. **🎓 Capacity Building** - Training and institutional strengthening
 
 ---
 

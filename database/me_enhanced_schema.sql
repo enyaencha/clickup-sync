@@ -14,8 +14,9 @@ SET FOREIGN_KEY_CHECKS = 0;
 CREATE TABLE IF NOT EXISTS programs (
     id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL,
-    code VARCHAR(50) UNIQUE NOT NULL COMMENT 'e.g., HEALTH, EDUCATION, WASH, PROTECTION, EMERGENCY',
+    code VARCHAR(50) UNIQUE NOT NULL COMMENT 'e.g., FOOD_ENV, SOCIO_ECON, GENDER_YOUTH, RELIEF, CAPACITY',
     description TEXT,
+    icon VARCHAR(10) COMMENT 'Emoji icon for program',
 
     -- ClickUp Integration
     clickup_space_id VARCHAR(50) UNIQUE COMMENT 'ClickUp Space ID',
@@ -519,15 +520,15 @@ CREATE TABLE IF NOT EXISTS tasks (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================
--- SECTION 5: SEED DATA - 5 Standard Programs
+-- SECTION 5: SEED DATA - 5 Caritas Programs
 -- =====================================================
 
-INSERT INTO programs (name, code, description, start_date, status, budget) VALUES
-('Health & Nutrition', 'HEALTH', 'Improving health outcomes and nutritional status of vulnerable populations', '2024-01-01', 'active', 500000.00),
-('Education & Livelihoods', 'EDUCATION', 'Enhancing access to quality education and sustainable livelihoods', '2024-01-01', 'active', 350000.00),
-('WASH', 'WASH', 'Ensuring access to safe water, sanitation, and hygiene services', '2024-01-01', 'active', 400000.00),
-('Protection & Advocacy', 'PROTECTION', 'Protecting rights and promoting dignity of vulnerable groups', '2024-01-01', 'active', 300000.00),
-('Emergency Response', 'EMERGENCY', 'Rapid response to humanitarian emergencies and disasters', '2024-01-01', 'active', 600000.00)
+INSERT INTO programs (name, code, icon, description, start_date, status, budget) VALUES
+('Food & Environment', 'FOOD_ENV', '🌾', 'Sustainable agriculture, food security, and environmental conservation programs', '2024-01-01', 'active', 500000.00),
+('Socio-Economic', 'SOCIO_ECON', '💼', 'Economic empowerment, livelihoods, and poverty alleviation initiatives', '2024-01-01', 'active', 450000.00),
+('Gender & Youth', 'GENDER_YOUTH', '👥', 'Gender equality, youth empowerment, and social inclusion programs', '2024-01-01', 'active', 350000.00),
+('Relief Services', 'RELIEF', '🏥', 'Emergency relief, health services, and humanitarian assistance', '2024-01-01', 'active', 600000.00),
+('Capacity Building', 'CAPACITY', '🎓', 'Training, institutional strengthening, and skills development programs', '2024-01-01', 'active', 400000.00)
 ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
 
 -- =====================================================
