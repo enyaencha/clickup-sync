@@ -305,15 +305,15 @@ See [DATABASE_SCHEMA.md](./docs/DATABASE_SCHEMA.md) for complete schema.
 
 ---
 
-## 🎯 5 Standard Programs
+## 🎯 5 Caritas Programs
 
 The system comes with 5 predefined M&E programs:
 
-1. **HEALTH** - Health & Nutrition
-2. **EDUCATION** - Education & Livelihoods
-3. **WASH** - Water, Sanitation & Hygiene
-4. **PROTECTION** - Protection & Advocacy
-5. **EMERGENCY** - Emergency Response
+1. **🌾 Food & Environment** (`FOOD_ENV`) - Sustainable agriculture, food security, and environmental conservation
+2. **💼 Socio-Economic** (`SOCIO_ECON`) - Economic empowerment, livelihoods, and poverty alleviation
+3. **👥 Gender & Youth** (`GENDER_YOUTH`) - Gender equality, youth empowerment, and social inclusion
+4. **🏥 Relief Services** (`RELIEF`) - Emergency relief, health services, and humanitarian assistance
+5. **🎓 Capacity Building** (`CAPACITY`) - Training, institutional strengthening, and skills development
 
 Each program is mapped to a ClickUp Space.
 
@@ -371,8 +371,10 @@ app.use('/api/newmodule', newModuleRoutes);
 curl -X POST http://localhost:3000/api/programs \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Health & Nutrition",
-    "code": "HEALTH",
+    "name": "Food & Environment",
+    "code": "FOOD_ENV",
+    "icon": "🌾",
+    "description": "Sustainable agriculture and food security",
     "start_date": "2024-01-01",
     "budget": 500000,
     "status": "active"
@@ -386,8 +388,8 @@ curl -X POST http://localhost:3000/api/projects \
   -H "Content-Type: application/json" \
   -d '{
     "program_id": 1,
-    "name": "Maternal Health Project",
-    "code": "HEALTH-001",
+    "name": "Sustainable Farming Initiative",
+    "code": "FOOD_ENV-001",
     "start_date": "2024-01-01",
     "end_date": "2024-12-31",
     "budget": 100000
@@ -401,10 +403,10 @@ curl -X POST http://localhost:3000/api/me/indicators \
   -H "Content-Type: application/json" \
   -d '{
     "program_id": 1,
-    "name": "Number of women receiving prenatal care",
-    "code": "IND-HEALTH-001",
+    "name": "Number of farmers trained in sustainable agriculture",
+    "code": "IND-FOOD_ENV-001",
     "type": "output",
-    "target_value": 1000,
+    "target_value": 500,
     "unit_of_measure": "number"
   }'
 ```

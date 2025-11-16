@@ -21,7 +21,8 @@ Maps to ClickUp Spaces - Represents the 5 main programs
 |--------|------|-------------|
 | id | INT | Primary key |
 | name | VARCHAR(255) | Program name |
-| code | VARCHAR(50) | Unique code (e.g., HEALTH, EDUCATION) |
+| code | VARCHAR(50) | Unique code (e.g., FOOD_ENV, SOCIO_ECON) |
+| icon | VARCHAR(10) | Emoji icon for program (e.g., 🌾, 💼) |
 | description | TEXT | Program description |
 | clickup_space_id | VARCHAR(50) | ClickUp Space ID |
 | start_date | DATE | Program start date |
@@ -40,12 +41,12 @@ Maps to ClickUp Spaces - Represents the 5 main programs
 | updated_at | TIMESTAMP | Last update timestamp |
 | deleted_at | DATETIME | Soft delete timestamp |
 
-**Default Programs:**
-1. Health & Nutrition (HEALTH)
-2. Education & Livelihoods (EDUCATION)
-3. WASH (WASH)
-4. Protection & Advocacy (PROTECTION)
-5. Emergency Response (EMERGENCY)
+**Caritas Programs:**
+1. 🌾 Food & Environment (FOOD_ENV)
+2. 💼 Socio-Economic (SOCIO_ECON)
+3. 👥 Gender & Youth (GENDER_YOUTH)
+4. 🏥 Relief Services (RELIEF)
+5. 🎓 Capacity Building (CAPACITY)
 
 ---
 

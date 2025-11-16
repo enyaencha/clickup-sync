@@ -85,16 +85,17 @@ class ProgramRepository {
     async create(programData) {
         const sql = `
             INSERT INTO programs (
-                name, code, description, start_date, end_date,
+                name, code, icon, description, start_date, end_date,
                 budget, status, manager_id, manager_name, manager_email,
                 country, region, district, clickup_space_id,
                 sync_status, created_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const params = [
             programData.name,
             programData.code,
+            programData.icon || null,
             programData.description || null,
             programData.start_date,
             programData.end_date || null,
@@ -124,7 +125,7 @@ class ProgramRepository {
 
         // Build dynamic update query
         const allowedFields = [
-            'name', 'description', 'start_date', 'end_date', 'budget',
+            'name', 'icon', 'description', 'start_date', 'end_date', 'budget',
             'status', 'manager_id', 'manager_name', 'manager_email',
             'country', 'region', 'district', 'clickup_space_id', 'sync_status'
         ];
