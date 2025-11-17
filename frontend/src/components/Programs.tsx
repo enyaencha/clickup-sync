@@ -21,7 +21,7 @@ const Programs: React.FC = () => {
 
   const fetchPrograms = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/programs');
+      const response = await fetch('/api/programs');
       if (!response.ok) {
         throw new Error('Failed to fetch programs');
       }
