@@ -23,10 +23,14 @@ async function setupDatabase() {
         });
         console.log('✅ Connected to MySQL\n');
 
-        // Step 2: Create database if it doesn't exist
+        // Step 2: Drop existing database and recreate (fresh start)
         const dbName = process.env.DB_NAME || 'me_clickup_system';
+        console.log(`🗑️  Dropping existing database (if exists): ${dbName}...`);
+        await connection.query(`DROP DATABASE IF EXISTS ${dbName}`);
+        console.log('✅ Existing database dropped\n');
+
         console.log(`📦 Creating database: ${dbName}...`);
-        await connection.query(`CREATE DATABASE IF NOT EXISTS ${dbName} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+        await connection.query(`CREATE DATABASE ${dbName} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
         console.log('✅ Database created\n');
 
         // Step 3: Use the database
