@@ -4,9 +4,12 @@
   "description": "Backend API for ClickUp synchronization system",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "start": "node server-me.js",
+    "start:old": "node server.js",
+    "dev": "nodemon server-me.js",
+    "dev:old": "nodemon server.js",
     "test": "jest",
+    "setup-db": "node ../database/setup-me-system.js",
     "migrate": "node database/migrate.js",
     "seed": "node database/seed.js"
   },
