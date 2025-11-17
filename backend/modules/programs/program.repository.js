@@ -30,13 +30,11 @@ class ProgramRepository {
 
         sql += ' ORDER BY created_at DESC';
 
-        // Pagination
+        // Pagination - directly interpolate LIMIT/OFFSET (safe since converted to numbers)
         if (filters.limit) {
-            sql += ' LIMIT ? OFFSET ?';
             const limit = Number(filters.limit) || 20;
             const offset = Number(filters.offset) || 0;
-            params.push(limit);
-            params.push(offset);
+            sql += ` LIMIT ${limit} OFFSET ${offset}`;
         }
 
         return await db.query(sql, params);
