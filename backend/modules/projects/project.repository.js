@@ -22,9 +22,11 @@ class ProjectRepository {
 
         sql += ' ORDER BY created_at DESC';
 
+        // Pagination - directly interpolate LIMIT/OFFSET (safe since converted to numbers)
         if (filters.limit) {
-            sql += ' LIMIT ? OFFSET ?';
-            params.push(parseInt(filters.limit), parseInt(filters.offset || 0));
+            const limit = Number(filters.limit) || 20;
+            const offset = Number(filters.offset) || 0;
+            sql += ` LIMIT ${limit} OFFSET ${offset}`;
         }
 
         return await db.query(sql, params);
