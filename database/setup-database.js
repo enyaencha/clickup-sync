@@ -35,8 +35,16 @@ async function setupDatabase() {
         // Step 4: Load and execute schema
         console.log('📝 Loading schema file...');
         const schemaPath = path.join(__dirname, 'me_enhanced_schema.sql');
-        const schema = fs.readFileSync(schemaPath, 'utf8');
+        let schema = fs.readFileSync(schemaPath, 'utf8');
         console.log('✅ Schema file loaded\n');
+
+        // Remove DELIMITER statements (MySQL client-specific, not needed in Node.js)
+        console.log('🔧 Processing schema file...');
+        schema = schema.replace(/DELIMITER\s+\$\$/gi, '');
+        schema = schema.replace(/DELIMITER\s+;/gi, '');
+        // Replace $$ with ; in procedure definitions
+        schema = schema.replace(/\$\$/g, ';');
+        console.log('✅ Schema processed\n');
 
         console.log('⚙️  Executing schema (this may take a moment)...');
         await connection.query(schema);
