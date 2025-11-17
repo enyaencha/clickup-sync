@@ -32,24 +32,86 @@ async function setupDatabase() {
         // Use the database
         await connection.query(`USE \`${dbName}\``);
 
-        // Read and execute the schema file
+        // Read the schema file
         const schemaPath = path.join(__dirname, 'me_system_complete_schema.sql');
         console.log(`\n📄 Reading schema from: ${schemaPath}`);
 
         const schemaSQL = fs.readFileSync(schemaPath, 'utf8');
 
         console.log('⚙️  Executing schema...');
-        await connection.query(schemaSQL);
 
-        console.log('\n✅ Schema created successfully!');
+        // Split into individual statements and execute them one by one
+        // This avoids issues with views referencing tables that might not exist yet
+        const statements = schemaSQL
+            .split(';')
+            .map(stmt => stmt.trim())
+            .filter(stmt => stmt.length > 0 && !stmt.startsWith('--') && !stmt.startsWith('/*'));
+
+        let executedCount = 0;
+        let skippedCount = 0;
+
+        for (let i = 0; i < statements.length; i++) {
+            const statement = statements[i];
+
+            // Skip comments and empty statements
+            if (!statement || statement.startsWith('--')) {
+                skippedCount++;
+                continue;
+            }
+
+            try {
+                await connection.query(statement);
+                executedCount++;
+
+                // Show progress for major operations
+                if (statement.toLowerCase().includes('create table') ||
+                    statement.toLowerCase().includes('create or replace view')) {
+                    const match = statement.match(/create\s+(?:or\s+replace\s+)?(?:table|view)\s+(?:if\s+not\s+exists\s+)?`?(\w+)`?/i);
+                    if (match) {
+                        console.log(`  ✓ ${match[1]}`);
+                    }
+                }
+            } catch (error) {
+                // Only log critical errors, skip warnings about existing objects
+                if (!error.message.includes('already exists') &&
+                    !error.message.includes('Unknown table') &&
+                    !error.message.includes('Duplicate key name')) {
+                    console.warn(`  ⚠️  Warning in statement ${i + 1}: ${error.message.substring(0, 100)}`);
+                }
+                skippedCount++;
+            }
+        }
+
+        console.log(`\n✅ Schema execution completed!`);
+        console.log(`   Executed: ${executedCount} statements`);
+        console.log(`   Skipped: ${skippedCount} statements`);
 
         // Verify tables were created
         const [tables] = await connection.query('SHOW TABLES');
-        console.log(`\n📊 Created ${tables.length} tables:`);
-        tables.forEach((table, index) => {
-            const tableName = Object.values(table)[0];
-            console.log(`   ${index + 1}. ${tableName}`);
-        });
+        console.log(`\n📊 Created ${tables.length} tables/views:`);
+
+        // Group by type
+        const tableList = tables.map(t => Object.values(t)[0]);
+        const regularTables = [];
+        const views = [];
+
+        for (const tableName of tableList) {
+            const [tableInfo] = await connection.query(
+                `SELECT TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?`,
+                [dbName, tableName]
+            );
+            if (tableInfo[0]?.TABLE_TYPE === 'VIEW') {
+                views.push(tableName);
+            } else {
+                regularTables.push(tableName);
+            }
+        }
+
+        console.log(`\n   Tables: ${regularTables.length}`);
+        regularTables.forEach((name, i) => console.log(`     ${i + 1}. ${name}`));
+
+        console.log(`\n   Views: ${views.length}`);
+        views.forEach((name, i) => console.log(`     ${i + 1}. ${name}`));
 
         // Check program modules
         const [programs] = await connection.query('SELECT name, code FROM program_modules');
@@ -58,11 +120,22 @@ async function setupDatabase() {
             console.log(`   ${index + 1}. [${prog.code}] ${prog.name}`);
         });
 
-        console.log('\n✨ M&E System Database Setup Complete! ✨\n');
+        // Check organization
+        const [orgs] = await connection.query('SELECT name FROM organizations');
+        if (orgs.length > 0) {
+            console.log(`\n🏢 Organization: ${orgs[0].name}`);
+        }
+
+        console.log('\n✨ M&E System Database Setup Complete! ✨');
+        console.log('\n📝 Next Steps:');
+        console.log('   1. Update config/.env with your ClickUp API token');
+        console.log('   2. Start the server: npm start');
+        console.log('   3. Configure ClickUp: POST /api/sync/configure');
+        console.log('   4. Create activities and they will auto-sync to ClickUp!\n');
 
     } catch (error) {
         console.error('\n❌ Error setting up database:', error.message);
-        console.error(error);
+        console.error('\nFull error:', error);
         process.exit(1);
     } finally {
         if (connection) {
