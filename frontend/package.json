@@ -1,6 +1,7 @@
 {
   "name": "clickup-sync-frontend",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -20,10 +21,5 @@
     "postcss": "^8.4.31",
     "autoprefixer": "^10.4.16",
     "vite": "^5.2.0"
-  },
-  "main": "postcss.config.js",
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": ""
+  }
 }
