@@ -7,4 +7,19 @@ export default defineConfig({
     port: 3001,
     host: true
   }
+
+export default defineConfig({
+  server: {
+    port: 3001,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+    },
+  },
 });
