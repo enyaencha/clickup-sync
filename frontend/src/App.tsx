@@ -1,9 +1,9 @@
 import React from "react";
-import ClickUpDashboard from "./components/ClickUpDashboard";
+import Programs from "./components/Programs";
 
 const App: React.FC = () => (
     <div className="App">
-        <ClickUpDashboard />
+        <Programs />
     </div>
 );
 
