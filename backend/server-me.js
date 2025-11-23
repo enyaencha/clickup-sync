@@ -98,6 +98,10 @@ async function initializeServices() {
         meService = new MEService(dbManager);
         logger.info('✅ M&E Service initialized');
 
+        // Register M&E Routes (must be after meService is initialized)
+        app.use('/api', require('./routes/me.routes')(meService));
+        logger.info('✅ M&E Routes registered');
+
         // Get ClickUp API token from sync_config
         const config = await dbManager.queryOne(
             'SELECT clickup_api_token_encrypted FROM sync_config WHERE id = 1'
@@ -167,8 +171,7 @@ app.get('/health', async (req, res) => {
     }
 });
 
-// M&E Routes
-app.use('/api', require('./routes/me.routes')(meService));
+// M&E Routes are registered in initializeServices() after meService is created
 
 // ==============================================
 // SYNC MANAGEMENT ROUTES
