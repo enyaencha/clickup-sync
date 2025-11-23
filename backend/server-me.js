@@ -3,19 +3,28 @@
  * Manages M&E data and pushes to ClickUp
  */
 
+console.log('Loading M&E server...');
 require('dotenv').config({ path: __dirname + '/../config/.env' });
+console.log('Environment loaded');
 
+console.log('Loading dependencies...');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const crypto = require('crypto');
 const cron = require('node-cron');
+console.log('Core modules loaded');
 
+console.log('Loading custom modules...');
 const dbManager = require('./core/database/connection');
+console.log('DB Manager loaded');
 const logger = require('./core/utils/logger');
+console.log('Logger loaded');
 const MEService = require('./services/me.service');
+console.log('MEService loaded');
 const SyncManager = require('./services/sync.manager');
+console.log('SyncManager loaded');
 
 // ==============================================
 // ENCRYPTION HELPERS
@@ -155,16 +164,16 @@ async function autoMigrateActivitiesTable() {
 
 async function initializeServices() {
     try {
+        console.log('Inside initializeServices()...');
         logger.info('Initializing M&E System...');
 
         // Initialize database
+        console.log('Initializing database connection...');
         await dbManager.initialize();
         logger.info('✅ Database connected');
 
-        // Auto-migrate activities table schema if needed
-        await autoMigrateActivitiesTable();
-
         // Initialize M&E Service
+        console.log('Creating MEService instance...');
         meService = new MEService(dbManager);
         logger.info('✅ M&E Service initialized');
 
@@ -402,8 +411,11 @@ const PORT = process.env.PORT || 4000;
 
 async function startServer() {
     try {
+        console.log('Inside startServer(), about to initialize services...');
         await initializeServices();
+        console.log('Services initialized successfully!');
 
+        console.log(`Starting HTTP server on port ${PORT}...`);
         app.listen(PORT, () => {
             logger.info(`🚀 M&E System running on http://localhost:${PORT}`);
             logger.info(`📊 API Docs available at http://localhost:${PORT}/health`);
@@ -442,4 +454,24 @@ process.on('SIGINT', async () => {
 });
 
 // Start the server
-startServer();
+console.log('All functions defined, about to call startServer()...');
+startServer().catch(error => {
+    console.error('FATAL ERROR starting server:', error);
+    process.exit(1);
+});
+console.log('startServer() called...');
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    logger.error('Unhandled Promise Rejection:', reason);
+    process.exit(1);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    logger.error('Uncaught Exception:', error);
+    process.exit(1);
+});
+
