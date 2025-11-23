@@ -168,7 +168,7 @@ app.get('/health', async (req, res) => {
 });
 
 // M&E Routes
-app.use('/api/me', require('./routes/me.routes')(meService));
+app.use('/api', require('./routes/me.routes')(meService));
 
 // ==============================================
 // SYNC MANAGEMENT ROUTES
