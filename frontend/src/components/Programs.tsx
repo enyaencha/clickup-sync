@@ -115,7 +115,7 @@ const Programs: React.FC = () => {
                   <div>
                     <span className="text-xs text-gray-500">Budget</span>
                     <p className="text-sm font-semibold text-gray-900">
-                      ${program.budget.toLocaleString()}
+                      ${program.budget ? program.budget.toLocaleString() : '0'}
                     </p>
                   </div>
                   <span
@@ -127,7 +127,7 @@ const Programs: React.FC = () => {
                         : 'bg-gray-100 text-gray-800'
                     }`}
                   >
-                    {program.status}
+                    {program.status || 'unknown'}
                   </span>
                 </div>
               </div>
