@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Layout from './components/Layout';
 import Programs from './components/Programs';
 import SubPrograms from './components/SubPrograms';
 import ProjectComponents from './components/ProjectComponents';
@@ -8,7 +9,7 @@ import Activities from './components/Activities';
 const App: React.FC = () => {
   return (
     <Router>
-      <div className="App">
+      <Layout>
         <Routes>
           {/* Level 1: Program Modules (ClickUp Space) */}
           <Route path="/" element={<Programs />} />
@@ -22,7 +23,7 @@ const App: React.FC = () => {
           {/* Level 4: Activities (ClickUp Task) */}
           <Route path="/program/:programId/project/:projectId/component/:componentId" element={<Activities />} />
         </Routes>
-      </div>
+      </Layout>
     </Router>
   );
 };
