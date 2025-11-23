@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import AddSubProgramModal from './AddSubProgramModal';
 
 interface SubProgram {
   id: number;
@@ -26,6 +27,7 @@ const SubPrograms: React.FC = () => {
   const [program, setProgram] = useState<Program | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchProgram();
@@ -55,6 +57,10 @@ const SubPrograms: React.FC = () => {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setLoading(false);
     }
+  };
+
+  const handleSubProgramCreated = () => {
+    fetchSubPrograms();
   };
 
   if (loading) {
@@ -113,13 +119,25 @@ const SubPrograms: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="mb-4 sm:mb-6">
-          <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-2">
-            Sub-Programs ({subPrograms.length})
-          </h2>
-          <p className="text-sm sm:text-base text-gray-600">
-            Tap on a sub-program to view project components
-          </p>
+        <div className="mb-4 sm:mb-6 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-2">
+              Sub-Programs ({subPrograms.length})
+            </h2>
+            <p className="text-sm sm:text-base text-gray-600">
+              Tap on a sub-program to view project components
+            </p>
+          </div>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors text-sm sm:text-base whitespace-nowrap"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span className="hidden sm:inline">Add Project</span>
+            <span className="sm:hidden">Add</span>
+          </button>
         </div>
 
         {/* Sub-Programs List */}
@@ -209,6 +227,14 @@ const SubPrograms: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* Add Sub-Program Modal */}
+      <AddSubProgramModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        programId={parseInt(programId!)}
+        onSuccess={handleSubProgramCreated}
+      />
     </div>
   );
 };
