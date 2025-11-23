@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import AddActivityModal from './AddActivityModal';
 
 interface Activity {
   id: number;
@@ -33,6 +34,9 @@ const Activities: React.FC = () => {
   // Filters
   const [statusFilter, setStatusFilter] = useState('all');
   const [approvalFilter, setApprovalFilter] = useState('all');
+
+  // Modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -68,6 +72,10 @@ const Activities: React.FC = () => {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setLoading(false);
     }
+  };
+
+  const handleActivityCreated = () => {
+    fetchData();
   };
 
   const filteredActivities = activities.filter((activity) => {
@@ -177,7 +185,10 @@ const Activities: React.FC = () => {
             <div className="sm:flex-1"></div>
 
             <div className="flex items-end">
-              <button className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 active:bg-blue-800 text-sm sm:text-base">
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 active:bg-blue-800 text-sm sm:text-base"
+              >
                 + New Activity
               </button>
             </div>
@@ -366,6 +377,14 @@ const Activities: React.FC = () => {
           )}
         </div>
       </main>
+
+      {/* Add Activity Modal */}
+      <AddActivityModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        componentId={parseInt(componentId!)}
+        onSuccess={handleActivityCreated}
+      />
     </div>
   );
 };
