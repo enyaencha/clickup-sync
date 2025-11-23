@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface Program {
   id: number;
@@ -14,6 +15,7 @@ const Programs: React.FC = () => {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchPrograms();
@@ -90,6 +92,7 @@ const Programs: React.FC = () => {
           {programs.map((program) => (
             <div
               key={program.id}
+              onClick={() => navigate(`/program/${program.id}`)}
               className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden cursor-pointer"
             >
               <div className="p-6">
