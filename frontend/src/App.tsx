@@ -1,10 +1,30 @@
-import React from "react";
-import Programs from "./components/Programs";
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Programs from './components/Programs';
+import SubPrograms from './components/SubPrograms';
+import ProjectComponents from './components/ProjectComponents';
+import Activities from './components/Activities';
 
-const App: React.FC = () => (
-    <div className="App">
-        <Programs />
-    </div>
-);
+const App: React.FC = () => {
+  return (
+    <Router>
+      <div className="App">
+        <Routes>
+          {/* Level 1: Program Modules (ClickUp Space) */}
+          <Route path="/" element={<Programs />} />
+
+          {/* Level 2: Sub-Programs/Projects (ClickUp Folder) */}
+          <Route path="/program/:programId" element={<SubPrograms />} />
+
+          {/* Level 3: Project Components (ClickUp List) */}
+          <Route path="/program/:programId/project/:projectId" element={<ProjectComponents />} />
+
+          {/* Level 4: Activities (ClickUp Task) */}
+          <Route path="/program/:programId/project/:projectId/component/:componentId" element={<Activities />} />
+        </Routes>
+      </div>
+    </Router>
+  );
+};
 
 export default App;
