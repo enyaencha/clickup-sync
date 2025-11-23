@@ -172,11 +172,6 @@ async function initializeServices() {
         await dbManager.initialize();
         logger.info('✅ Database connected');
 
-        // Auto-migrate activities table schema if needed
-        console.log('Running auto-migration...');
-        await autoMigrateActivitiesTable();
-        console.log('Auto-migration completed');
-
         // Initialize M&E Service
         console.log('Creating MEService instance...');
         meService = new MEService(dbManager);
