@@ -102,6 +102,24 @@ async function initializeServices() {
         app.use('/api', require('./routes/me.routes')(meService));
         logger.info('✅ M&E Routes registered');
 
+        // Register error handlers AFTER routes (must be last)
+        // 404 handler
+        app.use((req, res) => {
+            res.status(404).json({
+                success: false,
+                error: 'Endpoint not found'
+            });
+        });
+
+        // Global error handler
+        app.use((err, req, res, next) => {
+            logger.error('Unhandled error:', err);
+            res.status(err.status || 500).json({
+                success: false,
+                error: err.message || 'Internal server error'
+            });
+        });
+
         // Get ClickUp API token from sync_config
         const config = await dbManager.queryOne(
             'SELECT clickup_api_token_encrypted FROM sync_config WHERE id = 1'
@@ -304,24 +322,7 @@ app.get('/api/sync/log', async (req, res) => {
 // ==============================================
 // ERROR HANDLING
 // ==============================================
-
-// 404 handler
-app.use((req, res) => {
-    res.status(404).json({
-        success: false,
-        error: 'Endpoint not found'
-    });
-});
-
-// Global error handler
-app.use((err, req, res, next) => {
-    logger.error('Unhandled error:', err);
-
-    res.status(err.status || 500).json({
-        success: false,
-        error: err.message || 'Internal server error'
-    });
-});
+// Error handlers are now registered inside initializeServices() after routes
 
 // ==============================================
 // START SERVER
