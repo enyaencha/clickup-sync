@@ -89,55 +89,55 @@ const SubPrograms: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
           {/* Breadcrumb */}
-          <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-4">
-            <button onClick={() => navigate('/')} className="hover:text-blue-600">
+          <nav className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4 flex-wrap">
+            <button onClick={() => navigate('/')} className="hover:text-blue-600 active:text-blue-700">
               Programs
             </button>
             <span>/</span>
-            <span className="text-gray-900">{program?.name || 'Loading...'}</span>
+            <span className="text-gray-900 truncate">{program?.name || 'Loading...'}</span>
           </nav>
 
-          <div className="flex items-center space-x-4">
-            <span className="text-5xl">{program?.icon}</span>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+          <div className="flex items-center space-x-3 sm:space-x-4">
+            <span className="text-3xl sm:text-4xl lg:text-5xl flex-shrink-0">{program?.icon}</span>
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">
                 {program?.name}
               </h1>
-              <p className="mt-1 text-gray-600">Sub-Programs & Projects (ClickUp Folders)</p>
+              <p className="mt-1 text-xs sm:text-sm text-gray-600">Sub-Programs & Projects (ClickUp Folders)</p>
             </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="mb-4 sm:mb-6">
+          <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-2">
             Sub-Programs ({subPrograms.length})
           </h2>
-          <p className="text-gray-600">
-            Click on a sub-program to view project components
+          <p className="text-sm sm:text-base text-gray-600">
+            Tap on a sub-program to view project components
           </p>
         </div>
 
         {/* Sub-Programs List */}
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {subPrograms.map((subProgram) => (
             <div
               key={subProgram.id}
               onClick={() => navigate(`/program/${programId}/project/${subProgram.id}`)}
-              className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200 p-6 cursor-pointer border-l-4 border-blue-500"
+              className="bg-white rounded-lg shadow hover:shadow-lg active:shadow-xl transition-all duration-200 p-4 sm:p-6 cursor-pointer border-l-4 border-blue-500 active:scale-[0.99]"
             >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
                     {subProgram.name}
                   </h3>
-                  <p className="text-gray-600 mb-4">{subProgram.description}</p>
+                  <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">{subProgram.description}</p>
 
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-3 sm:mt-4">
                     <div>
                       <span className="text-xs text-gray-500">Budget</span>
                       <p className="text-sm font-semibold text-gray-900">
@@ -160,7 +160,7 @@ const SubPrograms: React.FC = () => {
                       <span className="text-xs text-gray-500">Status</span>
                       <p>
                         <span
-                          className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                          className={`inline-block px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${
                             subProgram.status === 'active'
                               ? 'bg-green-100 text-green-800'
                               : subProgram.status === 'planning'
@@ -177,9 +177,9 @@ const SubPrograms: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="ml-4 text-blue-600">
+                <div className="ml-2 sm:ml-4 text-blue-600 flex-shrink-0">
                   <svg
-                    className="w-6 h-6"
+                    className="w-5 h-5 sm:w-6 sm:h-6"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -199,10 +199,10 @@ const SubPrograms: React.FC = () => {
 
         {subPrograms.length === 0 && (
           <div className="text-center py-12 bg-white rounded-lg">
-            <p className="text-gray-500">No sub-programs found for this program module</p>
+            <p className="text-sm sm:text-base text-gray-500">No sub-programs found for this program module</p>
             <button
               onClick={() => navigate('/')}
-              className="mt-4 text-blue-600 hover:text-blue-800"
+              className="mt-4 text-blue-600 hover:text-blue-800 text-sm sm:text-base"
             >
               ← Back to Programs
             </button>

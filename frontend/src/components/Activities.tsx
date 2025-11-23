@@ -108,46 +108,46 @@ const Activities: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
           {/* Breadcrumb */}
-          <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-4 flex-wrap">
-            <button onClick={() => navigate('/')} className="hover:text-blue-600">
+          <nav className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4 flex-wrap">
+            <button onClick={() => navigate('/')} className="hover:text-blue-600 active:text-blue-700">
               Programs
             </button>
             <span>/</span>
-            <button onClick={() => navigate(`/program/${programId}`)} className="hover:text-blue-600">
+            <button onClick={() => navigate(`/program/${programId}`)} className="hover:text-blue-600 active:text-blue-700 truncate max-w-[80px] sm:max-w-none">
               {program?.name}
             </button>
             <span>/</span>
-            <button onClick={() => navigate(`/program/${programId}/project/${projectId}`)} className="hover:text-blue-600">
+            <button onClick={() => navigate(`/program/${programId}/project/${projectId}`)} className="hover:text-blue-600 active:text-blue-700 truncate max-w-[80px] sm:max-w-none">
               {project?.name}
             </button>
             <span>/</span>
-            <span className="text-gray-900">{component?.name || 'Loading...'}</span>
+            <span className="text-gray-900 truncate max-w-[100px] sm:max-w-none">{component?.name || 'Loading...'}</span>
           </nav>
 
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
               {component?.name}
             </h1>
-            <p className="mt-1 text-gray-600">Field Activities (ClickUp Tasks)</p>
+            <p className="mt-1 text-xs sm:text-sm text-gray-600">Field Activities (ClickUp Tasks)</p>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <div className="flex flex-wrap gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4">
+            <div className="flex-1 min-w-[150px]">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                 Status
               </label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
               >
                 <option value="all">All Statuses</option>
                 <option value="planned">Planned</option>
@@ -157,14 +157,14 @@ const Activities: React.FC = () => {
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="flex-1 min-w-[150px]">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                 Approval Status
               </label>
               <select
                 value={approvalFilter}
                 onChange={(e) => setApprovalFilter(e.target.value)}
-                className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
               >
                 <option value="all">All Approvals</option>
                 <option value="draft">Draft</option>
@@ -174,103 +174,105 @@ const Activities: React.FC = () => {
               </select>
             </div>
 
-            <div className="flex-1"></div>
+            <div className="sm:flex-1"></div>
 
             <div className="flex items-end">
-              <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+              <button className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 active:bg-blue-800 text-sm sm:text-base">
                 + New Activity
               </button>
             </div>
           </div>
 
-          <div className="mt-4 text-sm text-gray-600">
+          <div className="mt-3 sm:mt-4 text-xs sm:text-sm text-gray-600">
             Showing {filteredActivities.length} of {activities.length} activities
           </div>
         </div>
 
-        {/* Activities Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Activity Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Location
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Beneficiaries
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Approval
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredActivities.map((activity) => (
-                <tr key={activity.id} className="hover:bg-gray-50 cursor-pointer">
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-gray-900">{activity.name}</div>
-                    <div className="text-sm text-gray-500 line-clamp-1">{activity.description}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {activity.activity_date ? new Date(activity.activity_date).toLocaleDateString() : 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {activity.location || 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {activity.actual_beneficiaries || 0} / {activity.target_beneficiaries || 0}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        activity.status === 'completed'
-                          ? 'bg-green-100 text-green-800'
-                          : activity.status === 'ongoing'
-                          ? 'bg-blue-100 text-blue-800'
-                          : activity.status === 'planned'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {activity.status || 'unknown'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        activity.approval_status === 'approved'
-                          ? 'bg-green-100 text-green-800'
-                          : activity.approval_status === 'submitted'
-                          ? 'bg-blue-100 text-blue-800'
-                          : activity.approval_status === 'rejected'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {activity.approval_status || 'draft'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button className="text-blue-600 hover:text-blue-900">
-                      View Details →
-                    </button>
-                  </td>
+        {/* Activities - Desktop Table View */}
+        <div className="hidden lg:block bg-white rounded-lg shadow overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Activity Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Location
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Beneficiaries
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Approval
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredActivities.map((activity) => (
+                  <tr key={activity.id} className="hover:bg-gray-50 cursor-pointer">
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-medium text-gray-900">{activity.name}</div>
+                      <div className="text-sm text-gray-500 line-clamp-1">{activity.description}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {activity.activity_date ? new Date(activity.activity_date).toLocaleDateString() : 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {activity.location || 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {activity.actual_beneficiaries || 0} / {activity.target_beneficiaries || 0}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          activity.status === 'completed'
+                            ? 'bg-green-100 text-green-800'
+                            : activity.status === 'ongoing'
+                            ? 'bg-blue-100 text-blue-800'
+                            : activity.status === 'planned'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {activity.status || 'unknown'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          activity.approval_status === 'approved'
+                            ? 'bg-green-100 text-green-800'
+                            : activity.approval_status === 'submitted'
+                            ? 'bg-blue-100 text-blue-800'
+                            : activity.approval_status === 'rejected'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {activity.approval_status || 'draft'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button className="text-blue-600 hover:text-blue-900">
+                        View Details →
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           {filteredActivities.length === 0 && (
             <div className="text-center py-12">
@@ -278,6 +280,85 @@ const Activities: React.FC = () => {
               <button
                 onClick={() => navigate(`/program/${programId}/project/${projectId}`)}
                 className="mt-4 text-blue-600 hover:text-blue-800"
+              >
+                ← Back to Components
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Activities - Mobile Card View */}
+        <div className="lg:hidden space-y-3">
+          {filteredActivities.map((activity) => (
+            <div
+              key={activity.id}
+              className="bg-white rounded-lg shadow p-4 active:shadow-lg transition-all duration-200 active:scale-[0.99]"
+            >
+              <div className="flex items-start justify-between mb-2">
+                <h3 className="font-semibold text-gray-900 text-sm">{activity.name}</h3>
+                <button className="text-blue-600 text-xs whitespace-nowrap ml-2">
+                  View →
+                </button>
+              </div>
+
+              <p className="text-xs text-gray-600 mb-3 line-clamp-2">{activity.description}</p>
+
+              <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                <div>
+                  <span className="text-gray-500">Date:</span>
+                  <p className="font-medium text-gray-900">
+                    {activity.activity_date ? new Date(activity.activity_date).toLocaleDateString() : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Location:</span>
+                  <p className="font-medium text-gray-900 truncate">{activity.location || 'N/A'}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Beneficiaries:</span>
+                  <p className="font-medium text-gray-900">
+                    {activity.actual_beneficiaries || 0} / {activity.target_beneficiaries || 0}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <span
+                  className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                    activity.status === 'completed'
+                      ? 'bg-green-100 text-green-800'
+                      : activity.status === 'ongoing'
+                      ? 'bg-blue-100 text-blue-800'
+                      : activity.status === 'planned'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}
+                >
+                  {activity.status || 'unknown'}
+                </span>
+                <span
+                  className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                    activity.approval_status === 'approved'
+                      ? 'bg-green-100 text-green-800'
+                      : activity.approval_status === 'submitted'
+                      ? 'bg-blue-100 text-blue-800'
+                      : activity.approval_status === 'rejected'
+                      ? 'bg-red-100 text-red-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}
+                >
+                  {activity.approval_status || 'draft'}
+                </span>
+              </div>
+            </div>
+          ))}
+
+          {filteredActivities.length === 0 && (
+            <div className="text-center py-12 bg-white rounded-lg">
+              <p className="text-sm text-gray-500">No activities found matching your filters</p>
+              <button
+                onClick={() => navigate(`/program/${programId}/project/${projectId}`)}
+                className="mt-4 text-blue-600 hover:text-blue-800 text-sm"
               >
                 ← Back to Components
               </button>
