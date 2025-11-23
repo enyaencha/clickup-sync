@@ -86,6 +86,73 @@ app.use((req, res, next) => {
 let meService;
 let syncManager;
 
+/**
+ * Auto-migrate activities table to add component_id column if needed
+ */
+async function autoMigrateActivitiesTable() {
+    try {
+        logger.info('Checking activities table schema...');
+
+        // Check if component_id column exists
+        const columns = await dbManager.query(`
+            SELECT COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'activities'
+        `);
+
+        const columnNames = columns.map(col => col.COLUMN_NAME);
+        const hasComponentId = columnNames.includes('component_id');
+
+        if (!hasComponentId) {
+            logger.info('Adding component_id column to activities table...');
+
+            // Add component_id column
+            await dbManager.query(`
+                ALTER TABLE activities
+                ADD COLUMN component_id INT NULL
+            `);
+
+            // Migrate data if project_id exists
+            if (columnNames.includes('project_id')) {
+                await dbManager.query(`
+                    UPDATE activities
+                    SET component_id = project_id
+                    WHERE component_id IS NULL AND project_id IS NOT NULL
+                `);
+                logger.info('✅ Migrated project_id data to component_id');
+            }
+
+            // Try to add foreign key and index
+            try {
+                await dbManager.query(`
+                    ALTER TABLE activities
+                    ADD CONSTRAINT fk_activities_component
+                    FOREIGN KEY (component_id) REFERENCES project_components(id)
+                    ON DELETE CASCADE
+                `);
+            } catch (e) {
+                // Ignore if constraint already exists or table doesn't exist
+            }
+
+            try {
+                await dbManager.query(`
+                    CREATE INDEX idx_component_id ON activities(component_id)
+                `);
+            } catch (e) {
+                // Ignore if index already exists
+            }
+
+            logger.info('✅ Activities table migration completed');
+        } else {
+            logger.info('✅ Activities table schema is up to date');
+        }
+    } catch (error) {
+        logger.error('Warning: Could not auto-migrate activities table:', error.message);
+        // Don't throw - continue with startup even if migration fails
+    }
+}
+
 async function initializeServices() {
     try {
         logger.info('Initializing M&E System...');
@@ -93,6 +160,9 @@ async function initializeServices() {
         // Initialize database
         await dbManager.initialize();
         logger.info('✅ Database connected');
+
+        // Auto-migrate activities table schema if needed
+        await autoMigrateActivitiesTable();
 
         // Initialize M&E Service
         meService = new MEService(dbManager);
