@@ -1607,6 +1607,10 @@ app.use(express.json());
 const db = new DatabaseManager();
 let syncEngine;
 
+// Import M&E components
+const MEService = require('./services/me.service');
+const meRoutes = require('./routes/me.routes');
+
 // Initialize sync engine
 (async () => {
     try {
@@ -1623,6 +1627,11 @@ let syncEngine;
 
         await syncEngine.initialize();
         console.log('Sync engine started successfully');
+
+        // Initialize M&E Service and routes
+        const meService = new MEService(db);
+        app.use('/api', meRoutes(meService));
+        console.log('M&E routes registered successfully');
     } catch (error) {
         console.error('Failed to initialize sync engine:', error);
         process.exit(1);
