@@ -153,6 +153,60 @@ module.exports = (meService) => {
     });
 
     // ==============================================
+    // APPROVAL WORKFLOW
+    // ==============================================
+
+    router.get('/approvals/pending', async (req, res) => {
+        try {
+            const filters = {
+                approval_status: 'submitted',
+                status: req.query.status,
+                component_id: req.query.component_id
+            };
+            const activities = await meService.getActivities(filters);
+            res.json({ success: true, data: activities, count: activities.length });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    router.post('/activities/:id/submit', async (req, res) => {
+        try {
+            await meService.updateActivity(req.params.id, {
+                approval_status: 'submitted',
+                ...req.body
+            });
+            res.json({ success: true, message: 'Activity submitted for approval' });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    router.post('/activities/:id/approve', async (req, res) => {
+        try {
+            await meService.updateActivity(req.params.id, {
+                approval_status: 'approved',
+                ...req.body
+            });
+            res.json({ success: true, message: 'Activity approved' });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    router.post('/activities/:id/reject', async (req, res) => {
+        try {
+            await meService.updateActivity(req.params.id, {
+                approval_status: 'rejected',
+                ...req.body
+            });
+            res.json({ success: true, message: 'Activity rejected' });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    // ==============================================
     // GOALS & INDICATORS
     // ==============================================
 

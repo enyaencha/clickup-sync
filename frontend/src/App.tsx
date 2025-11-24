@@ -5,6 +5,7 @@ import Programs from './components/Programs';
 import SubPrograms from './components/SubPrograms';
 import ProjectComponents from './components/ProjectComponents';
 import Activities from './components/Activities';
+import Approvals from './components/Approvals';
 
 const App: React.FC = () => {
   return (
@@ -22,6 +23,9 @@ const App: React.FC = () => {
 
           {/* Level 4: Activities (ClickUp Task) */}
           <Route path="/program/:programId/project/:projectId/component/:componentId" element={<Activities />} />
+
+          {/* Approvals Page */}
+          <Route path="/approvals" element={<Approvals />} />
         </Routes>
       </Layout>
     </Router>

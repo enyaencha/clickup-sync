@@ -37,6 +37,7 @@ const Activities: React.FC = () => {
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [submittingId, setSubmittingId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -76,6 +77,27 @@ const Activities: React.FC = () => {
 
   const handleActivityCreated = () => {
     fetchData();
+  };
+
+  const handleSubmitForApproval = async (activityId: number) => {
+    if (!confirm('Submit this activity for approval?')) return;
+
+    try {
+      setSubmittingId(activityId);
+      const response = await fetch(`/api/activities/${activityId}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) throw new Error('Failed to submit activity');
+
+      await fetchData();
+      alert('Activity submitted for approval!');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to submit activity');
+    } finally {
+      setSubmittingId(null);
+    }
   };
 
   const filteredActivities = activities.filter((activity) => {
@@ -134,12 +156,18 @@ const Activities: React.FC = () => {
             <span className="text-gray-900 truncate max-w-[100px] sm:max-w-none">{component?.name || 'Loading...'}</span>
           </nav>
 
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
               {component?.name}
             </h1>
             <p className="mt-1 text-xs sm:text-sm text-gray-600">Field Activities (ClickUp Tasks)</p>
           </div>
+          <button
+            onClick={() => navigate('/approvals')}
+            className="ml-4 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 text-sm font-medium whitespace-nowrap"
+          >
+            📋 Approvals
+          </button>
         </div>
       </header>
 
@@ -275,9 +303,23 @@ const Activities: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button className="text-blue-600 hover:text-blue-900">
-                        View Details →
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        {activity.approval_status === 'draft' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSubmitForApproval(activity.id);
+                            }}
+                            disabled={submittingId === activity.id}
+                            className="text-green-600 hover:text-green-900 disabled:opacity-50 font-medium"
+                          >
+                            {submittingId === activity.id ? 'Submitting...' : '✓ Submit'}
+                          </button>
+                        )}
+                        <button className="text-blue-600 hover:text-blue-900">
+                          View →
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
