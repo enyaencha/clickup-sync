@@ -211,6 +211,9 @@ class MEService {
     // ==============================================
 
     async createActivity(data) {
+        // Helper to convert undefined to null
+        const toNull = (value) => value === undefined ? null : value;
+
         const result = await this.db.query(`
             INSERT INTO activities (
                 component_id, name, description,
@@ -225,24 +228,24 @@ class MEService {
             data.component_id,
             data.name,
             data.description,
-            data.location_id,
-            data.location_details,
-            data.parish,
-            data.ward,
-            data.county,
-            data.activity_date,
-            data.start_date,
-            data.end_date,
-            data.duration_hours,
-            data.facilitators,
-            data.staff_assigned,
-            data.target_beneficiaries,
-            data.beneficiary_type,
-            data.budget_allocated,
+            toNull(data.location_id),
+            toNull(data.location_details),
+            toNull(data.parish),
+            toNull(data.ward),
+            toNull(data.county),
+            toNull(data.activity_date),
+            toNull(data.start_date),
+            toNull(data.end_date),
+            toNull(data.duration_hours),
+            toNull(data.facilitators),
+            toNull(data.staff_assigned),
+            toNull(data.target_beneficiaries),
+            toNull(data.beneficiary_type),
+            toNull(data.budget_allocated),
             data.status || 'planned',
             data.approval_status || 'draft',
             data.priority || 'normal',
-            data.created_by
+            toNull(data.created_by)
         ]);
 
         const activityId = result.insertId;
@@ -252,6 +255,9 @@ class MEService {
     }
 
     async updateActivity(id, data) {
+        // Helper to convert undefined to null
+        const toNull = (value) => value === undefined ? null : value;
+
         await this.db.query(`
             UPDATE activities
             SET name = ?, description = ?,
@@ -262,12 +268,12 @@ class MEService {
         `, [
             data.name,
             data.description,
-            data.activity_date,
+            toNull(data.activity_date),
             data.status,
             data.approval_status,
-            data.actual_beneficiaries,
-            data.budget_spent,
-            data.progress_percentage,
+            toNull(data.actual_beneficiaries),
+            toNull(data.budget_spent),
+            toNull(data.progress_percentage),
             id
         ]);
 
