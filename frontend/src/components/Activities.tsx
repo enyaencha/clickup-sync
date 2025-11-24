@@ -301,19 +301,33 @@ const Activities: React.FC = () => {
                       {activity.actual_beneficiaries || 0} / {activity.target_beneficiaries || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      <select
+                        value={activity.status}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          handleStatusChange(activity.id, e.target.value);
+                        }}
+                        disabled={changingStatusId === activity.id}
+                        className={`text-xs font-semibold rounded-lg px-3 py-1 border-0 cursor-pointer disabled:opacity-50 ${
                           activity.status === 'completed'
                             ? 'bg-green-100 text-green-800'
-                            : activity.status === 'ongoing'
+                            : activity.status === 'in-progress'
                             ? 'bg-blue-100 text-blue-800'
-                            : activity.status === 'planned'
+                            : activity.status === 'not-started'
                             ? 'bg-yellow-100 text-yellow-800'
+                            : activity.status === 'blocked'
+                            ? 'bg-red-100 text-red-800'
+                            : activity.status === 'cancelled'
+                            ? 'bg-gray-100 text-gray-800'
                             : 'bg-gray-100 text-gray-800'
                         }`}
                       >
-                        {activity.status || 'unknown'}
-                      </span>
+                        <option value="not-started">Not Started</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="blocked">Blocked</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
@@ -344,7 +358,13 @@ const Activities: React.FC = () => {
                             {submittingId === activity.id ? 'Submitting...' : '✓ Submit'}
                           </button>
                         )}
-                        <button className="text-blue-600 hover:text-blue-900">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewActivity(activity.id);
+                          }}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
                           View →
                         </button>
                       </div>
@@ -377,7 +397,10 @@ const Activities: React.FC = () => {
             >
               <div className="flex items-start justify-between mb-2">
                 <h3 className="font-semibold text-gray-900 text-sm">{activity.name}</h3>
-                <button className="text-blue-600 text-xs whitespace-nowrap ml-2">
+                <button
+                  onClick={() => handleViewActivity(activity.id)}
+                  className="text-blue-600 text-xs whitespace-nowrap ml-2"
+                >
                   View →
                 </button>
               </div>
@@ -404,19 +427,30 @@ const Activities: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2 flex-wrap mb-3">
-                <span
-                  className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                <select
+                  value={activity.status}
+                  onChange={(e) => handleStatusChange(activity.id, e.target.value)}
+                  disabled={changingStatusId === activity.id}
+                  className={`text-xs font-semibold rounded-lg px-2 py-1 border-0 cursor-pointer disabled:opacity-50 ${
                     activity.status === 'completed'
                       ? 'bg-green-100 text-green-800'
-                      : activity.status === 'ongoing'
+                      : activity.status === 'in-progress'
                       ? 'bg-blue-100 text-blue-800'
-                      : activity.status === 'planned'
+                      : activity.status === 'not-started'
                       ? 'bg-yellow-100 text-yellow-800'
+                      : activity.status === 'blocked'
+                      ? 'bg-red-100 text-red-800'
+                      : activity.status === 'cancelled'
+                      ? 'bg-gray-100 text-gray-800'
                       : 'bg-gray-100 text-gray-800'
                   }`}
                 >
-                  {activity.status || 'unknown'}
-                </span>
+                  <option value="not-started">Not Started</option>
+                  <option value="in-progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                  <option value="blocked">Blocked</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
                 <span
                   className={`px-2 py-1 text-xs font-semibold rounded-full ${
                     activity.approval_status === 'approved'
@@ -470,6 +504,17 @@ const Activities: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         componentId={parseInt(componentId!)}
         onSuccess={handleActivityCreated}
+      />
+
+      {/* Activity Details Modal */}
+      <ActivityDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedActivityId(null);
+        }}
+        activityId={selectedActivityId}
+        onSuccess={fetchData}
       />
     </div>
   );
