@@ -461,15 +461,15 @@ class MEService {
 
     async getOverallStatistics() {
         // Get counts for all entities
-        const [subProgramCount] = await this.db.query(`
+        const subProgramCount = await this.db.query(`
             SELECT COUNT(*) as count FROM sub_programs WHERE deleted_at IS NULL
         `);
 
-        const [componentCount] = await this.db.query(`
+        const componentCount = await this.db.query(`
             SELECT COUNT(*) as count FROM project_components WHERE deleted_at IS NULL
         `);
 
-        const [activityCount] = await this.db.query(`
+        const activityCount = await this.db.query(`
             SELECT COUNT(*) as count FROM activities WHERE deleted_at IS NULL
         `);
 
@@ -487,7 +487,7 @@ class MEService {
         `);
 
         let totalProgress = 0;
-        if (activities.length > 0) {
+        if (activities && activities.length > 0) {
             activities.forEach(activity => {
                 if (activity.status === 'completed') {
                     totalProgress += 100;
@@ -499,11 +499,11 @@ class MEService {
         }
 
         return {
-            sub_programs: subProgramCount[0].count,
-            components: componentCount[0].count,
-            activities: activityCount[0].count,
+            sub_programs: subProgramCount[0]?.count || 0,
+            components: componentCount[0]?.count || 0,
+            activities: activityCount[0]?.count || 0,
             overall_progress: totalProgress,
-            activity_by_status: activityByStatus
+            activity_by_status: activityByStatus || []
         };
     }
 
@@ -514,7 +514,7 @@ class MEService {
             WHERE program_module_id = ? AND deleted_at IS NULL
         `, [moduleId]);
 
-        if (subPrograms.length === 0) {
+        if (!subPrograms || subPrograms.length === 0) {
             return {
                 sub_programs: 0,
                 components: 0,
@@ -527,7 +527,7 @@ class MEService {
         const subProgramIds = subPrograms.map(sp => sp.id);
 
         // Get components for these sub-programs
-        const [componentCount] = await this.db.query(`
+        const componentCount = await this.db.query(`
             SELECT COUNT(*) as count FROM project_components
             WHERE sub_program_id IN (?) AND deleted_at IS NULL
         `, [subProgramIds]);
@@ -538,7 +538,7 @@ class MEService {
             WHERE sub_program_id IN (?) AND deleted_at IS NULL
         `, [subProgramIds]);
 
-        const componentIds = components.map(c => c.id);
+        const componentIds = components && components.length > 0 ? components.map(c => c.id) : [];
 
         let activityCount = 0;
         let activities = [];
@@ -546,11 +546,11 @@ class MEService {
 
         if (componentIds.length > 0) {
             // Get activities for these components
-            const [actCount] = await this.db.query(`
+            const actCount = await this.db.query(`
                 SELECT COUNT(*) as count FROM activities
                 WHERE component_id IN (?) AND deleted_at IS NULL
             `, [componentIds]);
-            activityCount = actCount[0].count;
+            activityCount = actCount[0]?.count || 0;
 
             // Get activity status breakdown
             activityByStatus = await this.db.query(`
@@ -569,7 +569,7 @@ class MEService {
 
         // Calculate overall progress for this program
         let totalProgress = 0;
-        if (activities.length > 0) {
+        if (activities && activities.length > 0) {
             activities.forEach(activity => {
                 if (activity.status === 'completed') {
                     totalProgress += 100;
@@ -582,10 +582,10 @@ class MEService {
 
         return {
             sub_programs: subPrograms.length,
-            components: componentCount[0].count,
+            components: componentCount[0]?.count || 0,
             activities: activityCount,
             overall_progress: totalProgress,
-            activity_by_status: activityByStatus
+            activity_by_status: activityByStatus || []
         };
     }
 
