@@ -3,6 +3,8 @@
  * Run this script to update the database schema
  */
 
+require('dotenv').config({ path: __dirname + '/../config/.env' });
+
 const fs = require('fs');
 const path = require('path');
 const dbManager = require('./core/database/connection');
