@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AddActivityModal from './AddActivityModal';
+import ActivityDetailsModal from './ActivityDetailsModal';
 
 interface Activity {
   id: number;
@@ -37,7 +38,10 @@ const Activities: React.FC = () => {
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedActivityId, setSelectedActivityId] = useState<number | null>(null);
   const [submittingId, setSubmittingId] = useState<number | null>(null);
+  const [changingStatusId, setChangingStatusId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -97,6 +101,30 @@ const Activities: React.FC = () => {
       alert(err instanceof Error ? err.message : 'Failed to submit activity');
     } finally {
       setSubmittingId(null);
+    }
+  };
+
+  const handleViewActivity = (activityId: number) => {
+    setSelectedActivityId(activityId);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleStatusChange = async (activityId: number, newStatus: string) => {
+    try {
+      setChangingStatusId(activityId);
+      const response = await fetch(`/api/activities/${activityId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update status');
+
+      await fetchData();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to update status');
+    } finally {
+      setChangingStatusId(null);
     }
   };
 
