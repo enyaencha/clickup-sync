@@ -172,10 +172,7 @@ module.exports = (meService) => {
 
     router.post('/activities/:id/submit', async (req, res) => {
         try {
-            await meService.updateActivity(req.params.id, {
-                approval_status: 'submitted',
-                ...req.body
-            });
+            await meService.updateApprovalStatus(req.params.id, 'submitted');
             res.json({ success: true, message: 'Activity submitted for approval' });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });
@@ -184,10 +181,7 @@ module.exports = (meService) => {
 
     router.post('/activities/:id/approve', async (req, res) => {
         try {
-            await meService.updateActivity(req.params.id, {
-                approval_status: 'approved',
-                ...req.body
-            });
+            await meService.updateApprovalStatus(req.params.id, 'approved');
             res.json({ success: true, message: 'Activity approved' });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });
@@ -196,10 +190,7 @@ module.exports = (meService) => {
 
     router.post('/activities/:id/reject', async (req, res) => {
         try {
-            await meService.updateActivity(req.params.id, {
-                approval_status: 'rejected',
-                ...req.body
-            });
+            await meService.updateApprovalStatus(req.params.id, 'rejected');
             res.json({ success: true, message: 'Activity rejected' });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });

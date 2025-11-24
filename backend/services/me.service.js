@@ -292,6 +292,17 @@ class MEService {
         return id;
     }
 
+    async updateApprovalStatus(id, approvalStatus, additionalData = {}) {
+        await this.db.query(`
+            UPDATE activities
+            SET approval_status = ?, updated_at = NOW()
+            WHERE id = ?
+        `, [approvalStatus, id]);
+
+        await this.queueForSync('activity', id, 'update', 3);
+        return id;
+    }
+
     async getActivities(filters = {}) {
         let query = `
             SELECT a.*, pc.name AS component_name,
