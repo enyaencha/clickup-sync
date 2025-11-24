@@ -11,14 +11,24 @@ interface Program {
   budget: number;
 }
 
+interface Statistics {
+  sub_programs: number;
+  components: number;
+  activities: number;
+  overall_progress: number;
+  activity_by_status: Array<{ status: string; count: number }>;
+}
+
 const Programs: React.FC = () => {
   const [programs, setPrograms] = useState<Program[]>([]);
+  const [statistics, setStatistics] = useState<Statistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchPrograms();
+    fetchStatistics();
   }, []);
 
   const fetchPrograms = async () => {
@@ -33,6 +43,17 @@ const Programs: React.FC = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setLoading(false);
+    }
+  };
+
+  const fetchStatistics = async () => {
+    try {
+      const response = await fetch('/api/dashboard/overall');
+      if (!response.ok) throw new Error('Failed to fetch statistics');
+      const data = await response.json();
+      setStatistics(data.data);
+    } catch (err) {
+      console.error('Failed to fetch statistics:', err);
     }
   };
 
@@ -78,6 +99,103 @@ const Programs: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {/* Dashboard Statistics */}
+        {statistics && (
+          <div className="mb-6 sm:mb-8">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Overview Dashboard</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-6">
+              {/* Sub-Programs Card */}
+              <div className="bg-white rounded-lg shadow p-4 sm:p-6 border-t-4 border-blue-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs sm:text-sm text-gray-600 mb-1">Sub-Programs</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{statistics.sub_programs}</p>
+                  </div>
+                  <div className="text-blue-500 text-2xl sm:text-3xl">📁</div>
+                </div>
+              </div>
+
+              {/* Components Card */}
+              <div className="bg-white rounded-lg shadow p-4 sm:p-6 border-t-4 border-green-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs sm:text-sm text-gray-600 mb-1">Components</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{statistics.components}</p>
+                  </div>
+                  <div className="text-green-500 text-2xl sm:text-3xl">📋</div>
+                </div>
+              </div>
+
+              {/* Activities Card */}
+              <div className="bg-white rounded-lg shadow p-4 sm:p-6 border-t-4 border-purple-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs sm:text-sm text-gray-600 mb-1">Activities</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{statistics.activities}</p>
+                  </div>
+                  <div className="text-purple-500 text-2xl sm:text-3xl">✓</div>
+                </div>
+              </div>
+
+              {/* Overall Progress Card */}
+              <div className="bg-white rounded-lg shadow p-4 sm:p-6 border-t-4 border-yellow-500">
+                <div>
+                  <p className="text-xs sm:text-sm text-gray-600 mb-2">Overall Progress</p>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <div className="w-full bg-gray-200 rounded-full h-2 sm:h-3">
+                        <div
+                          className={`h-2 sm:h-3 rounded-full transition-all duration-300 ${
+                            statistics.overall_progress === 100
+                              ? 'bg-green-600'
+                              : statistics.overall_progress >= 50
+                              ? 'bg-blue-600'
+                              : 'bg-yellow-500'
+                          }`}
+                          style={{ width: `${statistics.overall_progress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                    <span className="text-xl sm:text-2xl font-bold text-gray-900">
+                      {statistics.overall_progress}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Activity Status Breakdown */}
+            {statistics.activity_by_status && statistics.activity_by_status.length > 0 && (
+              <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+                <h3 className="text-sm sm:text-base font-semibold text-gray-800 mb-4">Activity Status Breakdown</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
+                  {statistics.activity_by_status.map((item) => (
+                    <div key={item.status} className="text-center">
+                      <p className="text-xs text-gray-600 mb-1 capitalize">
+                        {item.status.replace('-', ' ')}
+                      </p>
+                      <p className="text-lg sm:text-xl font-bold text-gray-900">{item.count}</p>
+                      <div
+                        className={`mt-2 h-1 rounded-full ${
+                          item.status === 'completed'
+                            ? 'bg-green-500'
+                            : item.status === 'in-progress'
+                            ? 'bg-blue-500'
+                            : item.status === 'not-started'
+                            ? 'bg-yellow-500'
+                            : item.status === 'blocked'
+                            ? 'bg-red-500'
+                            : 'bg-gray-400'
+                        }`}
+                      ></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="mb-4 sm:mb-6">
           <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-2">
             Programs ({programs.length})
