@@ -179,6 +179,15 @@ module.exports = (meService) => {
         }
     });
 
+    router.post('/activities/:id/status', async (req, res) => {
+        try {
+            await meService.updateActivityStatus(req.params.id, req.body.status);
+            res.json({ success: true, message: 'Activity status updated' });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
     router.post('/activities/:id/submit', async (req, res) => {
         try {
             await meService.updateApprovalStatus(req.params.id, 'submitted');
