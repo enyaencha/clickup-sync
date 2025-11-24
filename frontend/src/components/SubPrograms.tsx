@@ -11,6 +11,7 @@ interface SubProgram {
   start_date: string;
   end_date: string;
   status: string;
+  progress?: number;
 }
 
 interface Program {
@@ -154,6 +155,28 @@ const SubPrograms: React.FC = () => {
                     {subProgram.name}
                   </h3>
                   <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">{subProgram.description}</p>
+
+                  {/* Progress Bar */}
+                  {subProgram.progress !== undefined && (
+                    <div className="mb-3 sm:mb-4">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium text-gray-700">Overall Progress</span>
+                        <span className="text-xs font-semibold text-gray-900">{subProgram.progress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div
+                          className={`h-2.5 rounded-full transition-all duration-300 ${
+                            subProgram.progress === 100
+                              ? 'bg-green-600'
+                              : subProgram.progress >= 50
+                              ? 'bg-blue-600'
+                              : 'bg-yellow-500'
+                          }`}
+                          style={{ width: `${subProgram.progress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-3 sm:mt-4">
                     <div>

@@ -391,6 +391,75 @@ class MEService {
     }
 
     // ==============================================
+    // PROGRESS CALCULATION
+    // ==============================================
+
+    async calculateComponentProgress(componentId) {
+        // Get all activities for this component
+        const activities = await this.db.query(`
+            SELECT status FROM activities
+            WHERE component_id = ? AND deleted_at IS NULL
+        `, [componentId]);
+
+        if (activities.length === 0) return 0;
+
+        // Calculate progress based on status
+        // completed = 100%, in-progress = 50%, others = 0%
+        let totalProgress = 0;
+        activities.forEach(activity => {
+            if (activity.status === 'completed') {
+                totalProgress += 100;
+            } else if (activity.status === 'in-progress') {
+                totalProgress += 50;
+            }
+            // not-started, blocked, cancelled = 0%
+        });
+
+        return Math.round(totalProgress / activities.length);
+    }
+
+    async calculateSubProgramProgress(subProgramId) {
+        // Get all components for this sub-program
+        const components = await this.db.query(`
+            SELECT id FROM project_components
+            WHERE sub_program_id = ? AND deleted_at IS NULL
+        `, [subProgramId]);
+
+        if (components.length === 0) return 0;
+
+        // Calculate average progress of all components
+        let totalProgress = 0;
+        for (const component of components) {
+            const componentProgress = await this.calculateComponentProgress(component.id);
+            totalProgress += componentProgress;
+        }
+
+        return Math.round(totalProgress / components.length);
+    }
+
+    async getComponentsWithProgress(subProgramId = null) {
+        const components = await this.getProjectComponents(subProgramId);
+
+        // Add progress to each component
+        for (const component of components) {
+            component.progress_percentage = await this.calculateComponentProgress(component.id);
+        }
+
+        return components;
+    }
+
+    async getSubProgramsWithProgress(moduleId = null) {
+        const subPrograms = await this.getSubPrograms(moduleId);
+
+        // Add progress to each sub-program
+        for (const subProgram of subPrograms) {
+            subProgram.progress_percentage = await this.calculateSubProgramProgress(subProgram.id);
+        }
+
+        return subPrograms;
+    }
+
+    // ==============================================
     // GOALS & INDICATORS
     // ==============================================
 
