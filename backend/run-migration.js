@@ -16,40 +16,52 @@ async function runMigration() {
         await dbManager.initialize();
         logger.info('✅ Database connected');
 
-        // Read migration file
-        const migrationPath = path.join(__dirname, 'migrations', '001_add_component_id_to_activities.sql');
-        const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
+        // Read all migration files in the migrations directory
+        const migrationsDir = path.join(__dirname, 'migrations');
+        const migrationFiles = fs.readdirSync(migrationsDir)
+            .filter(file => file.endsWith('.sql'))
+            .sort(); // Sort to ensure they run in order
 
-        // Split into individual statements (handle multi-statement)
-        const statements = migrationSQL
-            .split(';')
-            .map(stmt => stmt.trim())
-            .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+        logger.info(`Found ${migrationFiles.length} migration file(s) to process`);
 
-        logger.info(`Found ${statements.length} SQL statements to execute`);
+        // Run each migration file
+        for (const migrationFile of migrationFiles) {
+            logger.info(`\n📄 Processing migration: ${migrationFile}`);
+            const migrationPath = path.join(migrationsDir, migrationFile);
+            const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
 
-        // Execute each statement
-        for (let i = 0; i < statements.length; i++) {
-            const statement = statements[i];
-            if (statement && !statement.match(/^--/)) {
-                try {
-                    logger.info(`Executing statement ${i + 1}/${statements.length}...`);
-                    await dbManager.query(statement);
-                    logger.info(`✅ Statement ${i + 1} executed successfully`);
-                } catch (error) {
-                    // Log but don't fail on duplicate column errors
-                    if (error.code === 'ER_DUP_FIELDNAME' || error.code === 'ER_DUP_KEYNAME') {
-                        logger.warn(`Statement ${i + 1} skipped (already exists):`, error.message);
-                    } else {
-                        logger.error(`❌ Statement ${i + 1} failed:`, error.message);
-                        throw error;
+            // Split into individual statements (handle multi-statement)
+            const statements = migrationSQL
+                .split(';')
+                .map(stmt => stmt.trim())
+                .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+
+            logger.info(`   Found ${statements.length} SQL statement(s)`);
+
+            // Execute each statement
+            for (let i = 0; i < statements.length; i++) {
+                const statement = statements[i];
+                if (statement && !statement.match(/^--/)) {
+                    try {
+                        logger.info(`   Executing statement ${i + 1}/${statements.length}...`);
+                        await dbManager.query(statement);
+                        logger.info(`   ✅ Statement ${i + 1} executed successfully`);
+                    } catch (error) {
+                        // Log but don't fail on duplicate column/key errors
+                        if (error.code === 'ER_DUP_FIELDNAME' || error.code === 'ER_DUP_KEYNAME') {
+                            logger.warn(`   ⚠️  Statement ${i + 1} skipped (already exists):`, error.message);
+                        } else {
+                            logger.error(`   ❌ Statement ${i + 1} failed:`, error.message);
+                            throw error;
+                        }
                     }
                 }
             }
+
+            logger.info(`✅ Completed migration: ${migrationFile}`);
         }
 
-        logger.info('✅ Migration completed successfully!');
-        logger.info('The activities table now has component_id column');
+        logger.info('\n✅ All migrations completed successfully!');
 
         await dbManager.close();
         process.exit(0);
