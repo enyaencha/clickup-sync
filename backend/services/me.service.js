@@ -214,17 +214,27 @@ class MEService {
         // Helper to convert undefined to null
         const toNull = (value) => value === undefined ? null : value;
 
+        // Look up the component to get its sub_program_id (project_id)
+        const [component] = await this.db.query(`
+            SELECT sub_program_id FROM project_components WHERE id = ?
+        `, [data.component_id]);
+
+        if (!component) {
+            throw new Error(`Component with id ${data.component_id} not found`);
+        }
+
         const result = await this.db.query(`
             INSERT INTO activities (
-                component_id, name, description,
+                project_id, component_id, name, description,
                 location_id, location_details, parish, ward, county,
                 activity_date, start_date, end_date, duration_hours,
                 facilitators, staff_assigned,
                 target_beneficiaries, beneficiary_type,
                 budget_allocated, status, approval_status,
                 priority, created_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
+            component.sub_program_id,
             data.component_id,
             data.name,
             data.description,
