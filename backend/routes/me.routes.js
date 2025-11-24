@@ -44,7 +44,9 @@ module.exports = (meService) => {
     router.get('/sub-programs', async (req, res) => {
         try {
             const moduleId = req.query.module_id;
-            const subPrograms = await meService.getSubPrograms(moduleId);
+            const subPrograms = moduleId
+                ? await meService.getSubProgramsWithProgress(moduleId)
+                : await meService.getSubPrograms(moduleId);
             res.json({ success: true, data: subPrograms });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });
@@ -76,7 +78,9 @@ module.exports = (meService) => {
     router.get('/components', async (req, res) => {
         try {
             const subProgramId = req.query.sub_program_id;
-            const components = await meService.getProjectComponents(subProgramId);
+            const components = subProgramId
+                ? await meService.getComponentsWithProgress(subProgramId)
+                : await meService.getProjectComponents(subProgramId);
             res.json({ success: true, data: components });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });

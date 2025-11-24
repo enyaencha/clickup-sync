@@ -8,6 +8,7 @@ interface Component {
   name: string;
   description: string;
   status: string;
+  progress?: number;
 }
 
 const ProjectComponents: React.FC = () => {
@@ -146,6 +147,28 @@ const ProjectComponents: React.FC = () => {
               <p className="text-sm text-gray-600 mb-3 sm:mb-4 line-clamp-3">
                 {component.description}
               </p>
+
+              {/* Progress Bar */}
+              {component.progress !== undefined && (
+                <div className="mb-3 sm:mb-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-gray-700">Progress</span>
+                    <span className="text-xs font-semibold text-gray-900">{component.progress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full transition-all duration-300 ${
+                        component.progress === 100
+                          ? 'bg-green-600'
+                          : component.progress >= 50
+                          ? 'bg-blue-600'
+                          : 'bg-yellow-500'
+                      }`}
+                      style={{ width: `${component.progress}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center justify-between pt-3 sm:pt-4 border-t border-gray-100">
                 <span
