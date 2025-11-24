@@ -112,8 +112,8 @@ const Activities: React.FC = () => {
   const handleStatusChange = async (activityId: number, newStatus: string) => {
     try {
       setChangingStatusId(activityId);
-      const response = await fetch(`/api/activities/${activityId}`, {
-        method: 'PUT',
+      const response = await fetch(`/api/activities/${activityId}/status`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });

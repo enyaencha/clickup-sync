@@ -303,6 +303,17 @@ class MEService {
         return id;
     }
 
+    async updateActivityStatus(id, status) {
+        await this.db.query(`
+            UPDATE activities
+            SET status = ?, updated_at = NOW()
+            WHERE id = ?
+        `, [status, id]);
+
+        await this.queueForSync('activity', id, 'update', 3);
+        return id;
+    }
+
     async deleteActivity(id) {
         // Soft delete - set deleted_at timestamp
         await this.db.query(`
