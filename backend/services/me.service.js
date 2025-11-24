@@ -225,17 +225,18 @@ class MEService {
 
         const result = await this.db.query(`
             INSERT INTO activities (
-                project_id, component_id, name, description,
+                project_id, component_id, code, name, description,
                 location_id, location_details, parish, ward, county,
                 activity_date, start_date, end_date, duration_hours,
                 facilitators, staff_assigned,
                 target_beneficiaries, beneficiary_type,
                 budget_allocated, status, approval_status,
                 priority, created_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
             component.sub_program_id,
             data.component_id,
+            data.code,
             data.name,
             data.description,
             toNull(data.location_id),

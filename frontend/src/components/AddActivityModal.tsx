@@ -51,6 +51,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
     try {
       const payload = {
         component_id: componentId,
+        code: `ACT-${Date.now()}`, // Generate unique code
         name: formData.name,
         description: formData.description,
         location_details: formData.location_details || null,
@@ -73,7 +74,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
         status: formData.status,
         approval_status: formData.approval_status,
         priority: formData.priority,
-        created_by: 'System User', // TODO: Get from auth context
+        created_by: null, // TODO: Get user ID from auth context
       };
 
       const response = await fetch('/api/activities', {
