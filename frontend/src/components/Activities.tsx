@@ -375,7 +375,7 @@ const Activities: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap mb-3">
                 <span
                   className={`px-2 py-1 text-xs font-semibold rounded-full ${
                     activity.status === 'completed'
@@ -402,6 +402,22 @@ const Activities: React.FC = () => {
                 >
                   {activity.approval_status || 'draft'}
                 </span>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 pt-3 border-t">
+                {activity.approval_status === 'draft' && (
+                  <button
+                    onClick={() => handleSubmitForApproval(activity.id)}
+                    disabled={submittingId === activity.id}
+                    className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 text-xs font-medium"
+                  >
+                    {submittingId === activity.id ? 'Submitting...' : '✓ Submit for Approval'}
+                  </button>
+                )}
+                <button className="flex-1 text-blue-600 text-xs font-medium">
+                  View Details →
+                </button>
               </div>
             </div>
           ))}
