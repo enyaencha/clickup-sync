@@ -459,6 +459,136 @@ class MEService {
         return subPrograms;
     }
 
+    async getOverallStatistics() {
+        // Get counts for all entities
+        const [subProgramCount] = await this.db.query(`
+            SELECT COUNT(*) as count FROM sub_programs WHERE deleted_at IS NULL
+        `);
+
+        const [componentCount] = await this.db.query(`
+            SELECT COUNT(*) as count FROM project_components WHERE deleted_at IS NULL
+        `);
+
+        const [activityCount] = await this.db.query(`
+            SELECT COUNT(*) as count FROM activities WHERE deleted_at IS NULL
+        `);
+
+        // Get activity status breakdown
+        const activityByStatus = await this.db.query(`
+            SELECT status, COUNT(*) as count
+            FROM activities
+            WHERE deleted_at IS NULL
+            GROUP BY status
+        `);
+
+        // Calculate overall progress across all activities
+        const activities = await this.db.query(`
+            SELECT status FROM activities WHERE deleted_at IS NULL
+        `);
+
+        let totalProgress = 0;
+        if (activities.length > 0) {
+            activities.forEach(activity => {
+                if (activity.status === 'completed') {
+                    totalProgress += 100;
+                } else if (activity.status === 'in-progress') {
+                    totalProgress += 50;
+                }
+            });
+            totalProgress = Math.round(totalProgress / activities.length);
+        }
+
+        return {
+            sub_programs: subProgramCount[0].count,
+            components: componentCount[0].count,
+            activities: activityCount[0].count,
+            overall_progress: totalProgress,
+            activity_by_status: activityByStatus
+        };
+    }
+
+    async getProgramStatistics(moduleId) {
+        // Get sub-programs for this module
+        const subPrograms = await this.db.query(`
+            SELECT id FROM sub_programs
+            WHERE program_module_id = ? AND deleted_at IS NULL
+        `, [moduleId]);
+
+        if (subPrograms.length === 0) {
+            return {
+                sub_programs: 0,
+                components: 0,
+                activities: 0,
+                overall_progress: 0,
+                activity_by_status: []
+            };
+        }
+
+        const subProgramIds = subPrograms.map(sp => sp.id);
+
+        // Get components for these sub-programs
+        const [componentCount] = await this.db.query(`
+            SELECT COUNT(*) as count FROM project_components
+            WHERE sub_program_id IN (?) AND deleted_at IS NULL
+        `, [subProgramIds]);
+
+        // Get component IDs
+        const components = await this.db.query(`
+            SELECT id FROM project_components
+            WHERE sub_program_id IN (?) AND deleted_at IS NULL
+        `, [subProgramIds]);
+
+        const componentIds = components.map(c => c.id);
+
+        let activityCount = 0;
+        let activities = [];
+        let activityByStatus = [];
+
+        if (componentIds.length > 0) {
+            // Get activities for these components
+            const [actCount] = await this.db.query(`
+                SELECT COUNT(*) as count FROM activities
+                WHERE component_id IN (?) AND deleted_at IS NULL
+            `, [componentIds]);
+            activityCount = actCount[0].count;
+
+            // Get activity status breakdown
+            activityByStatus = await this.db.query(`
+                SELECT status, COUNT(*) as count
+                FROM activities
+                WHERE component_id IN (?) AND deleted_at IS NULL
+                GROUP BY status
+            `, [componentIds]);
+
+            // Get all activities for progress calculation
+            activities = await this.db.query(`
+                SELECT status FROM activities
+                WHERE component_id IN (?) AND deleted_at IS NULL
+            `, [componentIds]);
+        }
+
+        // Calculate overall progress for this program
+        let totalProgress = 0;
+        if (activities.length > 0) {
+            activities.forEach(activity => {
+                if (activity.status === 'completed') {
+                    totalProgress += 100;
+                } else if (activity.status === 'in-progress') {
+                    totalProgress += 50;
+                }
+            });
+            totalProgress = Math.round(totalProgress / activities.length);
+        }
+
+        return {
+            sub_programs: subPrograms.length,
+            components: componentCount[0].count,
+            activities: activityCount,
+            overall_progress: totalProgress,
+            activity_by_status: activityByStatus
+        };
+    }
+
     // ==============================================
     // GOALS & INDICATORS
     // ==============================================

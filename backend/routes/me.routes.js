@@ -300,6 +300,24 @@ module.exports = (meService) => {
     // REPORTS & DASHBOARDS
     // ==============================================
 
+    router.get('/dashboard/overall', async (req, res) => {
+        try {
+            const data = await meService.getOverallStatistics();
+            res.json({ success: true, data });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    router.get('/dashboard/program/:moduleId', async (req, res) => {
+        try {
+            const data = await meService.getProgramStatistics(req.params.moduleId);
+            res.json({ success: true, data });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
     router.get('/dashboard/programs', async (req, res) => {
         try {
             const data = await meService.getProgramOverview();
