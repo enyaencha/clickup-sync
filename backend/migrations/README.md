@@ -4,6 +4,8 @@ This directory contains SQL migration files for updating the database schema.
 
 ## Running Migrations
 
+**Prerequisites:** Ensure the database credentials are configured in `config/.env`.
+
 To run all migrations:
 
 ```bash
@@ -12,10 +14,11 @@ node run-migration.js
 ```
 
 The migration runner will:
-1. Connect to the database
-2. Execute all `.sql` files in this directory in alphabetical order
-3. Skip statements that would create duplicate columns/indexes
-4. Log the progress and results
+1. Load database credentials from `config/.env`
+2. Connect to the database
+3. Execute all `.sql` files in this directory in alphabetical order
+4. Skip statements that would create duplicate columns/indexes
+5. Log the progress and results
 
 ## Migration Files
 
