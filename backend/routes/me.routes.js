@@ -152,6 +152,15 @@ module.exports = (meService) => {
         }
     });
 
+    router.delete('/activities/:id', async (req, res) => {
+        try {
+            await meService.deleteActivity(req.params.id);
+            res.json({ success: true, message: 'Activity deleted successfully' });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
     // ==============================================
     // APPROVAL WORKFLOW
     // ==============================================

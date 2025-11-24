@@ -303,6 +303,18 @@ class MEService {
         return id;
     }
 
+    async deleteActivity(id) {
+        // Soft delete - set deleted_at timestamp
+        await this.db.query(`
+            UPDATE activities
+            SET deleted_at = NOW()
+            WHERE id = ?
+        `, [id]);
+
+        await this.queueForSync('activity', id, 'delete', 3);
+        return id;
+    }
+
     async getActivities(filters = {}) {
         let query = `
             SELECT a.*, pc.name AS component_name,
