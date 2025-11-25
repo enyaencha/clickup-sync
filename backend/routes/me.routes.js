@@ -4,11 +4,10 @@
 
 const express = require('express');
 const router = express.Router();
-const ActivityChecklistService = require('../services/activity-checklist.service');
+const checklistService = require('../services/activity-checklist.service');
 const SettingsService = require('../services/settings.service');
 
 module.exports = (meService) => {
-    const checklistService = new ActivityChecklistService();
     const settingsService = new SettingsService();
     // ==============================================
     // PROGRAM MODULES
