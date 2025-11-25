@@ -27,6 +27,7 @@ class SettingsService {
             require_checklist_completion_before_completion: true,
             show_checklist_progress_in_approvals: true,
             allow_checklist_edit_after_approval: false,
+            allow_approver_to_complete_checklist: false,
 
             // General Settings
             enable_activity_locking: true,

@@ -27,6 +27,13 @@ interface ChecklistStatus {
   all_completed: boolean;
 }
 
+interface ChecklistItem {
+  id: number;
+  activity_id: number;
+  item_name: string;
+  is_completed: boolean;
+}
+
 const Approvals: React.FC = () => {
   const navigate = useNavigate();
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -35,7 +42,10 @@ const Approvals: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'submitted' | 'approved' | 'rejected'>('submitted');
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [checklistStatuses, setChecklistStatuses] = useState<Record<number, ChecklistStatus>>({});
+  const [checklistItems, setChecklistItems] = useState<Record<number, ChecklistItem[]>>({});
   const [showChecklistProgress, setShowChecklistProgress] = useState(true);
+  const [allowApproverToComplete, setAllowApproverToComplete] = useState(false);
+  const [expandedChecklists, setExpandedChecklists] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     fetchPendingActivities();
@@ -48,6 +58,7 @@ const Approvals: React.FC = () => {
       const data = await response.json();
       if (data.success && data.data) {
         setShowChecklistProgress(data.data.show_checklist_progress_in_approvals ?? true);
+        setAllowApproverToComplete(data.data.allow_approver_to_complete_checklist ?? false);
       }
     } catch (err) {
       console.error('Failed to fetch settings:', err);
@@ -74,6 +85,55 @@ const Approvals: React.FC = () => {
     setChecklistStatuses(statuses);
   };
 
+  const fetchChecklistItems = async (activityIds: number[]) => {
+    const items: Record<number, ChecklistItem[]> = {};
+
+    await Promise.all(
+      activityIds.map(async (id) => {
+        try {
+          const response = await fetch(`/api/checklists/activity/${id}`);
+          const data = await response.json();
+          if (data.success && data.data) {
+            items[id] = data.data;
+          }
+        } catch (err) {
+          console.error(`Failed to fetch checklist items for activity ${id}:`, err);
+        }
+      })
+    );
+
+    setChecklistItems(items);
+  };
+
+  const handleToggleChecklistItem = async (activityId: number, itemId: number) => {
+    if (!allowApproverToComplete) return;
+
+    try {
+      const response = await fetch(`/api/checklists/${itemId}/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (response.ok) {
+        // Refresh checklist items and status
+        await fetchChecklistItems([activityId]);
+        await fetchChecklistStatuses([activityId]);
+      }
+    } catch (err) {
+      console.error('Failed to toggle checklist item:', err);
+    }
+  };
+
+  const toggleChecklistExpanded = (activityId: number) => {
+    const newExpanded = new Set(expandedChecklists);
+    if (newExpanded.has(activityId)) {
+      newExpanded.delete(activityId);
+    } else {
+      newExpanded.add(activityId);
+    }
+    setExpandedChecklists(newExpanded);
+  };
+
   const fetchPendingActivities = async () => {
     try {
       setLoading(true);
@@ -88,9 +148,11 @@ const Approvals: React.FC = () => {
       const activitiesData = data.data || [];
       setActivities(activitiesData);
 
-      // Fetch checklist statuses for all activities
+      // Fetch checklist statuses and items for all activities
       if (activitiesData.length > 0) {
-        await fetchChecklistStatuses(activitiesData.map((a: Activity) => a.id));
+        const activityIds = activitiesData.map((a: Activity) => a.id);
+        await fetchChecklistStatuses(activityIds);
+        await fetchChecklistItems(activityIds);
       }
 
       setLoading(false);
@@ -373,6 +435,55 @@ const Approvals: React.FC = () => {
                           ⚠ {checklistStatuses[activity.id].total - checklistStatuses[activity.id].completed} item(s) remaining
                         </p>
                       )}
+
+                      {/* Show/Hide Checklist Items Button */}
+                      {checklistItems[activity.id] && checklistItems[activity.id].length > 0 && (
+                        <button
+                          onClick={() => toggleChecklistExpanded(activity.id)}
+                          className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          {expandedChecklists.has(activity.id) ? '▼ Hide Checklist Items' : '▶ Show Checklist Items'}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Detailed Checklist Items */}
+                  {showChecklistProgress && expandedChecklists.has(activity.id) && checklistItems[activity.id] && checklistItems[activity.id].length > 0 && (
+                    <div className="mb-4 p-3 bg-white rounded-lg border border-gray-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-semibold text-gray-800">Implementation Checklist</h4>
+                        {!allowApproverToComplete && (
+                          <span className="text-xs text-gray-500 italic">View only</span>
+                        )}
+                        {allowApproverToComplete && (
+                          <span className="text-xs text-green-600 italic">✓ Can complete items</span>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        {checklistItems[activity.id].map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex items-center gap-3 p-2 bg-gray-50 rounded border hover:border-gray-300 transition-colors"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={item.is_completed}
+                              onChange={() => handleToggleChecklistItem(activity.id, item.id)}
+                              disabled={!allowApproverToComplete}
+                              className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 disabled:opacity-50 cursor-pointer"
+                              title={allowApproverToComplete ? 'Click to toggle' : 'View only - enable in Settings'}
+                            />
+                            <span
+                              className={`flex-1 text-sm ${
+                                item.is_completed ? 'line-through text-gray-500' : 'text-gray-900'
+                              }`}
+                            >
+                              {item.item_name}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
