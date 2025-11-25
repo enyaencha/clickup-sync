@@ -589,6 +589,111 @@ class MEService {
         };
     }
 
+    async getSubProgramStatistics(subProgramId) {
+        // Get components for this sub-program
+        const components = await this.db.query(`
+            SELECT id FROM project_components
+            WHERE sub_program_id = ? AND deleted_at IS NULL
+        `, [subProgramId]);
+
+        if (!components || components.length === 0) {
+            return {
+                components: 0,
+                activities: 0,
+                overall_progress: 0,
+                activity_by_status: []
+            };
+        }
+
+        const componentIds = components.map(c => c.id);
+
+        let activityCount = 0;
+        let activities = [];
+        let activityByStatus = [];
+
+        // Get activities for these components
+        const actCount = await this.db.query(`
+            SELECT COUNT(*) as count FROM activities
+            WHERE component_id IN (?) AND deleted_at IS NULL
+        `, [componentIds]);
+        activityCount = actCount[0]?.count || 0;
+
+        // Get activity status breakdown
+        activityByStatus = await this.db.query(`
+            SELECT status, COUNT(*) as count
+            FROM activities
+            WHERE component_id IN (?) AND deleted_at IS NULL
+            GROUP BY status
+        `, [componentIds]);
+
+        // Get all activities for progress calculation
+        activities = await this.db.query(`
+            SELECT status FROM activities
+            WHERE component_id IN (?) AND deleted_at IS NULL
+        `, [componentIds]);
+
+        // Calculate overall progress for this sub-program
+        let totalProgress = 0;
+        if (activities && activities.length > 0) {
+            activities.forEach(activity => {
+                if (activity.status === 'completed') {
+                    totalProgress += 100;
+                } else if (activity.status === 'in-progress') {
+                    totalProgress += 50;
+                }
+            });
+            totalProgress = Math.round(totalProgress / activities.length);
+        }
+
+        return {
+            components: components.length,
+            activities: activityCount,
+            overall_progress: totalProgress,
+            activity_by_status: activityByStatus || []
+        };
+    }
+
+    async getComponentStatistics(componentId) {
+        // Get activities for this component
+        const activities = await this.db.query(`
+            SELECT status FROM activities
+            WHERE component_id = ? AND deleted_at IS NULL
+        `, [componentId]);
+
+        if (!activities || activities.length === 0) {
+            return {
+                activities: 0,
+                overall_progress: 0,
+                activity_by_status: []
+            };
+        }
+
+        // Get activity status breakdown
+        const activityByStatus = await this.db.query(`
+            SELECT status, COUNT(*) as count
+            FROM activities
+            WHERE component_id = ? AND deleted_at IS NULL
+            GROUP BY status
+        `, [componentId]);
+
+        // Calculate overall progress for this component
+        let totalProgress = 0;
+        activities.forEach(activity => {
+            if (activity.status === 'completed') {
+                totalProgress += 100;
+            } else if (activity.status === 'in-progress') {
+                totalProgress += 50;
+            }
+        });
+        totalProgress = Math.round(totalProgress / activities.length);
+
+        return {
+            activities: activities.length,
+            overall_progress: totalProgress,
+            activity_by_status: activityByStatus || []
+        };
+    }
+
     // ==============================================
     // GOALS & INDICATORS
     // ==============================================

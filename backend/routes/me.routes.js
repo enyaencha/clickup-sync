@@ -318,6 +318,24 @@ module.exports = (meService) => {
         }
     });
 
+    router.get('/dashboard/subprogram/:subProgramId', async (req, res) => {
+        try {
+            const data = await meService.getSubProgramStatistics(req.params.subProgramId);
+            res.json({ success: true, data });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    router.get('/dashboard/component/:componentId', async (req, res) => {
+        try {
+            const data = await meService.getComponentStatistics(req.params.componentId);
+            res.json({ success: true, data });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
     router.get('/dashboard/programs', async (req, res) => {
         try {
             const data = await meService.getProgramOverview();
