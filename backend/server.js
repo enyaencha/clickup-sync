@@ -1611,6 +1611,16 @@ let syncEngine;
 const MEService = require('./services/me.service');
 const meRoutes = require('./routes/me.routes');
 
+// Import Logframe components
+const IndicatorsService = require('./services/indicators.service');
+const indicatorsRoutes = require('./routes/indicators.routes');
+const MeansOfVerificationService = require('./services/means-of-verification.service');
+const movRoutes = require('./routes/means-of-verification.routes');
+const AssumptionsService = require('./services/assumptions.service');
+const assumptionsRoutes = require('./routes/assumptions.routes');
+const ResultsChainService = require('./services/results-chain.service');
+const resultsChainRoutes = require('./routes/results-chain.routes');
+
 // Initialize sync engine
 (async () => {
     try {
@@ -1632,6 +1642,23 @@ const meRoutes = require('./routes/me.routes');
         const meService = new MEService(db);
         app.use('/api', meRoutes(meService));
         console.log('M&E routes registered successfully');
+
+        // Initialize Logframe Services and routes
+        const indicatorsService = new IndicatorsService(db);
+        app.use('/api/indicators', indicatorsRoutes(indicatorsService));
+        console.log('Indicators routes registered: /api/indicators');
+
+        const movService = new MeansOfVerificationService(db);
+        app.use('/api/means-of-verification', movRoutes(movService));
+        console.log('Means of Verification routes registered: /api/means-of-verification');
+
+        const assumptionsService = new AssumptionsService(db);
+        app.use('/api/assumptions', assumptionsRoutes(assumptionsService));
+        console.log('Assumptions routes registered: /api/assumptions');
+
+        const resultsChainService = new ResultsChainService(db);
+        app.use('/api/results-chain', resultsChainRoutes(resultsChainService));
+        console.log('Results Chain routes registered: /api/results-chain');
     } catch (error) {
         console.error('Failed to initialize sync engine:', error);
         process.exit(1);
