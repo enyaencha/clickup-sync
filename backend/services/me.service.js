@@ -508,11 +508,15 @@ class MEService {
     }
 
     async getProgramStatistics(moduleId) {
+        console.log('getProgramStatistics called with moduleId:', moduleId);
+
         // Get sub-programs for this module
         const subPrograms = await this.db.query(`
             SELECT id FROM sub_programs
             WHERE program_module_id = ? AND deleted_at IS NULL
         `, [moduleId]);
+
+        console.log('Found sub-programs:', subPrograms.length);
 
         if (!subPrograms || subPrograms.length === 0) {
             return {
@@ -525,6 +529,7 @@ class MEService {
         }
 
         const subProgramIds = subPrograms.map(sp => sp.id);
+        console.log('Sub-program IDs:', subProgramIds);
 
         // Get components for these sub-programs
         const componentCount = await this.db.query(`
@@ -532,13 +537,18 @@ class MEService {
             WHERE sub_program_id IN (?) AND deleted_at IS NULL
         `, [subProgramIds]);
 
+        console.log('Component count result:', componentCount);
+
         // Get component IDs
         const components = await this.db.query(`
             SELECT id FROM project_components
             WHERE sub_program_id IN (?) AND deleted_at IS NULL
         `, [subProgramIds]);
 
+        console.log('Found components:', components.length);
+
         const componentIds = components && components.length > 0 ? components.map(c => c.id) : [];
+        console.log('Component IDs:', componentIds);
 
         let activityCount = 0;
         let activities = [];
@@ -552,6 +562,8 @@ class MEService {
             `, [componentIds]);
             activityCount = actCount[0]?.count || 0;
 
+            console.log('Activity count result:', actCount, 'extracted:', activityCount);
+
             // Get activity status breakdown
             activityByStatus = await this.db.query(`
                 SELECT status, COUNT(*) as count
@@ -560,11 +572,15 @@ class MEService {
                 GROUP BY status
             `, [componentIds]);
 
+            console.log('Activity by status:', activityByStatus);
+
             // Get all activities for progress calculation
             activities = await this.db.query(`
                 SELECT status FROM activities
                 WHERE component_id IN (?) AND deleted_at IS NULL
             `, [componentIds]);
+
+            console.log('Activities for progress calc:', activities.length);
         }
 
         // Calculate overall progress for this program
