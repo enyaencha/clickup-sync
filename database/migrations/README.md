@@ -1,31 +1,38 @@
-# Logframe Enhancement Migration
+# Logframe Enhancement Migration (Revised)
 
 ## Overview
-This migration adds comprehensive Results-Based Management (RBM) and Logframe functionality to the M&E system.
+This migration enhances the existing M&E system with comprehensive Results-Based Management (RBM) and Logframe functionality. It builds upon existing `me_indicators` and `me_results` tables while adding new components.
 
 ## What's Added
 
-### 1. **Indicators Table** (`indicators`)
-Tracks SMART indicators at all hierarchy levels (Module → Sub-Program → Component → Activity)
+### 1. **Enhanced me_indicators Table** (UPDATED)
+Updates existing table to support new hierarchy and additional fields
 
-**Features:**
-- Indicator type: Impact, Outcome, Output, Process
-- Baseline and Target values with dates
-- Current value and achievement percentage
-- Disaggregation support (gender, age, location, etc.)
-- Measurement frequency tracking
-- Status monitoring (on-track, at-risk, off-track)
+**New Fields:**
+- `module_id`, `sub_program_id`, `component_id` - Links to new hierarchy
+- `baseline_date`, `target_date` - Temporal tracking
+- `last_measured_date`, `next_measurement_date` - Measurement scheduling
+- `status` - On-track, at-risk, off-track, not-started
+- `achievement_percentage` - Progress tracking
+- `responsible_person`, `notes` - Metadata
+- `deleted_at` - Soft delete support
+- Updated `type` enum to include 'process'
 
-### 2. **Indicator Measurements Table** (`indicator_measurements`)
-Records periodic measurements of indicators over time
+**Existing Fields Retained:**
+- All original fields from `me_indicators` preserved
+- Backward compatible with old hierarchy (`program_id`, `project_id`)
 
-**Features:**
-- Time-series data collection
-- Disaggregated value storage
-- Verification status and notes
-- Measurement methodology tracking
+### 2. **me_results Table** (UPDATED)
+Enhances existing measurements table
 
-### 3. **Means of Verification Table** (`means_of_verification`)
+**New Fields:**
+- `measurement_method` - How measurement was taken
+- `verified_date` - Date of verification
+
+**Existing Fields Retained:**
+- All original measurement and verification fields
+
+### 3. **Means of Verification Table** (`means_of_verification`) - NEW
 Documents evidence sources and verification methods
 
 **Features:**
@@ -35,7 +42,7 @@ Documents evidence sources and verification methods
 - Collection frequency tracking
 - Links to any hierarchy level or indicator
 
-### 4. **Assumptions Table** (`assumptions`)
+### 4. **Assumptions Table** (`assumptions`) - NEW
 Tracks key assumptions and risks at each level
 
 **Features:**
@@ -45,7 +52,7 @@ Tracks key assumptions and risks at each level
 - Mitigation strategy documentation
 - Periodic review scheduling
 
-### 5. **Results Chain Table** (`results_chain`)
+### 5. **Results Chain Table** (`results_chain`) - NEW
 Explicitly links hierarchy levels to show results pathways
 
 **Features:**
@@ -53,31 +60,42 @@ Explicitly links hierarchy levels to show results pathways
 - Contribution descriptions
 - Contribution weights (for multiple activities contributing to one output)
 
-### 6. **Enhanced Existing Tables**
+### 6. **Enhanced Hierarchy Tables** (UPDATED)
 Adds logframe fields to existing hierarchy tables:
 - `program_modules`: Goal statement and indicators
 - `sub_programs`: Outcome statement and indicators
 - `project_components`: Output statement and indicators
 
-### 7. **Reporting Views**
-Pre-built views for easy reporting:
+### 7. **Reporting Views** (UPDATED)
+Pre-built views for easy reporting (updated to use me_indicators and me_results):
 - `v_indicators_with_latest`: Indicators with latest measurements and progress
 - `v_results_chain_detailed`: Results chain with entity names
 
 ## How to Apply Migration
 
-### Option 1: MySQL Command Line
+### Option 1: Automated Script (Recommended)
 ```bash
-mysql -u root -p me_clickup_system < 001_add_logframe_tables.sql
+cd backend
+node scripts/run-migration.js
+```
+This script:
+- Loads environment variables from `.env`
+- Connects to the database
+- Executes the migration with error handling
+- Verifies tables were created
+
+### Option 2: MySQL Command Line
+```bash
+mysql -u root -p me_clickup_system < 002_add_logframe_enhancements.sql
 ```
 
-### Option 2: MySQL Workbench
+### Option 3: MySQL Workbench
 1. Open MySQL Workbench
 2. Connect to your database
-3. File → Open SQL Script → Select `001_add_logframe_tables.sql`
+3. File → Open SQL Script → Select `002_add_logframe_enhancements.sql`
 4. Execute (⚡ button)
 
-### Option 3: phpMyAdmin
+### Option 4: phpMyAdmin
 1. Log in to phpMyAdmin
 2. Select `me_clickup_system` database
 3. Click "SQL" tab
@@ -156,20 +174,54 @@ After applying this migration:
 If needed, you can rollback this migration:
 
 ```sql
+-- Drop new views
 DROP VIEW IF EXISTS v_indicators_with_latest;
 DROP VIEW IF EXISTS v_results_chain_detailed;
+
+-- Drop new tables
 DROP TABLE IF EXISTS results_chain;
 DROP TABLE IF EXISTS assumptions;
 DROP TABLE IF EXISTS means_of_verification;
-DROP TABLE IF EXISTS indicator_measurements;
-DROP TABLE IF EXISTS indicators;
 
-ALTER TABLE program_modules DROP COLUMN IF EXISTS logframe_goal;
-ALTER TABLE program_modules DROP COLUMN IF EXISTS goal_indicators;
-ALTER TABLE sub_programs DROP COLUMN IF EXISTS logframe_outcome;
-ALTER TABLE sub_programs DROP COLUMN IF EXISTS outcome_indicators;
-ALTER TABLE project_components DROP COLUMN IF EXISTS logframe_output;
-ALTER TABLE project_components DROP COLUMN IF EXISTS output_indicators;
+-- Remove new columns from me_indicators
+ALTER TABLE me_indicators
+  DROP FOREIGN KEY IF EXISTS fk_me_indicators_module,
+  DROP FOREIGN KEY IF EXISTS fk_me_indicators_sub_program,
+  DROP FOREIGN KEY IF EXISTS fk_me_indicators_component,
+  DROP COLUMN IF EXISTS module_id,
+  DROP COLUMN IF EXISTS sub_program_id,
+  DROP COLUMN IF EXISTS component_id,
+  DROP COLUMN IF EXISTS baseline_date,
+  DROP COLUMN IF EXISTS target_date,
+  DROP COLUMN IF EXISTS last_measured_date,
+  DROP COLUMN IF EXISTS next_measurement_date,
+  DROP COLUMN IF EXISTS status,
+  DROP COLUMN IF EXISTS achievement_percentage,
+  DROP COLUMN IF EXISTS responsible_person,
+  DROP COLUMN IF EXISTS notes,
+  DROP COLUMN IF EXISTS deleted_at;
+
+-- Revert me_indicators type enum
+ALTER TABLE me_indicators
+  MODIFY COLUMN `type` ENUM('output','outcome','impact') NOT NULL;
+
+-- Remove new columns from me_results
+ALTER TABLE me_results
+  DROP COLUMN IF EXISTS measurement_method,
+  DROP COLUMN IF EXISTS verified_date;
+
+-- Remove columns from hierarchy tables
+ALTER TABLE program_modules
+  DROP COLUMN IF EXISTS logframe_goal,
+  DROP COLUMN IF EXISTS goal_indicators;
+
+ALTER TABLE sub_programs
+  DROP COLUMN IF EXISTS logframe_outcome,
+  DROP COLUMN IF EXISTS outcome_indicators;
+
+ALTER TABLE project_components
+  DROP COLUMN IF EXISTS logframe_output,
+  DROP COLUMN IF EXISTS output_indicators;
 ```
 
 ## Support
