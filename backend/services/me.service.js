@@ -531,19 +531,22 @@ class MEService {
         const subProgramIds = subPrograms.map(sp => sp.id);
         console.log('Sub-program IDs:', subProgramIds);
 
+        // Create placeholders for IN clause
+        const subProgramPlaceholders = subProgramIds.map(() => '?').join(',');
+
         // Get components for these sub-programs
         const componentCount = await this.db.query(`
             SELECT COUNT(*) as count FROM project_components
-            WHERE sub_program_id IN (?) AND deleted_at IS NULL
-        `, [subProgramIds]);
+            WHERE sub_program_id IN (${subProgramPlaceholders}) AND deleted_at IS NULL
+        `, subProgramIds);
 
         console.log('Component count result:', componentCount);
 
         // Get component IDs
         const components = await this.db.query(`
             SELECT id FROM project_components
-            WHERE sub_program_id IN (?) AND deleted_at IS NULL
-        `, [subProgramIds]);
+            WHERE sub_program_id IN (${subProgramPlaceholders}) AND deleted_at IS NULL
+        `, subProgramIds);
 
         console.log('Found components:', components.length);
 
@@ -555,11 +558,14 @@ class MEService {
         let activityByStatus = [];
 
         if (componentIds.length > 0) {
+            // Create placeholders for IN clause
+            const placeholders = componentIds.map(() => '?').join(',');
+
             // Get activities for these components
             const actCount = await this.db.query(`
                 SELECT COUNT(*) as count FROM activities
-                WHERE component_id IN (?) AND deleted_at IS NULL
-            `, [componentIds]);
+                WHERE component_id IN (${placeholders}) AND deleted_at IS NULL
+            `, componentIds);
             activityCount = actCount[0]?.count || 0;
 
             console.log('Activity count result:', actCount, 'extracted:', activityCount);
@@ -568,17 +574,17 @@ class MEService {
             activityByStatus = await this.db.query(`
                 SELECT status, COUNT(*) as count
                 FROM activities
-                WHERE component_id IN (?) AND deleted_at IS NULL
+                WHERE component_id IN (${placeholders}) AND deleted_at IS NULL
                 GROUP BY status
-            `, [componentIds]);
+            `, componentIds);
 
             console.log('Activity by status:', activityByStatus);
 
             // Get all activities for progress calculation
             activities = await this.db.query(`
                 SELECT status FROM activities
-                WHERE component_id IN (?) AND deleted_at IS NULL
-            `, [componentIds]);
+                WHERE component_id IN (${placeholders}) AND deleted_at IS NULL
+            `, componentIds);
 
             console.log('Activities for progress calc:', activities.length);
         }
