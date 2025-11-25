@@ -8,38 +8,205 @@
 -- ============================================
 
 -- Add columns for new hierarchy (program_modules, sub_programs, project_components)
-ALTER TABLE me_indicators
-ADD COLUMN IF NOT EXISTS `module_id` INT DEFAULT NULL COMMENT 'Link to program_modules table',
-ADD COLUMN IF NOT EXISTS `sub_program_id` INT DEFAULT NULL COMMENT 'Link to sub_programs table',
-ADD COLUMN IF NOT EXISTS `component_id` INT DEFAULT NULL COMMENT 'Link to project_components table';
+SET @dbname = DATABASE();
+SET @tablename = 'me_indicators';
 
--- Add foreign keys for new hierarchy
-ALTER TABLE me_indicators
-ADD CONSTRAINT `fk_me_indicators_module` FOREIGN KEY (`module_id`) REFERENCES `program_modules` (`id`) ON DELETE CASCADE,
-ADD CONSTRAINT `fk_me_indicators_sub_program` FOREIGN KEY (`sub_program_id`) REFERENCES `sub_programs` (`id`) ON DELETE CASCADE,
-ADD CONSTRAINT `fk_me_indicators_component` FOREIGN KEY (`component_id`) REFERENCES `project_components` (`id`) ON DELETE CASCADE;
+-- Add module_id column
+SET @col_exists = 0;
+SELECT COUNT(*) INTO @col_exists FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'module_id';
+SET @query = IF(@col_exists = 0,
+    'ALTER TABLE me_indicators ADD COLUMN `module_id` INT DEFAULT NULL COMMENT ''Link to program_modules table''',
+    'SELECT "Column module_id already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Add sub_program_id column
+SET @col_exists = 0;
+SELECT COUNT(*) INTO @col_exists FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'sub_program_id';
+SET @query = IF(@col_exists = 0,
+    'ALTER TABLE me_indicators ADD COLUMN `sub_program_id` INT DEFAULT NULL COMMENT ''Link to sub_programs table''',
+    'SELECT "Column sub_program_id already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Add component_id column
+SET @col_exists = 0;
+SELECT COUNT(*) INTO @col_exists FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'component_id';
+SET @query = IF(@col_exists = 0,
+    'ALTER TABLE me_indicators ADD COLUMN `component_id` INT DEFAULT NULL COMMENT ''Link to project_components table''',
+    'SELECT "Column component_id already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Add foreign keys for new hierarchy (check if they don't exist first)
+SET @fk_exists = 0;
+SELECT COUNT(*) INTO @fk_exists FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND CONSTRAINT_NAME = 'fk_me_indicators_module';
+SET @query = IF(@fk_exists = 0,
+    'ALTER TABLE me_indicators ADD CONSTRAINT `fk_me_indicators_module` FOREIGN KEY (`module_id`) REFERENCES `program_modules` (`id`) ON DELETE CASCADE',
+    'SELECT "Foreign key fk_me_indicators_module already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @fk_exists = 0;
+SELECT COUNT(*) INTO @fk_exists FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND CONSTRAINT_NAME = 'fk_me_indicators_sub_program';
+SET @query = IF(@fk_exists = 0,
+    'ALTER TABLE me_indicators ADD CONSTRAINT `fk_me_indicators_sub_program` FOREIGN KEY (`sub_program_id`) REFERENCES `sub_programs` (`id`) ON DELETE CASCADE',
+    'SELECT "Foreign key fk_me_indicators_sub_program already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @fk_exists = 0;
+SELECT COUNT(*) INTO @fk_exists FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND CONSTRAINT_NAME = 'fk_me_indicators_component';
+SET @query = IF(@fk_exists = 0,
+    'ALTER TABLE me_indicators ADD CONSTRAINT `fk_me_indicators_component` FOREIGN KEY (`component_id`) REFERENCES `project_components` (`id`) ON DELETE CASCADE',
+    'SELECT "Foreign key fk_me_indicators_component already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- Add indexes for new hierarchy columns
-ALTER TABLE me_indicators
-ADD INDEX IF NOT EXISTS `idx_module` (`module_id`),
-ADD INDEX IF NOT EXISTS `idx_sub_program` (`sub_program_id`),
-ADD INDEX IF NOT EXISTS `idx_component` (`component_id`);
+SET @idx_exists = 0;
+SELECT COUNT(*) INTO @idx_exists FROM INFORMATION_SCHEMA.STATISTICS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND INDEX_NAME = 'idx_module';
+SET @query = IF(@idx_exists = 0,
+    'ALTER TABLE me_indicators ADD INDEX `idx_module` (`module_id`)',
+    'SELECT "Index idx_module already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @idx_exists = 0;
+SELECT COUNT(*) INTO @idx_exists FROM INFORMATION_SCHEMA.STATISTICS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND INDEX_NAME = 'idx_sub_program';
+SET @query = IF(@idx_exists = 0,
+    'ALTER TABLE me_indicators ADD INDEX `idx_sub_program` (`sub_program_id`)',
+    'SELECT "Index idx_sub_program already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @idx_exists = 0;
+SELECT COUNT(*) INTO @idx_exists FROM INFORMATION_SCHEMA.STATISTICS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND INDEX_NAME = 'idx_component';
+SET @query = IF(@idx_exists = 0,
+    'ALTER TABLE me_indicators ADD INDEX `idx_component` (`component_id`)',
+    'SELECT "Index idx_component already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- Add additional fields missing from me_indicators
-ALTER TABLE me_indicators
-ADD COLUMN IF NOT EXISTS `baseline_date` DATE DEFAULT NULL COMMENT 'Date when baseline was measured',
-ADD COLUMN IF NOT EXISTS `target_date` DATE DEFAULT NULL COMMENT 'Target achievement date',
-ADD COLUMN IF NOT EXISTS `last_measured_date` DATE DEFAULT NULL COMMENT 'Last measurement date',
-ADD COLUMN IF NOT EXISTS `next_measurement_date` DATE DEFAULT NULL COMMENT 'Next scheduled measurement',
-ADD COLUMN IF NOT EXISTS `status` ENUM('on-track', 'at-risk', 'off-track', 'not-started') DEFAULT 'not-started' COMMENT 'Current status',
-ADD COLUMN IF NOT EXISTS `achievement_percentage` DECIMAL(5,2) DEFAULT 0 COMMENT 'Progress towards target',
-ADD COLUMN IF NOT EXISTS `responsible_person` VARCHAR(255) DEFAULT NULL COMMENT 'Person responsible for indicator',
-ADD COLUMN IF NOT EXISTS `notes` TEXT DEFAULT NULL COMMENT 'Additional notes',
-ADD COLUMN IF NOT EXISTS `deleted_at` TIMESTAMP NULL DEFAULT NULL COMMENT 'Soft delete timestamp';
+SET @col_exists = 0;
+SELECT COUNT(*) INTO @col_exists FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'baseline_date';
+SET @query = IF(@col_exists = 0,
+    'ALTER TABLE me_indicators ADD COLUMN `baseline_date` DATE DEFAULT NULL COMMENT ''Date when baseline was measured''',
+    'SELECT "Column baseline_date already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists = 0;
+SELECT COUNT(*) INTO @col_exists FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'target_date';
+SET @query = IF(@col_exists = 0,
+    'ALTER TABLE me_indicators ADD COLUMN `target_date` DATE DEFAULT NULL COMMENT ''Target achievement date''',
+    'SELECT "Column target_date already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists = 0;
+SELECT COUNT(*) INTO @col_exists FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'last_measured_date';
+SET @query = IF(@col_exists = 0,
+    'ALTER TABLE me_indicators ADD COLUMN `last_measured_date` DATE DEFAULT NULL COMMENT ''Last measurement date''',
+    'SELECT "Column last_measured_date already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists = 0;
+SELECT COUNT(*) INTO @col_exists FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'next_measurement_date';
+SET @query = IF(@col_exists = 0,
+    'ALTER TABLE me_indicators ADD COLUMN `next_measurement_date` DATE DEFAULT NULL COMMENT ''Next scheduled measurement''',
+    'SELECT "Column next_measurement_date already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists = 0;
+SELECT COUNT(*) INTO @col_exists FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'status';
+SET @query = IF(@col_exists = 0,
+    'ALTER TABLE me_indicators ADD COLUMN `status` ENUM(''on-track'', ''at-risk'', ''off-track'', ''not-started'') DEFAULT ''not-started'' COMMENT ''Current status''',
+    'SELECT "Column status already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists = 0;
+SELECT COUNT(*) INTO @col_exists FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'achievement_percentage';
+SET @query = IF(@col_exists = 0,
+    'ALTER TABLE me_indicators ADD COLUMN `achievement_percentage` DECIMAL(5,2) DEFAULT 0 COMMENT ''Progress towards target''',
+    'SELECT "Column achievement_percentage already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists = 0;
+SELECT COUNT(*) INTO @col_exists FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'responsible_person';
+SET @query = IF(@col_exists = 0,
+    'ALTER TABLE me_indicators ADD COLUMN `responsible_person` VARCHAR(255) DEFAULT NULL COMMENT ''Person responsible for indicator''',
+    'SELECT "Column responsible_person already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists = 0;
+SELECT COUNT(*) INTO @col_exists FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'notes';
+SET @query = IF(@col_exists = 0,
+    'ALTER TABLE me_indicators ADD COLUMN `notes` TEXT DEFAULT NULL COMMENT ''Additional notes''',
+    'SELECT "Column notes already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists = 0;
+SELECT COUNT(*) INTO @col_exists FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'deleted_at';
+SET @query = IF(@col_exists = 0,
+    'ALTER TABLE me_indicators ADD COLUMN `deleted_at` TIMESTAMP NULL DEFAULT NULL COMMENT ''Soft delete timestamp''',
+    'SELECT "Column deleted_at already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- Add index for soft deletes
-ALTER TABLE me_indicators
-ADD INDEX IF NOT EXISTS `idx_deleted` (`deleted_at`);
+SET @idx_exists = 0;
+SELECT COUNT(*) INTO @idx_exists FROM INFORMATION_SCHEMA.STATISTICS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND INDEX_NAME = 'idx_deleted';
+SET @query = IF(@idx_exists = 0,
+    'ALTER TABLE me_indicators ADD INDEX `idx_deleted` (`deleted_at`)',
+    'SELECT "Index idx_deleted already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- Update me_indicators type enum to include 'process' type
 ALTER TABLE me_indicators
@@ -49,10 +216,29 @@ MODIFY COLUMN `type` ENUM('output','outcome','impact','process') NOT NULL;
 -- 2. UPDATE me_results TABLE
 -- ============================================
 
--- Add missing fields to me_results
-ALTER TABLE me_results
-ADD COLUMN IF NOT EXISTS `measurement_method` VARCHAR(255) DEFAULT NULL COMMENT 'How measurement was taken',
-ADD COLUMN IF NOT EXISTS `verified_date` DATE DEFAULT NULL COMMENT 'Date of verification';
+SET @tablename = 'me_results';
+
+-- Add measurement_method column
+SET @col_exists = 0;
+SELECT COUNT(*) INTO @col_exists FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'measurement_method';
+SET @query = IF(@col_exists = 0,
+    'ALTER TABLE me_results ADD COLUMN `measurement_method` VARCHAR(255) DEFAULT NULL COMMENT ''How measurement was taken''',
+    'SELECT "Column measurement_method already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Add verified_date column
+SET @col_exists = 0;
+SELECT COUNT(*) INTO @col_exists FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'verified_date';
+SET @query = IF(@col_exists = 0,
+    'ALTER TABLE me_results ADD COLUMN `verified_date` DATE DEFAULT NULL COMMENT ''Date of verification''',
+    'SELECT "Column verified_date already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- ============================================
 -- 3. MEANS OF VERIFICATION TABLE (NEW)
@@ -182,50 +368,111 @@ CREATE TABLE IF NOT EXISTS `results_chain` (
 -- 6. Add Logframe Fields to Existing Hierarchy Tables
 -- ============================================
 
--- Add logframe level statements to program_modules
-ALTER TABLE program_modules
-ADD COLUMN IF NOT EXISTS `logframe_goal` TEXT COMMENT 'Overall goal statement',
-ADD COLUMN IF NOT EXISTS `goal_indicators` TEXT COMMENT 'Key goal-level indicators (optional text summary)';
+SET @tablename = 'program_modules';
 
--- Add logframe level statements to sub_programs
-ALTER TABLE sub_programs
-ADD COLUMN IF NOT EXISTS `logframe_outcome` TEXT COMMENT 'Expected outcome statement',
-ADD COLUMN IF NOT EXISTS `outcome_indicators` TEXT COMMENT 'Key outcome indicators (optional text summary)';
+-- Add logframe_goal column
+SET @col_exists = 0;
+SELECT COUNT(*) INTO @col_exists FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'logframe_goal';
+SET @query = IF(@col_exists = 0,
+    'ALTER TABLE program_modules ADD COLUMN `logframe_goal` TEXT COMMENT ''Overall goal statement''',
+    'SELECT "Column logframe_goal already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
--- Add logframe level statements to project_components
-ALTER TABLE project_components
-ADD COLUMN IF NOT EXISTS `logframe_output` TEXT COMMENT 'Expected output statement',
-ADD COLUMN IF NOT EXISTS `output_indicators` TEXT COMMENT 'Key output indicators (optional text summary)';
+-- Add goal_indicators column
+SET @col_exists = 0;
+SELECT COUNT(*) INTO @col_exists FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'goal_indicators';
+SET @query = IF(@col_exists = 0,
+    'ALTER TABLE program_modules ADD COLUMN `goal_indicators` TEXT COMMENT ''Key goal-level indicators (optional text summary)''',
+    'SELECT "Column goal_indicators already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @tablename = 'sub_programs';
+
+-- Add logframe_outcome column
+SET @col_exists = 0;
+SELECT COUNT(*) INTO @col_exists FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'logframe_outcome';
+SET @query = IF(@col_exists = 0,
+    'ALTER TABLE sub_programs ADD COLUMN `logframe_outcome` TEXT COMMENT ''Expected outcome statement''',
+    'SELECT "Column logframe_outcome already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Add outcome_indicators column
+SET @col_exists = 0;
+SELECT COUNT(*) INTO @col_exists FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'outcome_indicators';
+SET @query = IF(@col_exists = 0,
+    'ALTER TABLE sub_programs ADD COLUMN `outcome_indicators` TEXT COMMENT ''Key outcome indicators (optional text summary)''',
+    'SELECT "Column outcome_indicators already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @tablename = 'project_components';
+
+-- Add logframe_output column
+SET @col_exists = 0;
+SELECT COUNT(*) INTO @col_exists FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'logframe_output';
+SET @query = IF(@col_exists = 0,
+    'ALTER TABLE project_components ADD COLUMN `logframe_output` TEXT COMMENT ''Expected output statement''',
+    'SELECT "Column logframe_output already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Add output_indicators column
+SET @col_exists = 0;
+SELECT COUNT(*) INTO @col_exists FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = @dbname AND TABLE_NAME = @tablename AND COLUMN_NAME = 'output_indicators';
+SET @query = IF(@col_exists = 0,
+    'ALTER TABLE project_components ADD COLUMN `output_indicators` TEXT COMMENT ''Key output indicators (optional text summary)''',
+    'SELECT "Column output_indicators already exists" AS info');
+PREPARE stmt FROM @query;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- ============================================
 -- SAMPLE DATA (Optional - for testing)
 -- ============================================
 
--- Sample means of verification for Module 1
+-- Sample means of verification for Module 1 (only if module with id=1 exists)
 INSERT INTO `means_of_verification` (
   entity_type, entity_id, verification_method, evidence_type,
   description, collection_frequency
-) VALUES (
-  'module', 1,
+)
+SELECT 'module', 1,
   'Household surveys and field reports',
   'survey',
   'Annual household food security surveys conducted in target communities',
   'annual'
-) ON DUPLICATE KEY UPDATE verification_method = verification_method;
+FROM program_modules WHERE id = 1
+LIMIT 1
+ON DUPLICATE KEY UPDATE verification_method = verification_method;
 
--- Sample assumption for Module 1
+-- Sample assumption for Module 1 (only if module with id=1 exists)
 INSERT INTO `assumptions` (
   entity_type, entity_id, assumption_text, assumption_category,
   likelihood, impact, risk_level, mitigation_strategy
-) VALUES (
-  'module', 1,
+)
+SELECT 'module', 1,
   'Stable climatic conditions with normal rainfall patterns',
   'environmental',
   'medium',
   'high',
   'medium',
   'Promote climate-resilient agricultural practices and early warning systems'
-) ON DUPLICATE KEY UPDATE assumption_text = assumption_text;
+FROM program_modules WHERE id = 1
+LIMIT 1
+ON DUPLICATE KEY UPDATE assumption_text = assumption_text;
 
 -- ============================================
 -- VIEWS FOR REPORTING
