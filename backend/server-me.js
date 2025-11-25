@@ -225,6 +225,10 @@ async function initializeServices() {
             });
         });
 
+        console.log('Skipping sync configuration (sync disabled)...');
+        logger.warn('⚠️  ClickUp sync is disabled. Enable it later by configuring sync_config.');
+
+        /* CLICKUP SYNC DISABLED - Uncomment when ready to enable
         console.log('Querying sync_config...');
         // Get ClickUp API token from sync_config
         const config = await dbManager.queryOne(
@@ -245,6 +249,7 @@ async function initializeServices() {
             // Start periodic sync processing
             startPeriodicSync();
         }
+        */
 
         console.log('About to log M&E System ready...');
         logger.info('✨ M&E System ready!');
