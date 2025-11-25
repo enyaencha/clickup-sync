@@ -133,7 +133,12 @@ const Activities: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
       });
 
-      if (!response.ok) throw new Error('Failed to submit activity');
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || 'Failed to submit activity');
+        return;
+      }
 
       await fetchData();
       alert('Activity submitted for approval!');
@@ -178,7 +183,12 @@ const Activities: React.FC = () => {
         body: JSON.stringify({ status: newStatus }),
       });
 
-      if (!response.ok) throw new Error('Failed to update status');
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || 'Failed to update status');
+        return;
+      }
 
       await fetchData();
     } catch (err) {

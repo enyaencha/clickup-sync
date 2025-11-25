@@ -83,7 +83,12 @@ const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
         body: JSON.stringify(formData),
       });
 
-      if (!response.ok) throw new Error('Failed to update activity');
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to update activity');
+        return;
+      }
 
       setIsEditing(false);
       await fetchActivity();
