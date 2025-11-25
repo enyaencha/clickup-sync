@@ -1,0 +1,15 @@
+{
+  "lock_rejected_activities": true,
+  "lock_approved_activities": false,
+  "allow_status_change_after_approval": true,
+  "require_approval_before_completion": false,
+  "allow_draft_editing_only": false,
+  "allow_self_approval": false,
+  "require_submission_before_approval": true,
+  "auto_complete_on_approval": false,
+  "enable_activity_locking": true,
+  "enable_strict_workflow": false,
+  "notify_on_status_change": true,
+  "notify_on_approval_request": true,
+  "notify_on_rejection": true
+}

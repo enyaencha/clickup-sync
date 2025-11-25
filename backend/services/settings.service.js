@@ -36,10 +36,15 @@ class SettingsService {
     async getSettings() {
         try {
             const data = await fs.readFile(this.settingsPath, 'utf8');
+            // If file is empty or invalid JSON, use defaults
+            if (!data || data.trim() === '') {
+                await this.saveSettings(this.defaultSettings);
+                return this.defaultSettings;
+            }
             return JSON.parse(data);
         } catch (error) {
-            // If file doesn't exist, create it with defaults
-            if (error.code === 'ENOENT') {
+            // If file doesn't exist or JSON is invalid, create it with defaults
+            if (error.code === 'ENOENT' || error instanceof SyntaxError) {
                 await this.saveSettings(this.defaultSettings);
                 return this.defaultSettings;
             }
