@@ -14,6 +14,12 @@ interface WorkflowSettings {
   require_submission_before_approval: boolean;
   auto_complete_on_approval: boolean;
 
+  // Checklist Workflow Settings
+  require_checklist_completion_before_submission: boolean;
+  require_checklist_completion_before_completion: boolean;
+  show_checklist_progress_in_approvals: boolean;
+  allow_checklist_edit_after_approval: boolean;
+
   // General Settings
   enable_activity_locking: boolean;
   enable_strict_workflow: boolean;
@@ -296,6 +302,63 @@ const Settings: React.FC = () => {
               <ToggleSwitch
                 checked={settings.auto_complete_on_approval}
                 onChange={() => handleToggle('auto_complete_on_approval')}
+                disabled={saving}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Checklist Workflow Settings */}
+        <div className="bg-white rounded-lg shadow mb-6">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Checklist Workflow</h2>
+            <p className="text-sm text-gray-600 mt-1">Configure activity checklist requirements and visibility</p>
+          </div>
+          <div className="px-6 py-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <label className="text-sm font-medium text-gray-900">Require Checklist Completion Before Submission</label>
+                <p className="text-xs text-gray-600 mt-1">Activities cannot be submitted for approval unless all checklist items are completed</p>
+              </div>
+              <ToggleSwitch
+                checked={settings.require_checklist_completion_before_submission}
+                onChange={() => handleToggle('require_checklist_completion_before_submission')}
+                disabled={saving}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <label className="text-sm font-medium text-gray-900">Require Checklist Completion Before Completion</label>
+                <p className="text-xs text-gray-600 mt-1">Activities cannot be marked as completed unless all checklist items are done (recommended)</p>
+              </div>
+              <ToggleSwitch
+                checked={settings.require_checklist_completion_before_completion}
+                onChange={() => handleToggle('require_checklist_completion_before_completion')}
+                disabled={saving}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <label className="text-sm font-medium text-gray-900">Show Checklist Progress in Approvals</label>
+                <p className="text-xs text-gray-600 mt-1">Display checklist completion progress on the approvals page</p>
+              </div>
+              <ToggleSwitch
+                checked={settings.show_checklist_progress_in_approvals}
+                onChange={() => handleToggle('show_checklist_progress_in_approvals')}
+                disabled={saving}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <label className="text-sm font-medium text-gray-900">Allow Checklist Edit After Approval</label>
+                <p className="text-xs text-gray-600 mt-1">Allow checklist items to be edited/toggled after activity is approved</p>
+              </div>
+              <ToggleSwitch
+                checked={settings.allow_checklist_edit_after_approval}
+                onChange={() => handleToggle('allow_checklist_edit_after_approval')}
                 disabled={saving}
               />
             </div>
