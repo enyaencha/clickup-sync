@@ -18,6 +18,12 @@ interface Activity {
   budget_spent: number;
 }
 
+interface ComponentStatistics {
+  activities: number;
+  overall_progress: number;
+  activity_by_status: Array<{ status: string; count: number }>;
+}
+
 const Activities: React.FC = () => {
   const { programId, projectId, componentId } = useParams<{
     programId: string;
@@ -29,6 +35,7 @@ const Activities: React.FC = () => {
   const [component, setComponent] = useState<any>(null);
   const [project, setProject] = useState<any>(null);
   const [program, setProgram] = useState<any>(null);
+  const [statistics, setStatistics] = useState<ComponentStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,6 +52,7 @@ const Activities: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+    fetchStatistics();
   }, [programId, projectId, componentId]);
 
   const fetchData = async () => {
@@ -79,8 +87,20 @@ const Activities: React.FC = () => {
     }
   };
 
+  const fetchStatistics = async () => {
+    try {
+      const response = await fetch(`/api/dashboard/component/${componentId}`);
+      if (!response.ok) throw new Error('Failed to fetch statistics');
+      const data = await response.json();
+      setStatistics(data.data);
+    } catch (err) {
+      console.error('Failed to fetch statistics:', err);
+    }
+  };
+
   const handleActivityCreated = () => {
     fetchData();
+    fetchStatistics();
   };
 
   const handleSubmitForApproval = async (activityId: number) => {
@@ -201,6 +221,74 @@ const Activities: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {/* Component Statistics Dashboard */}
+        {statistics && (
+          <div className="mb-6 sm:mb-8">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Component Overview</h2>
+            <div className="grid grid-cols-2 md:grid-cols-2 gap-4 sm:gap-6">
+              {/* Activities Card */}
+              <div className="bg-white rounded-lg shadow p-4 sm:p-5 border-l-4 border-purple-500">
+                <p className="text-xs sm:text-sm text-gray-600 mb-1">Total Activities</p>
+                <p className="text-2xl sm:text-3xl font-bold text-purple-600">{statistics.activities}</p>
+              </div>
+
+              {/* Progress Card */}
+              <div className="bg-white rounded-lg shadow p-4 sm:p-5 border-l-4 border-yellow-500">
+                <p className="text-xs sm:text-sm text-gray-600 mb-2">Completion Progress</p>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full transition-all duration-300 ${
+                          statistics.overall_progress === 100
+                            ? 'bg-green-600'
+                            : statistics.overall_progress >= 50
+                            ? 'bg-blue-600'
+                            : 'bg-yellow-500'
+                        }`}
+                        style={{ width: `${statistics.overall_progress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  <span className="text-lg sm:text-xl font-bold text-gray-900">
+                    {statistics.overall_progress}%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Activity Status Breakdown */}
+            {statistics.activity_by_status && statistics.activity_by_status.length > 0 && (
+              <div className="bg-white rounded-lg shadow p-4 sm:p-5 mt-4 sm:mt-6">
+                <h3 className="text-sm sm:text-base font-semibold text-gray-800 mb-3 sm:mb-4">Activity Status Breakdown</h3>
+                <div className="flex flex-wrap gap-3 sm:gap-4">
+                  {statistics.activity_by_status.map((item) => (
+                    <div key={item.status} className="flex items-center gap-2">
+                      <div
+                        className={`w-3 h-3 rounded-full ${
+                          item.status === 'completed'
+                            ? 'bg-green-500'
+                            : item.status === 'in-progress'
+                            ? 'bg-blue-500'
+                            : item.status === 'not-started'
+                            ? 'bg-yellow-500'
+                            : item.status === 'blocked'
+                            ? 'bg-red-500'
+                            : 'bg-gray-400'
+                        }`}
+                      ></div>
+                      <span className="text-xs sm:text-sm text-gray-700 capitalize">
+                        {item.status.replace('-', ' ')}:
+                      </span>
+                      <span className="text-xs sm:text-sm font-bold text-gray-900">{item.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Filters */}
         <div className="bg-white rounded-lg shadow p-3 sm:p-4 mb-4 sm:mb-6">
           <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4">
