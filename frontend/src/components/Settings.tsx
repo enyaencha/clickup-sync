@@ -19,6 +19,7 @@ interface WorkflowSettings {
   require_checklist_completion_before_completion: boolean;
   show_checklist_progress_in_approvals: boolean;
   allow_checklist_edit_after_approval: boolean;
+  allow_approver_to_complete_checklist: boolean;
 
   // General Settings
   enable_activity_locking: boolean;
@@ -359,6 +360,18 @@ const Settings: React.FC = () => {
               <ToggleSwitch
                 checked={settings.allow_checklist_edit_after_approval}
                 onChange={() => handleToggle('allow_checklist_edit_after_approval')}
+                disabled={saving}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <label className="text-sm font-medium text-gray-900">Allow Approver to Complete Checklist</label>
+                <p className="text-xs text-gray-600 mt-1">Allow approvers to check/complete checklist items during approval review</p>
+              </div>
+              <ToggleSwitch
+                checked={settings.allow_approver_to_complete_checklist}
+                onChange={() => handleToggle('allow_approver_to_complete_checklist')}
                 disabled={saving}
               />
             </div>
