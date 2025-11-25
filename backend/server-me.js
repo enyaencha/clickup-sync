@@ -225,10 +225,12 @@ async function initializeServices() {
             });
         });
 
+        console.log('Querying sync_config...');
         // Get ClickUp API token from sync_config
         const config = await dbManager.queryOne(
             'SELECT clickup_api_token_encrypted FROM sync_config WHERE id = 1'
         );
+        console.log('Sync config query completed');
 
         if (!config || !config.clickup_api_token_encrypted) {
             logger.warn('⚠️  ClickUp API token not configured. Please configure it to enable sync.');
@@ -244,9 +246,13 @@ async function initializeServices() {
             startPeriodicSync();
         }
 
+        console.log('About to log M&E System ready...');
         logger.info('✨ M&E System ready!');
+        console.log('M&E System ready logged!');
 
     } catch (error) {
+        console.error('❌ FATAL ERROR in initializeServices:', error);
+        console.error('Error stack:', error.stack);
         logger.error('Failed to initialize services:', error);
         throw error;
     }
