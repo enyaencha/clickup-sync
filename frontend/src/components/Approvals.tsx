@@ -20,6 +20,13 @@ interface Activity {
   priority: string;
 }
 
+interface ChecklistStatus {
+  total: number;
+  completed: number;
+  percentage: number;
+  all_completed: boolean;
+}
+
 const Approvals: React.FC = () => {
   const navigate = useNavigate();
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -27,10 +34,45 @@ const Approvals: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'submitted' | 'approved' | 'rejected'>('submitted');
   const [processingId, setProcessingId] = useState<number | null>(null);
+  const [checklistStatuses, setChecklistStatuses] = useState<Record<number, ChecklistStatus>>({});
+  const [showChecklistProgress, setShowChecklistProgress] = useState(true);
 
   useEffect(() => {
     fetchPendingActivities();
+    fetchSettings();
   }, [filter]);
+
+  const fetchSettings = async () => {
+    try {
+      const response = await fetch('/api/settings');
+      const data = await response.json();
+      if (data.success && data.data) {
+        setShowChecklistProgress(data.data.show_checklist_progress_in_approvals ?? true);
+      }
+    } catch (err) {
+      console.error('Failed to fetch settings:', err);
+    }
+  };
+
+  const fetchChecklistStatuses = async (activityIds: number[]) => {
+    const statuses: Record<number, ChecklistStatus> = {};
+
+    await Promise.all(
+      activityIds.map(async (id) => {
+        try {
+          const response = await fetch(`/api/checklists/activity/${id}/status`);
+          const data = await response.json();
+          if (data.success && data.data) {
+            statuses[id] = data.data;
+          }
+        } catch (err) {
+          console.error(`Failed to fetch checklist for activity ${id}:`, err);
+        }
+      })
+    );
+
+    setChecklistStatuses(statuses);
+  };
 
   const fetchPendingActivities = async () => {
     try {
@@ -43,7 +85,14 @@ const Approvals: React.FC = () => {
       if (!response.ok) throw new Error('Failed to fetch activities');
 
       const data = await response.json();
-      setActivities(data.data || []);
+      const activitiesData = data.data || [];
+      setActivities(activitiesData);
+
+      // Fetch checklist statuses for all activities
+      if (activitiesData.length > 0) {
+        await fetchChecklistStatuses(activitiesData.map((a: Activity) => a.id));
+      }
+
       setLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -294,6 +343,38 @@ const Approvals: React.FC = () => {
                       {activity.approval_status}
                     </span>
                   </div>
+
+                  {/* Checklist Progress */}
+                  {showChecklistProgress && checklistStatuses[activity.id] && checklistStatuses[activity.id].total > 0 && (
+                    <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">Checklist Progress</span>
+                        <span className="text-sm font-semibold text-gray-900">
+                          {checklistStatuses[activity.id].completed} / {checklistStatuses[activity.id].total}
+                          <span className="text-gray-500 ml-1">
+                            ({Math.round(checklistStatuses[activity.id].percentage)}%)
+                          </span>
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full transition-all ${
+                            checklistStatuses[activity.id].all_completed
+                              ? 'bg-green-500'
+                              : checklistStatuses[activity.id].percentage >= 50
+                              ? 'bg-blue-500'
+                              : 'bg-yellow-500'
+                          }`}
+                          style={{ width: `${checklistStatuses[activity.id].percentage}%` }}
+                        />
+                      </div>
+                      {!checklistStatuses[activity.id].all_completed && (
+                        <p className="text-xs text-amber-600 mt-2">
+                          ⚠ {checklistStatuses[activity.id].total - checklistStatuses[activity.id].completed} item(s) remaining
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   {/* Action Buttons */}
                   {activity.approval_status === 'submitted' && (
