@@ -104,6 +104,26 @@ const Activities: React.FC = () => {
   };
 
   const handleSubmitForApproval = async (activityId: number) => {
+    const activity = activities.find(a => a.id === activityId);
+    if (!activity) return;
+
+    // Validate if submission is allowed
+    try {
+      const validationRes = await fetch('/api/settings/validate/can-submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activity })
+      });
+      const validationData = await validationRes.json();
+
+      if (!validationData.data.allowed) {
+        alert(validationData.data.reason || 'Cannot submit this activity');
+        return;
+      }
+    } catch (err) {
+      console.error('Validation error:', err);
+    }
+
     if (!confirm('Submit this activity for approval?')) return;
 
     try {
@@ -130,6 +150,26 @@ const Activities: React.FC = () => {
   };
 
   const handleStatusChange = async (activityId: number, newStatus: string) => {
+    const activity = activities.find(a => a.id === activityId);
+    if (!activity) return;
+
+    // Validate if status change is allowed
+    try {
+      const validationRes = await fetch('/api/settings/validate/can-change-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activity })
+      });
+      const validationData = await validationRes.json();
+
+      if (!validationData.data.allowed) {
+        alert(validationData.data.reason || 'Cannot change status of this activity');
+        return;
+      }
+    } catch (err) {
+      console.error('Validation error:', err);
+    }
+
     try {
       setChangingStatusId(activityId);
       const response = await fetch(`/api/activities/${activityId}/status`, {

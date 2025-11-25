@@ -6,6 +6,7 @@ import SubPrograms from './components/SubPrograms';
 import ProjectComponents from './components/ProjectComponents';
 import Activities from './components/Activities';
 import Approvals from './components/Approvals';
+import Settings from './components/Settings';
 
 const App: React.FC = () => {
   return (
@@ -26,6 +27,9 @@ const App: React.FC = () => {
 
           {/* Approvals Page */}
           <Route path="/approvals" element={<Approvals />} />
+
+          {/* Settings Page */}
+          <Route path="/settings" element={<Settings />} />
         </Routes>
       </Layout>
     </Router>
