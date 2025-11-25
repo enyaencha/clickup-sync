@@ -178,16 +178,34 @@ async function initializeServices() {
         logger.info('✅ M&E Service initialized');
 
         // Register M&E Routes (must be after meService is initialized)
-        app.use('/api', require('./routes/me.routes')(meService));
-        logger.info('✅ M&E Routes registered');
+        try {
+            console.log('Registering M&E Routes...');
+            app.use('/api', require('./routes/me.routes')(meService));
+            logger.info('✅ M&E Routes registered');
+        } catch (error) {
+            console.error('❌ Failed to register M&E Routes:', error);
+            throw error;
+        }
 
         // Register Settings Routes
-        app.use('/api/settings', require('./routes/settings.routes'));
-        logger.info('✅ Settings Routes registered');
+        try {
+            console.log('Registering Settings Routes...');
+            app.use('/api/settings', require('./routes/settings.routes'));
+            logger.info('✅ Settings Routes registered');
+        } catch (error) {
+            console.error('❌ Failed to register Settings Routes:', error);
+            throw error;
+        }
 
         // Register Activity Checklist Routes
-        app.use('/api/checklists', require('./routes/activity-checklist.routes'));
-        logger.info('✅ Activity Checklist Routes registered');
+        try {
+            console.log('Registering Activity Checklist Routes...');
+            app.use('/api/checklists', require('./routes/activity-checklist.routes'));
+            logger.info('✅ Activity Checklist Routes registered');
+        } catch (error) {
+            console.error('❌ Failed to register Activity Checklist Routes:', error);
+            throw error;
+        }
 
         // Register error handlers AFTER routes (must be last)
         // 404 handler
