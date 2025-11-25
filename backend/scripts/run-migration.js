@@ -3,6 +3,9 @@
  * Applies the logframe enhancement migration
  */
 
+// Load environment variables FIRST
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+
 const fs = require('fs').promises;
 const path = require('path');
 const dbManager = require('../core/database/connection');
@@ -17,7 +20,7 @@ async function runMigration() {
         console.log('✅ Database connected\n');
 
         // Read migration file
-        const migrationPath = path.join(__dirname, '../../database/migrations/001_add_logframe_tables.sql');
+        const migrationPath = path.join(__dirname, '../../database/migrations/002_add_logframe_enhancements.sql');
         console.log('📄 Reading migration file:', migrationPath);
         const sql = await fs.readFile(migrationPath, 'utf8');
         console.log('✅ Migration file loaded\n');
