@@ -185,6 +185,10 @@ async function initializeServices() {
         app.use('/api/settings', require('./routes/settings.routes'));
         logger.info('✅ Settings Routes registered');
 
+        // Register Activity Checklist Routes
+        app.use('/api/checklists', require('./routes/activity-checklist.routes'));
+        logger.info('✅ Activity Checklist Routes registered');
+
         // Register error handlers AFTER routes (must be last)
         // 404 handler
         app.use((req, res) => {

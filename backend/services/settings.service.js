@@ -22,6 +22,12 @@ class SettingsService {
             require_submission_before_approval: true,
             auto_complete_on_approval: false,
 
+            // Checklist Workflow Settings
+            require_checklist_completion_before_submission: false,
+            require_checklist_completion_before_completion: true,
+            show_checklist_progress_in_approvals: true,
+            allow_checklist_edit_after_approval: false,
+
             // General Settings
             enable_activity_locking: true,
             enable_strict_workflow: false,
@@ -199,6 +205,60 @@ class SettingsService {
             return {
                 allowed: false,
                 reason: 'Activity is already approved.'
+            };
+        }
+
+        return { allowed: true };
+    }
+
+    /**
+     * Check if activity can be submitted based on checklist completion
+     * Requires checklistStatus object: { total, completed, all_completed }
+     */
+    async canSubmitWithChecklist(checklistStatus, settings = null) {
+        if (!settings) settings = await this.getSettings();
+
+        if (settings.require_checklist_completion_before_submission) {
+            if (checklistStatus.total > 0 && !checklistStatus.all_completed) {
+                return {
+                    allowed: false,
+                    reason: `Cannot submit activity. Complete all checklist items first (${checklistStatus.completed}/${checklistStatus.total} completed).`
+                };
+            }
+        }
+
+        return { allowed: true };
+    }
+
+    /**
+     * Check if activity can be marked as completed based on checklist completion
+     * Requires checklistStatus object: { total, completed, all_completed }
+     */
+    async canCompleteWithChecklist(checklistStatus, settings = null) {
+        if (!settings) settings = await this.getSettings();
+
+        if (settings.require_checklist_completion_before_completion) {
+            if (checklistStatus.total > 0 && !checklistStatus.all_completed) {
+                return {
+                    allowed: false,
+                    reason: `Cannot mark as completed. Complete all checklist items first (${checklistStatus.completed}/${checklistStatus.total} completed).`
+                };
+            }
+        }
+
+        return { allowed: true };
+    }
+
+    /**
+     * Check if checklist can be edited based on activity approval status
+     */
+    async canEditChecklist(activity, settings = null) {
+        if (!settings) settings = await this.getSettings();
+
+        if (!settings.allow_checklist_edit_after_approval && activity.approval_status === 'approved') {
+            return {
+                allowed: false,
+                reason: 'Cannot edit checklist after activity has been approved.'
             };
         }
 
