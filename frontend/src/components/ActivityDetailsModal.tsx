@@ -94,6 +94,30 @@ const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
     }
   };
 
+  const handleEdit = async () => {
+    if (!activity) return;
+
+    // Validate if editing is allowed
+    try {
+      const validationRes = await fetch('/api/settings/validate/can-edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activity })
+      });
+      const validationData = await validationRes.json();
+
+      if (!validationData.data.allowed) {
+        alert(validationData.data.reason || 'Cannot edit this activity');
+        return;
+      }
+
+      setIsEditing(true);
+    } catch (err) {
+      console.error('Validation error:', err);
+      setIsEditing(true); // Allow editing if validation fails
+    }
+  };
+
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this activity? This action cannot be undone.')) {
       return;
@@ -443,7 +467,7 @@ const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
                   Close
                 </button>
                 <button
-                  onClick={() => setIsEditing(true)}
+                  onClick={handleEdit}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
                   ✏️ Edit

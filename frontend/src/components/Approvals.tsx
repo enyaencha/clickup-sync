@@ -52,6 +52,26 @@ const Approvals: React.FC = () => {
   };
 
   const handleApprove = async (activityId: number) => {
+    const activity = activities.find(a => a.id === activityId);
+    if (!activity) return;
+
+    // Validate if approval is allowed
+    try {
+      const validationRes = await fetch('/api/settings/validate/can-approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activity })
+      });
+      const validationData = await validationRes.json();
+
+      if (!validationData.data.allowed) {
+        alert(validationData.data.reason || 'Cannot approve this activity');
+        return;
+      }
+    } catch (err) {
+      console.error('Validation error:', err);
+    }
+
     try {
       setProcessingId(activityId);
       const response = await fetch(`/api/activities/${activityId}/approve`, {

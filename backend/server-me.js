@@ -181,6 +181,10 @@ async function initializeServices() {
         app.use('/api', require('./routes/me.routes')(meService));
         logger.info('✅ M&E Routes registered');
 
+        // Register Settings Routes
+        app.use('/api/settings', require('./routes/settings.routes'));
+        logger.info('✅ Settings Routes registered');
+
         // Register error handlers AFTER routes (must be last)
         // 404 handler
         app.use((req, res) => {
