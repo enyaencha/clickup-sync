@@ -7,6 +7,9 @@ import ProjectComponents from './components/ProjectComponents';
 import Activities from './components/Activities';
 import Approvals from './components/Approvals';
 import Settings from './components/Settings';
+import LogframeDashboard from './components/LogframeDashboard';
+import IndicatorsManagement from './components/IndicatorsManagement';
+import AssumptionsManagement from './components/AssumptionsManagement';
 
 const App: React.FC = () => {
   return (
@@ -30,6 +33,14 @@ const App: React.FC = () => {
 
           {/* Settings Page */}
           <Route path="/settings" element={<Settings />} />
+
+          {/* Logframe Routes */}
+          <Route path="/logframe" element={<LogframeDashboard />} />
+          <Route path="/logframe/dashboard" element={<LogframeDashboard />} />
+          <Route path="/logframe/indicators" element={<IndicatorsManagement />} />
+          <Route path="/logframe/indicators/:entityType/:entityId" element={<IndicatorsManagement />} />
+          <Route path="/logframe/assumptions" element={<AssumptionsManagement />} />
+          <Route path="/logframe/assumptions/:entityType/:entityId" element={<AssumptionsManagement />} />
         </Routes>
       </Layout>
     </Router>

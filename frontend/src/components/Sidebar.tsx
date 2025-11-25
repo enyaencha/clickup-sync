@@ -60,23 +60,40 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
       ]
     },
     {
-      section: 'Performance',
+      section: 'Logframe & M&E',
       items: [
         {
-          icon: '🎯',
-          label: 'Goals & Targets',
-          path: '/goals',
-          description: 'Strategic Goals'
+          icon: '📐',
+          label: 'Logframe Dashboard',
+          path: '/logframe',
+          description: 'RBM Overview'
         },
         {
           icon: '📊',
           label: 'Indicators',
-          path: '/indicators',
-          description: 'M&E Indicators'
+          path: '/logframe/indicators',
+          description: 'SMART Indicators'
         },
         {
+          icon: '⚠️',
+          label: 'Assumptions',
+          path: '/logframe/assumptions',
+          description: 'Risk Management'
+        },
+        {
+          icon: '✅',
+          label: 'Approvals',
+          path: '/approvals',
+          description: 'Review Activities'
+        }
+      ]
+    },
+    {
+      section: 'Reports',
+      items: [
+        {
           icon: '📈',
-          label: 'Reports',
+          label: 'Analytics',
           path: '/reports',
           description: 'Analytics & Reports'
         }
