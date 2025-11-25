@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ActivityChecklist from './ActivityChecklist';
 
 interface Activity {
   id: number;
@@ -82,7 +83,12 @@ const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
         body: JSON.stringify(formData),
       });
 
-      if (!response.ok) throw new Error('Failed to update activity');
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to update activity');
+        return;
+      }
 
       setIsEditing(false);
       await fetchActivity();
@@ -418,6 +424,16 @@ const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
                     <option value="urgent">Urgent</option>
                   </select>
                 </div>
+              </div>
+
+              {/* Activity Checklist */}
+              <div className="mt-6 pt-6 border-t">
+                <ActivityChecklist
+                  activityId={activity.id}
+                  activityApprovalStatus={activity.approval_status}
+                  readOnly={!isEditing}
+                  onChecklistChange={fetchActivity}
+                />
               </div>
             </div>
           )}

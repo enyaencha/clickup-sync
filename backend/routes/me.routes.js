@@ -4,8 +4,12 @@
 
 const express = require('express');
 const router = express.Router();
+const ActivityChecklistService = require('../services/activity-checklist.service');
+const SettingsService = require('../services/settings.service');
 
 module.exports = (meService) => {
+    const checklistService = new ActivityChecklistService();
+    const settingsService = new SettingsService();
     // ==============================================
     // PROGRAM MODULES
     // ==============================================
@@ -149,6 +153,23 @@ module.exports = (meService) => {
 
     router.put('/activities/:id', async (req, res) => {
         try {
+            // Check checklist completion if status is being changed to "completed"
+            if (req.body.status === 'completed') {
+                const settings = await settingsService.getSettings();
+
+                if (settings.require_checklist_completion_before_completion) {
+                    const checklistStatus = await checklistService.getCompletionStatus(req.params.id);
+                    const validation = await settingsService.canCompleteWithChecklist(checklistStatus, settings);
+
+                    if (!validation.allowed) {
+                        return res.status(400).json({
+                            success: false,
+                            error: validation.reason
+                        });
+                    }
+                }
+            }
+
             await meService.updateActivity(req.params.id, req.body);
             res.json({ success: true, message: 'Activity updated and queued for sync to ClickUp' });
         } catch (error) {
@@ -185,6 +206,23 @@ module.exports = (meService) => {
 
     router.post('/activities/:id/status', async (req, res) => {
         try {
+            // Check checklist completion if status is being changed to "completed"
+            if (req.body.status === 'completed') {
+                const settings = await settingsService.getSettings();
+
+                if (settings.require_checklist_completion_before_completion) {
+                    const checklistStatus = await checklistService.getCompletionStatus(req.params.id);
+                    const validation = await settingsService.canCompleteWithChecklist(checklistStatus, settings);
+
+                    if (!validation.allowed) {
+                        return res.status(400).json({
+                            success: false,
+                            error: validation.reason
+                        });
+                    }
+                }
+            }
+
             await meService.updateActivityStatus(req.params.id, req.body.status);
             res.json({ success: true, message: 'Activity status updated' });
         } catch (error) {
@@ -194,6 +232,21 @@ module.exports = (meService) => {
 
     router.post('/activities/:id/submit', async (req, res) => {
         try {
+            // Check checklist completion if required by settings
+            const settings = await settingsService.getSettings();
+
+            if (settings.require_checklist_completion_before_submission) {
+                const checklistStatus = await checklistService.getCompletionStatus(req.params.id);
+                const validation = await settingsService.canSubmitWithChecklist(checklistStatus, settings);
+
+                if (!validation.allowed) {
+                    return res.status(400).json({
+                        success: false,
+                        error: validation.reason
+                    });
+                }
+            }
+
             await meService.updateApprovalStatus(req.params.id, 'submitted');
             res.json({ success: true, message: 'Activity submitted for approval' });
         } catch (error) {
