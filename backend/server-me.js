@@ -207,6 +207,33 @@ async function initializeServices() {
             throw error;
         }
 
+        // Register Logframe Routes
+        try {
+            console.log('Initializing Logframe Services...');
+            const IndicatorsService = require('./services/indicators.service');
+            const indicatorsService = new IndicatorsService(dbManager);
+            app.use('/api/indicators', require('./routes/indicators.routes')(indicatorsService));
+            logger.info('✅ Indicators routes registered');
+
+            const MeansOfVerificationService = require('./services/means-of-verification.service');
+            const movService = new MeansOfVerificationService(dbManager);
+            app.use('/api/means-of-verification', require('./routes/means-of-verification.routes')(movService));
+            logger.info('✅ Means of Verification routes registered');
+
+            const AssumptionsService = require('./services/assumptions.service');
+            const assumptionsService = new AssumptionsService(dbManager);
+            app.use('/api/assumptions', require('./routes/assumptions.routes')(assumptionsService));
+            logger.info('✅ Assumptions routes registered');
+
+            const ResultsChainService = require('./services/results-chain.service');
+            const resultsChainService = new ResultsChainService(dbManager);
+            app.use('/api/results-chain', require('./routes/results-chain.routes')(resultsChainService));
+            logger.info('✅ Results Chain routes registered');
+        } catch (error) {
+            console.error('❌ Failed to register Logframe Routes:', error);
+            throw error;
+        }
+
         // Register error handlers AFTER routes (must be last)
         // 404 handler
         app.use((req, res) => {
