@@ -90,7 +90,7 @@ const IndicatorsManagement: React.FC = () => {
 
       switch (type) {
         case 'module':
-          url = '/api/modules';
+          url = '/api/programs';
           break;
         case 'sub_program':
           url = '/api/sub-programs';
@@ -348,8 +348,8 @@ const IndicatorsManagement: React.FC = () => {
 
         {/* Indicator Form Modal */}
         {showForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full my-auto max-h-[85vh] overflow-y-auto">
               <div className="p-4 sm:p-6">
                 <h2 className="text-xl sm:text-2xl font-bold mb-4">
                   {editingIndicator ? 'Edit Indicator' : 'Add New Indicator'}
