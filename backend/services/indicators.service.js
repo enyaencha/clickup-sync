@@ -34,7 +34,41 @@ class IndicatorsService {
             logger.info('=== Creating Indicator ===');
             logger.info('Received data:', JSON.stringify(data, null, 2));
 
-            // Use static SQL query like assumptions (proven to work)
+            // Build clean data object like UPDATE does (which works!)
+            const indicatorData = {
+                program_id: data.program_id || null,
+                project_id: data.project_id || null,
+                activity_id: data.activity_id || null,
+                module_id: data.module_id || null,
+                sub_program_id: data.sub_program_id || null,
+                component_id: data.component_id || null,
+                name: data.name,
+                code: data.code,
+                description: data.description || null,
+                type: data.type,
+                category: data.category || null,
+                unit_of_measure: data.unit_of_measure || null,
+                baseline_value: data.baseline_value || null,
+                baseline_date: data.baseline_date || null,
+                target_value: data.target_value || null,
+                target_date: data.target_date || null,
+                current_value: data.current_value || 0,
+                collection_frequency: data.collection_frequency || 'monthly',
+                data_source: data.data_source || null,
+                verification_method: data.verification_method || null,
+                disaggregation: data.disaggregation ? (typeof data.disaggregation === 'object' ? JSON.stringify(data.disaggregation) : data.disaggregation) : null,
+                status: data.status || 'not-started',
+                achievement_percentage: data.achievement_percentage || 0,
+                responsible_person: data.responsible_person || null,
+                notes: data.notes || null,
+                clickup_custom_field_id: data.clickup_custom_field_id || null,
+                is_active: data.is_active !== undefined ? data.is_active : 1,
+                last_measured_date: data.last_measured_date || null,
+                next_measurement_date: data.next_measurement_date || null
+            };
+
+            console.log('Clean indicator data:', JSON.stringify(indicatorData, null, 2));
+
             const result = await this.db.query(`
                 INSERT INTO me_indicators (
                     program_id, project_id, activity_id,
@@ -48,39 +82,39 @@ class IndicatorsService {
                     is_active, last_measured_date, next_measurement_date
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
-                this.sanitizeValue(data.program_id),
-                this.sanitizeValue(data.project_id),
-                this.sanitizeValue(data.activity_id),
-                this.sanitizeValue(data.module_id),
-                this.sanitizeValue(data.sub_program_id),
-                this.sanitizeValue(data.component_id),
-                this.sanitizeValue(data.name),
-                this.sanitizeValue(data.code),
-                this.sanitizeValue(data.description),
-                this.sanitizeValue(data.type),
-                this.sanitizeValue(data.category),
-                this.sanitizeValue(data.unit_of_measure),
-                this.sanitizeValue(data.baseline_value),
-                this.sanitizeValue(data.baseline_date),
-                this.sanitizeValue(data.target_value),
-                this.sanitizeValue(data.target_date),
-                this.sanitizeValue(data.current_value, 0),
-                this.sanitizeValue(data.collection_frequency, 'monthly'),
-                this.sanitizeValue(data.data_source),
-                this.sanitizeValue(data.verification_method),
-                this.sanitizeValue(data.disaggregation),
-                this.sanitizeValue(data.status, 'not-started'),
-                this.sanitizeValue(data.achievement_percentage, 0),
-                this.sanitizeValue(data.responsible_person),
-                this.sanitizeValue(data.notes),
-                this.sanitizeValue(data.clickup_custom_field_id),
-                this.sanitizeValue(data.is_active, 1),
-                this.sanitizeValue(data.last_measured_date),
-                this.sanitizeValue(data.next_measurement_date)
+                indicatorData.program_id,
+                indicatorData.project_id,
+                indicatorData.activity_id,
+                indicatorData.module_id,
+                indicatorData.sub_program_id,
+                indicatorData.component_id,
+                indicatorData.name,
+                indicatorData.code,
+                indicatorData.description,
+                indicatorData.type,
+                indicatorData.category,
+                indicatorData.unit_of_measure,
+                indicatorData.baseline_value,
+                indicatorData.baseline_date,
+                indicatorData.target_value,
+                indicatorData.target_date,
+                indicatorData.current_value,
+                indicatorData.collection_frequency,
+                indicatorData.data_source,
+                indicatorData.verification_method,
+                indicatorData.disaggregation,
+                indicatorData.status,
+                indicatorData.achievement_percentage,
+                indicatorData.responsible_person,
+                indicatorData.notes,
+                indicatorData.clickup_custom_field_id,
+                indicatorData.is_active,
+                indicatorData.last_measured_date,
+                indicatorData.next_measurement_date
             ]);
 
             const indicatorId = result.insertId;
-            logger.info(`✅ Created indicator ${indicatorId}: ${data.name}`);
+            logger.info(`✅ Created indicator ${indicatorId}: ${indicatorData.name}`);
             console.log(`✅ SUCCESS! Created indicator ${indicatorId}`);
 
             // Calculate initial achievement percentage
