@@ -12,7 +12,8 @@ class IndicatorsService {
 
     // Helper function to convert undefined to null
     sanitizeValue(value, defaultValue = null) {
-        if (value === undefined || value === '' || value === 'undefined') {
+        // Explicitly handle undefined, null, empty strings, and string 'undefined'
+        if (value === undefined || value === null || value === '' || value === 'undefined') {
             return defaultValue;
         }
         return value;
@@ -304,7 +305,7 @@ class IndicatorsService {
                     last_measured_date = ?,
                     updated_at = NOW()
                 WHERE id = ?
-            `, [value, measurementDate || new Date(), id]);
+            `, [this.sanitizeValue(value), this.sanitizeValue(measurementDate, new Date()), id]);
 
             await this.calculateAchievement(id);
 
@@ -455,15 +456,15 @@ class IndicatorsService {
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
                 indicatorId,
-                data.reporting_period_start,
-                data.reporting_period_end,
-                data.value,
+                this.sanitizeValue(data.reporting_period_start),
+                this.sanitizeValue(data.reporting_period_end),
+                this.sanitizeValue(data.value),
                 data.disaggregation ? JSON.stringify(data.disaggregation) : null,
-                data.data_collector || null,
-                data.collection_date || new Date(),
-                data.measurement_method || null,
-                data.verification_status || 'pending',
-                data.notes || null,
+                this.sanitizeValue(data.data_collector),
+                this.sanitizeValue(data.collection_date, new Date()),
+                this.sanitizeValue(data.measurement_method),
+                this.sanitizeValue(data.verification_status, 'pending'),
+                this.sanitizeValue(data.notes),
                 data.attachments ? JSON.stringify(data.attachments) : null
             ]);
 
