@@ -12,8 +12,9 @@ class IndicatorsService {
 
     // Helper function to convert undefined to null
     sanitizeValue(value, defaultValue = null) {
-        // Explicitly handle undefined, null, empty strings, and string 'undefined'
-        if (value === undefined || value === null || value === '' || value === 'undefined') {
+        // Only handle undefined, empty strings, and string 'undefined'
+        // Do NOT convert null - it's a valid SQL value
+        if (value === undefined || value === '' || value === 'undefined') {
             return defaultValue;
         }
         return value;
