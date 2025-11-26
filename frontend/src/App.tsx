@@ -10,6 +10,8 @@ import Settings from './components/Settings';
 import LogframeDashboard from './components/LogframeDashboard';
 import IndicatorsManagement from './components/IndicatorsManagement';
 import AssumptionsManagement from './components/AssumptionsManagement';
+import MeansOfVerificationManagement from './components/MeansOfVerificationManagement';
+import ResultsChainVisualization from './components/ResultsChainVisualization';
 
 const App: React.FC = () => {
   return (
@@ -41,6 +43,10 @@ const App: React.FC = () => {
           <Route path="/logframe/indicators/:entityType/:entityId" element={<IndicatorsManagement />} />
           <Route path="/logframe/assumptions" element={<AssumptionsManagement />} />
           <Route path="/logframe/assumptions/:entityType/:entityId" element={<AssumptionsManagement />} />
+          <Route path="/logframe/verification" element={<MeansOfVerificationManagement />} />
+          <Route path="/logframe/verification/:entityType/:entityId" element={<MeansOfVerificationManagement />} />
+          <Route path="/logframe/results-chain" element={<ResultsChainVisualization />} />
+          <Route path="/logframe/results-chain/:entityType/:entityId" element={<ResultsChainVisualization />} />
         </Routes>
       </Layout>
     </Router>
