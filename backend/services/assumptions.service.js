@@ -10,6 +10,14 @@ class AssumptionsService {
         this.db = db;
     }
 
+    // Helper function to convert undefined to null
+    sanitizeValue(value, defaultValue = null) {
+        if (value === undefined || value === '' || value === 'undefined') {
+            return defaultValue;
+        }
+        return value;
+    }
+
     // ==============================================
     // CREATE
     // ==============================================
@@ -17,7 +25,10 @@ class AssumptionsService {
     async createAssumption(data) {
         try {
             // Calculate risk level from likelihood and impact
-            const riskLevel = this.calculateRiskLevel(data.likelihood, data.impact);
+            const riskLevel = this.calculateRiskLevel(
+                this.sanitizeValue(data.likelihood, 'medium'),
+                this.sanitizeValue(data.impact, 'medium')
+            );
 
             const result = await this.db.query(`
                 INSERT INTO assumptions (
@@ -31,20 +42,20 @@ class AssumptionsService {
                 data.entity_type,
                 data.entity_id,
                 data.assumption_text,
-                data.assumption_category,
-                data.likelihood || 'medium',
-                data.impact || 'medium',
+                this.sanitizeValue(data.assumption_category),
+                this.sanitizeValue(data.likelihood, 'medium'),
+                this.sanitizeValue(data.impact, 'medium'),
                 riskLevel,
-                data.status || 'needs-review',
-                data.validation_date || null,
-                data.validation_notes || null,
-                data.mitigation_strategy || null,
-                data.mitigation_status || 'not-started',
-                data.last_reviewed_date || null,
-                data.next_review_date || null,
-                data.responsible_person || null,
-                data.notes || null,
-                data.created_by || null
+                this.sanitizeValue(data.status, 'needs-review'),
+                this.sanitizeValue(data.validation_date),
+                this.sanitizeValue(data.validation_notes),
+                this.sanitizeValue(data.mitigation_strategy),
+                this.sanitizeValue(data.mitigation_status, 'not-started'),
+                this.sanitizeValue(data.last_reviewed_date),
+                this.sanitizeValue(data.next_review_date),
+                this.sanitizeValue(data.responsible_person),
+                this.sanitizeValue(data.notes),
+                this.sanitizeValue(data.created_by)
             ]);
 
             const assumptionId = result.insertId;

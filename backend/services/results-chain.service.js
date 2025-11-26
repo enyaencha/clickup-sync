@@ -10,6 +10,14 @@ class ResultsChainService {
         this.db = db;
     }
 
+    // Helper function to convert undefined to null
+    sanitizeValue(value, defaultValue = null) {
+        if (value === undefined || value === '' || value === 'undefined') {
+            return defaultValue;
+        }
+        return value;
+    }
+
     // ==============================================
     // CREATE
     // ==============================================
@@ -31,10 +39,10 @@ class ResultsChainService {
                 data.from_entity_id,
                 data.to_entity_type,
                 data.to_entity_id,
-                data.contribution_description || null,
-                data.contribution_weight || 100,
-                data.notes || null,
-                data.created_by || null
+                this.sanitizeValue(data.contribution_description),
+                this.sanitizeValue(data.contribution_weight, 100),
+                this.sanitizeValue(data.notes),
+                this.sanitizeValue(data.created_by)
             ]);
 
             const linkId = result.insertId;
