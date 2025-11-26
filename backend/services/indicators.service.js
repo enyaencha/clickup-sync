@@ -27,7 +27,7 @@ class IndicatorsService {
             logger.info('=== Creating Indicator ===');
             logger.info('Received data:', JSON.stringify(data, null, 2));
 
-            // Define all possible fields with their default values
+            // Define all possible fields matching the exact table schema
             const fieldDefaults = {
                 program_id: null,
                 project_id: null,
@@ -55,7 +55,9 @@ class IndicatorsService {
                 responsible_person: null,
                 notes: null,
                 clickup_custom_field_id: null,
-                is_active: 1
+                is_active: 1,
+                last_measured_date: null,
+                next_measurement_date: null
             };
 
             // Build clean data object - only include fields that exist in the table
