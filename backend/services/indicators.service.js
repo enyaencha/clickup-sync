@@ -69,6 +69,13 @@ class IndicatorsService {
                 'clickup_custom_field_id', 'is_active'
             ];
 
+            // Log ALL parameters with their values for debugging
+            logger.info('=== PARAMETER VALUES ===');
+            params.forEach((param, index) => {
+                const type = param === null ? 'null' : typeof param;
+                logger.info(`[${index}] ${fieldNames[index]}: ${JSON.stringify(param)} (${type})`);
+            });
+
             let hasUndefined = false;
             params.forEach((param, index) => {
                 if (param === undefined) {
