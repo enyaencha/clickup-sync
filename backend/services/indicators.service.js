@@ -32,88 +32,54 @@ class IndicatorsService {
             logger.info('=== Creating Indicator ===');
             logger.info('Received data:', JSON.stringify(data, null, 2));
 
-            // Define all possible fields matching the exact table schema
-            const fieldDefaults = {
-                program_id: null,
-                project_id: null,
-                activity_id: null,
-                module_id: null,
-                sub_program_id: null,
-                component_id: null,
-                name: null,
-                code: null,
-                description: null,
-                type: null,
-                category: null,
-                unit_of_measure: null,
-                baseline_value: null,
-                baseline_date: null,
-                target_value: null,
-                target_date: null,
-                current_value: 0,
-                collection_frequency: 'monthly',
-                data_source: null,
-                verification_method: null,
-                disaggregation: null,
-                status: 'not-started',
-                achievement_percentage: 0,
-                responsible_person: null,
-                notes: null,
-                clickup_custom_field_id: null,
-                is_active: 1,
-                last_measured_date: null,
-                next_measurement_date: null
-            };
-
-            // Build clean data object - only include fields that exist in the table
-            const cleanData = {};
-            Object.keys(fieldDefaults).forEach(field => {
-                // Use provided value or default
-                let value = data.hasOwnProperty(field) ? data[field] : fieldDefaults[field];
-
-                // Convert undefined and empty strings to null/default
-                if (value === undefined || value === '' || value === 'undefined') {
-                    value = fieldDefaults[field];
-                }
-
-                // Special handling for disaggregation (JSON field)
-                if (field === 'disaggregation' && value && typeof value === 'object') {
-                    value = JSON.stringify(value);
-                }
-
-                cleanData[field] = value;
-            });
-
-            // Build dynamic INSERT query
-            const fields = Object.keys(cleanData);
-            const placeholders = fields.map(() => '?').join(', ');
-            const values = fields.map(field => cleanData[field]);
-
-            logger.info('Clean data:', JSON.stringify(cleanData, null, 2));
-            logger.info('Values array:', JSON.stringify(values, null, 2));
-
-            console.log('\n--- BEFORE QUERY ---');
-            console.log('Fields:', fields);
-            console.log('Values:', values);
-            console.log('Values with types:');
-            values.forEach((v, i) => {
-                console.log(`  [${i}] ${fields[i]}: ${JSON.stringify(v)} (${v === null ? 'null' : v === undefined ? 'UNDEFINED' : typeof v})`);
-            });
-
-            const sql = `
+            // Use static SQL query like assumptions (proven to work)
+            const result = await this.db.query(`
                 INSERT INTO me_indicators (
-                    ${fields.join(', ')},
-                    created_at
-                ) VALUES (${placeholders}, NOW())
-            `;
-
-            console.log('\nSQL:', sql);
-            console.log('\n--- EXECUTING QUERY ---\n');
-
-            const result = await this.db.query(sql, values);
+                    program_id, project_id, activity_id,
+                    module_id, sub_program_id, component_id,
+                    name, code, description, type, category,
+                    unit_of_measure, baseline_value, baseline_date,
+                    target_value, target_date, current_value,
+                    collection_frequency, data_source, verification_method,
+                    disaggregation, status, achievement_percentage,
+                    responsible_person, notes, clickup_custom_field_id,
+                    is_active, last_measured_date, next_measurement_date
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `, [
+                this.sanitizeValue(data.program_id),
+                this.sanitizeValue(data.project_id),
+                this.sanitizeValue(data.activity_id),
+                this.sanitizeValue(data.module_id),
+                this.sanitizeValue(data.sub_program_id),
+                this.sanitizeValue(data.component_id),
+                this.sanitizeValue(data.name),
+                this.sanitizeValue(data.code),
+                this.sanitizeValue(data.description),
+                this.sanitizeValue(data.type),
+                this.sanitizeValue(data.category),
+                this.sanitizeValue(data.unit_of_measure),
+                this.sanitizeValue(data.baseline_value),
+                this.sanitizeValue(data.baseline_date),
+                this.sanitizeValue(data.target_value),
+                this.sanitizeValue(data.target_date),
+                this.sanitizeValue(data.current_value, 0),
+                this.sanitizeValue(data.collection_frequency, 'monthly'),
+                this.sanitizeValue(data.data_source),
+                this.sanitizeValue(data.verification_method),
+                this.sanitizeValue(data.disaggregation),
+                this.sanitizeValue(data.status, 'not-started'),
+                this.sanitizeValue(data.achievement_percentage, 0),
+                this.sanitizeValue(data.responsible_person),
+                this.sanitizeValue(data.notes),
+                this.sanitizeValue(data.clickup_custom_field_id),
+                this.sanitizeValue(data.is_active, 1),
+                this.sanitizeValue(data.last_measured_date),
+                this.sanitizeValue(data.next_measurement_date)
+            ]);
 
             const indicatorId = result.insertId;
-            logger.info(`✅ Created indicator ${indicatorId}: ${cleanData.name}`);
+            logger.info(`✅ Created indicator ${indicatorId}: ${data.name}`);
+            console.log(`✅ SUCCESS! Created indicator ${indicatorId}`);
 
             // Calculate initial achievement percentage
             await this.calculateAchievement(indicatorId);
