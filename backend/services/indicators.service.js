@@ -24,87 +24,78 @@ class IndicatorsService {
 
     async createIndicator(data) {
         try {
-            // Log incoming data for debugging
             logger.info('=== Creating Indicator ===');
             logger.info('Received data:', JSON.stringify(data, null, 2));
 
-            // Build parameters array with all values sanitized
-            const params = [
-                this.sanitizeValue(data.program_id),
-                this.sanitizeValue(data.project_id),
-                this.sanitizeValue(data.activity_id),
-                this.sanitizeValue(data.module_id),
-                this.sanitizeValue(data.sub_program_id),
-                this.sanitizeValue(data.component_id),
-                this.sanitizeValue(data.name),
-                this.sanitizeValue(data.code),
-                this.sanitizeValue(data.description),
-                this.sanitizeValue(data.type),
-                this.sanitizeValue(data.category),
-                this.sanitizeValue(data.unit_of_measure),
-                this.sanitizeValue(data.baseline_value),
-                this.sanitizeValue(data.baseline_date),
-                this.sanitizeValue(data.target_value),
-                this.sanitizeValue(data.target_date),
-                this.sanitizeValue(data.current_value, 0),
-                this.sanitizeValue(data.collection_frequency, 'monthly'),
-                this.sanitizeValue(data.data_source),
-                this.sanitizeValue(data.verification_method),
-                this.sanitizeValue(data.disaggregation ? JSON.stringify(data.disaggregation) : null),
-                this.sanitizeValue(data.status, 'not-started'),
-                this.sanitizeValue(data.achievement_percentage, 0),
-                this.sanitizeValue(data.responsible_person),
-                this.sanitizeValue(data.notes),
-                this.sanitizeValue(data.clickup_custom_field_id),
-                this.sanitizeValue(data.is_active, 1)
-            ];
+            // Define all possible fields with their default values
+            const fieldDefaults = {
+                program_id: null,
+                project_id: null,
+                activity_id: null,
+                module_id: null,
+                sub_program_id: null,
+                component_id: null,
+                name: null,
+                code: null,
+                description: null,
+                type: null,
+                category: null,
+                unit_of_measure: null,
+                baseline_value: null,
+                baseline_date: null,
+                target_value: null,
+                target_date: null,
+                current_value: 0,
+                collection_frequency: 'monthly',
+                data_source: null,
+                verification_method: null,
+                disaggregation: null,
+                status: 'not-started',
+                achievement_percentage: 0,
+                responsible_person: null,
+                notes: null,
+                clickup_custom_field_id: null,
+                is_active: 1
+            };
 
-            // Check for undefined values
-            const fieldNames = [
-                'program_id', 'project_id', 'activity_id', 'module_id', 'sub_program_id', 'component_id',
-                'name', 'code', 'description', 'type', 'category', 'unit_of_measure',
-                'baseline_value', 'baseline_date', 'target_value', 'target_date', 'current_value',
-                'collection_frequency', 'data_source', 'verification_method', 'disaggregation',
-                'status', 'achievement_percentage', 'responsible_person', 'notes',
-                'clickup_custom_field_id', 'is_active'
-            ];
+            // Build clean data object - only include fields that exist in the table
+            const cleanData = {};
+            Object.keys(fieldDefaults).forEach(field => {
+                // Use provided value or default
+                let value = data.hasOwnProperty(field) ? data[field] : fieldDefaults[field];
 
-            // Log ALL parameters with their values for debugging
-            logger.info('=== PARAMETER VALUES ===');
-            params.forEach((param, index) => {
-                const type = param === null ? 'null' : typeof param;
-                logger.info(`[${index}] ${fieldNames[index]}: ${JSON.stringify(param)} (${type})`);
-            });
-
-            let hasUndefined = false;
-            params.forEach((param, index) => {
-                if (param === undefined) {
-                    hasUndefined = true;
-                    logger.error(`❌ Parameter at index ${index} (${fieldNames[index]}) is UNDEFINED`);
-                    logger.error(`   Original value: ${JSON.stringify(data[fieldNames[index]])}`);
+                // Convert undefined and empty strings to null/default
+                if (value === undefined || value === '' || value === 'undefined') {
+                    value = fieldDefaults[field];
                 }
+
+                // Special handling for disaggregation (JSON field)
+                if (field === 'disaggregation' && value && typeof value === 'object') {
+                    value = JSON.stringify(value);
+                }
+
+                cleanData[field] = value;
             });
 
-            if (hasUndefined) {
-                throw new Error('Bind parameters must not contain undefined. To pass SQL NULL specify JS null');
-            }
+            // Build dynamic INSERT query
+            const fields = Object.keys(cleanData);
+            const placeholders = fields.map(() => '?').join(', ');
+            const values = fields.map(field => cleanData[field]);
 
-            const result = await this.db.query(`
+            logger.info('Clean data:', JSON.stringify(cleanData, null, 2));
+            logger.info('Values array:', JSON.stringify(values, null, 2));
+
+            const sql = `
                 INSERT INTO me_indicators (
-                    program_id, project_id, activity_id,
-                    module_id, sub_program_id, component_id,
-                    name, code, description, type, category,
-                    unit_of_measure, baseline_value, baseline_date,
-                    target_value, target_date, current_value,
-                    collection_frequency, data_source, verification_method,
-                    disaggregation, status, achievement_percentage,
-                    responsible_person, notes, clickup_custom_field_id,
-                    is_active, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-            `, params);
+                    ${fields.join(', ')},
+                    created_at
+                ) VALUES (${placeholders}, NOW())
+            `;
+
+            const result = await this.db.query(sql, values);
 
             const indicatorId = result.insertId;
-            logger.info(`✅ Created indicator ${indicatorId}: ${data.name}`);
+            logger.info(`✅ Created indicator ${indicatorId}: ${cleanData.name}`);
 
             // Calculate initial achievement percentage
             await this.calculateAchievement(indicatorId);
