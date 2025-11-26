@@ -52,6 +52,10 @@ const IndicatorsManagement: React.FC = () => {
   const [filterType, setFilterType] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
+  // State for entity selection
+  const [availableEntities, setAvailableEntities] = useState<Array<{id: number, name: string}>>([]);
+  const [loadingEntities, setLoadingEntities] = useState(false);
+
   const [formData, setFormData] = useState<IndicatorFormData>({
     name: '',
     code: '',
@@ -71,6 +75,48 @@ const IndicatorsManagement: React.FC = () => {
   useEffect(() => {
     fetchIndicators();
   }, [entityType, entityId, filterType, filterStatus]);
+
+  // Fetch available entities when entity_type changes
+  useEffect(() => {
+    if (showForm && !entityType) {
+      fetchAvailableEntities(formData.entity_type);
+    }
+  }, [formData.entity_type, showForm]);
+
+  const fetchAvailableEntities = async (type: string) => {
+    try {
+      setLoadingEntities(true);
+      let url = '';
+
+      switch (type) {
+        case 'module':
+          url = '/api/modules';
+          break;
+        case 'sub_program':
+          url = '/api/sub-programs';
+          break;
+        case 'component':
+          url = '/api/components';
+          break;
+        case 'activity':
+          url = '/api/activities';
+          break;
+        default:
+          return;
+      }
+
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch entities');
+
+      const data = await response.json();
+      setAvailableEntities(data.data || data || []);
+    } catch (err) {
+      console.error('Error fetching entities:', err);
+      setAvailableEntities([]);
+    } finally {
+      setLoadingEntities(false);
+    }
+  };
 
   const fetchIndicators = async () => {
     try {
@@ -306,6 +352,56 @@ const IndicatorsManagement: React.FC = () => {
                 </h2>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Entity Selection - only show when not coming from specific entity page */}
+                  {!entityType && (
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg mb-4">
+                      <h3 className="text-sm font-medium text-blue-900 mb-3">Link Indicator To:</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Entity Type *
+                          </label>
+                          <select
+                            value={formData.entity_type}
+                            onChange={(e) => setFormData({ ...formData, entity_type: e.target.value as any, entity_id: 0 })}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                            required
+                          >
+                            <option value="module">Module (Program Goal)</option>
+                            <option value="sub_program">Sub-Program (Outcome)</option>
+                            <option value="component">Component (Output)</option>
+                            <option value="activity">Activity</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Select {formData.entity_type.replace('_', ' ')} *
+                          </label>
+                          <select
+                            value={formData.entity_id}
+                            onChange={(e) => setFormData({ ...formData, entity_id: parseInt(e.target.value) })}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                            required
+                            disabled={loadingEntities || availableEntities.length === 0}
+                          >
+                            <option value="0">
+                              {loadingEntities ? 'Loading...' : availableEntities.length === 0 ? 'No items available' : 'Select an option'}
+                            </option>
+                            {availableEntities.map((entity) => (
+                              <option key={entity.id} value={entity.id}>
+                                {entity.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-600 mt-2">
+                        💡 The indicator will be linked to the selected entity for tracking and reporting.
+                      </p>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
