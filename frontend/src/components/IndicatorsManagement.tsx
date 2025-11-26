@@ -172,6 +172,10 @@ const IndicatorsManagement: React.FC = () => {
         baseline_date: indicatorData.baseline_date || null,
         target_date: indicatorData.target_date || null,
         responsible_person: indicatorData.responsible_person || null,
+        // Additional fields expected by backend
+        current_value: 0,
+        status: 'not-started',
+        achievement_percentage: 0,
         data_source: null,
         verification_method: null,
         disaggregation: null,
