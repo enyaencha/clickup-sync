@@ -153,29 +153,30 @@ const IndicatorsManagement: React.FC = () => {
     }
 
     try {
-      const payload = {
-        ...formData,
-        // Set entity IDs based on active tab
-        program_id: null,
-        project_id: null,
-        module_id: activeTab === 'module' ? selectedEntity : null,
-        sub_program_id: activeTab === 'sub_program' ? selectedEntity : null,
-        component_id: activeTab === 'component' ? selectedEntity : null,
-        activity_id: activeTab === 'activity' ? selectedEntity : null,
-        // Additional required fields
-        category: null,
-        current_value: 0,
-        status: 'not-started',
-        achievement_percentage: 0,
-        data_source: null,
-        verification_method: null,
-        disaggregation: null,
-        notes: null,
-        clickup_custom_field_id: null,
-        is_active: 1
+      // Build minimal payload - only send fields with values
+      const payload: any = {
+        name: formData.name,
+        code: formData.code,
+        type: formData.type
       };
 
-      console.log('Submitting payload:', payload);
+      // Add optional fields only if they have values
+      if (formData.description) payload.description = formData.description;
+      if (formData.unit_of_measure) payload.unit_of_measure = formData.unit_of_measure;
+      if (formData.baseline_value) payload.baseline_value = formData.baseline_value;
+      if (formData.baseline_date) payload.baseline_date = formData.baseline_date;
+      if (formData.target_value) payload.target_value = formData.target_value;
+      if (formData.target_date) payload.target_date = formData.target_date;
+      if (formData.collection_frequency) payload.collection_frequency = formData.collection_frequency;
+      if (formData.responsible_person) payload.responsible_person = formData.responsible_person;
+
+      // Set the entity ID based on active tab
+      if (activeTab === 'module') payload.module_id = selectedEntity;
+      if (activeTab === 'sub_program') payload.sub_program_id = selectedEntity;
+      if (activeTab === 'component') payload.component_id = selectedEntity;
+      if (activeTab === 'activity') payload.activity_id = selectedEntity;
+
+      console.log('Submitting minimal payload:', payload);
 
       const url = editingIndicator
         ? `/api/indicators/${editingIndicator.id}`
