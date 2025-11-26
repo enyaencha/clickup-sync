@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 
 interface Indicator {
   id: number;
@@ -25,65 +25,61 @@ interface Indicator {
   activity_id?: number;
 }
 
-interface IndicatorFormData {
+interface Entity {
+  id: number;
   name: string;
-  code: string;
-  description: string;
-  type: 'impact' | 'outcome' | 'output' | 'process';
-  unit_of_measure: string;
-  baseline_value: number;
-  baseline_date: string;
-  target_value: number;
-  target_date: string;
-  collection_frequency: string;
-  responsible_person: string;
-  entity_type: 'module' | 'sub_program' | 'component' | 'activity';
-  entity_id: number;
 }
 
-const IndicatorsManagement: React.FC = () => {
-  const { entityType, entityId } = useParams<{ entityType: string; entityId: string }>();
-  const navigate = useNavigate();
+type EntityType = 'module' | 'sub_program' | 'component' | 'activity';
 
+const IndicatorsManagement: React.FC = () => {
+  const { entityType: urlEntityType, entityId: urlEntityId } = useParams<{ entityType: string; entityId: string }>();
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<EntityType>(urlEntityType as EntityType || 'module');
+  const [selectedEntity, setSelectedEntity] = useState<number>(parseInt(urlEntityId || '0'));
+
+  // Data state
+  const [entities, setEntities] = useState<Entity[]>([]);
   const [indicators, setIndicators] = useState<Indicator[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [loadingEntities, setLoadingEntities] = useState(false);
+
+  // Form state
   const [showForm, setShowForm] = useState(false);
   const [editingIndicator, setEditingIndicator] = useState<Indicator | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
-  // State for entity selection
-  const [availableEntities, setAvailableEntities] = useState<Array<{id: number, name: string}>>([]);
-  const [loadingEntities, setLoadingEntities] = useState(false);
-
-  const [formData, setFormData] = useState<IndicatorFormData>({
+  const [formData, setFormData] = useState({
     name: '',
     code: '',
     description: '',
-    type: 'output',
+    type: 'output' as 'impact' | 'outcome' | 'output' | 'process',
     unit_of_measure: '',
     baseline_value: 0,
     baseline_date: '',
     target_value: 0,
     target_date: '',
     collection_frequency: 'monthly',
-    responsible_person: '',
-    entity_type: (entityType as any) || 'module',
-    entity_id: parseInt(entityId || '0')
+    responsible_person: ''
   });
 
+  // Fetch entities when tab changes
   useEffect(() => {
-    fetchIndicators();
-  }, [entityType, entityId, filterType, filterStatus]);
+    fetchEntities(activeTab);
+  }, [activeTab]);
 
-  // Fetch available entities when entity_type changes
+  // Fetch indicators when entity is selected
   useEffect(() => {
-    if (showForm && !entityType) {
-      fetchAvailableEntities(formData.entity_type);
+    if (selectedEntity > 0) {
+      fetchIndicators();
+    } else {
+      setIndicators([]);
     }
-  }, [formData.entity_type, showForm]);
+  }, [selectedEntity, activeTab, filterType, filterStatus]);
 
-  const fetchAvailableEntities = async (type: string) => {
+  const fetchEntities = async (type: EntityType) => {
     try {
       setLoadingEntities(true);
       let url = '';
@@ -101,31 +97,32 @@ const IndicatorsManagement: React.FC = () => {
         case 'activity':
           url = '/api/activities';
           break;
-        default:
-          return;
       }
 
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch entities');
 
       const data = await response.json();
-      setAvailableEntities(data.data || data || []);
+      setEntities(data.data || data || []);
+
+      // Auto-select first entity if none selected
+      if (data.data && data.data.length > 0 && selectedEntity === 0) {
+        setSelectedEntity(data.data[0].id);
+      }
     } catch (err) {
       console.error('Error fetching entities:', err);
-      setAvailableEntities([]);
+      setEntities([]);
     } finally {
       setLoadingEntities(false);
     }
   };
 
   const fetchIndicators = async () => {
+    if (selectedEntity === 0) return;
+
     try {
       setLoading(true);
-      let url = '/api/indicators';
-
-      if (entityType && entityId) {
-        url = `/api/indicators/entity/${entityType}/${entityId}`;
-      }
+      let url = `/api/indicators/entity/${activeTab}/${selectedEntity}`;
 
       const params = new URLSearchParams();
       if (filterType !== 'all') params.append('type', filterType);
@@ -150,29 +147,23 @@ const IndicatorsManagement: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    try {
-      // Build clean payload with proper null values for undefined fields
-      const { entity_type, entity_id, ...indicatorData } = formData;
+    if (selectedEntity === 0) {
+      alert('Please select an entity first');
+      return;
+    }
 
+    try {
       const payload = {
-        ...indicatorData,
-        // Set all entity IDs to null first
-        program_id: null,  // Old hierarchy field
-        project_id: null,  // Old hierarchy field
-        module_id: null,
-        sub_program_id: null,
-        component_id: null,
-        activity_id: null,
-        // Then set the specific one based on entity_type
-        [`${entity_type}_id`]: entity_id && entity_id !== 0 ? entity_id : null,
-        // Ensure empty strings become null for optional fields
-        description: indicatorData.description || null,
+        ...formData,
+        // Set entity IDs based on active tab
+        program_id: null,
+        project_id: null,
+        module_id: activeTab === 'module' ? selectedEntity : null,
+        sub_program_id: activeTab === 'sub_program' ? selectedEntity : null,
+        component_id: activeTab === 'component' ? selectedEntity : null,
+        activity_id: activeTab === 'activity' ? selectedEntity : null,
+        // Additional required fields
         category: null,
-        unit_of_measure: indicatorData.unit_of_measure || null,
-        baseline_date: indicatorData.baseline_date || null,
-        target_date: indicatorData.target_date || null,
-        responsible_person: indicatorData.responsible_person || null,
-        // Additional fields expected by backend
         current_value: 0,
         status: 'not-started',
         achievement_percentage: 0,
@@ -183,6 +174,8 @@ const IndicatorsManagement: React.FC = () => {
         clickup_custom_field_id: null,
         is_active: 1
       };
+
+      console.log('Submitting payload:', payload);
 
       const url = editingIndicator
         ? `/api/indicators/${editingIndicator.id}`
@@ -204,6 +197,7 @@ const IndicatorsManagement: React.FC = () => {
 
       await fetchIndicators();
       resetForm();
+      alert('Indicator saved successfully!');
     } catch (err) {
       console.error('Error saving indicator:', err);
       alert('Failed to save indicator: ' + (err as Error).message);
@@ -221,6 +215,7 @@ const IndicatorsManagement: React.FC = () => {
       if (!response.ok) throw new Error('Failed to delete indicator');
 
       await fetchIndicators();
+      alert('Indicator deleted successfully!');
     } catch (err) {
       console.error('Error deleting indicator:', err);
       alert('Failed to delete indicator');
@@ -240,12 +235,7 @@ const IndicatorsManagement: React.FC = () => {
       target_value: indicator.target_value,
       target_date: indicator.target_date || '',
       collection_frequency: indicator.collection_frequency || 'monthly',
-      responsible_person: indicator.responsible_person || '',
-      entity_type: indicator.module_id ? 'module' :
-                   indicator.sub_program_id ? 'sub_program' :
-                   indicator.component_id ? 'component' : 'activity',
-      entity_id: indicator.module_id || indicator.sub_program_id ||
-                 indicator.component_id || indicator.activity_id || 0
+      responsible_person: indicator.responsible_person || ''
     });
     setShowForm(true);
   };
@@ -264,9 +254,7 @@ const IndicatorsManagement: React.FC = () => {
       target_value: 0,
       target_date: '',
       collection_frequency: 'monthly',
-      responsible_person: '',
-      entity_type: (entityType as any) || 'module',
-      entity_id: parseInt(entityId || '0')
+      responsible_person: ''
     });
   };
 
@@ -289,62 +277,126 @@ const IndicatorsManagement: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading indicators...</p>
-        </div>
-      </div>
-    );
-  }
+  const getTabLabel = (type: EntityType) => {
+    switch (type) {
+      case 'module': return 'Modules';
+      case 'sub_program': return 'Sub-Programs';
+      case 'component': return 'Components';
+      case 'activity': return 'Activities';
+    }
+  };
+
+  const selectedEntityName = entities.find(e => e.id === selectedEntity)?.name || 'Select an entity';
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Indicators Management</h1>
-              <p className="text-sm sm:text-base text-gray-600 mt-1">Track SMART indicators for your logframe</p>
-            </div>
-            <button
-              onClick={() => setShowForm(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 w-full sm:w-auto justify-center"
-            >
-              <span>+</span> Add Indicator
-            </button>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Indicators Management</h1>
+          <p className="text-sm sm:text-base text-gray-600">Track SMART indicators by entity</p>
+        </div>
+
+        {/* Tabs for Entity Types */}
+        <div className="bg-white shadow rounded-lg mb-4 sm:mb-6">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex overflow-x-auto">
+              {(['module', 'sub_program', 'component', 'activity'] as EntityType[]).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => {
+                    setActiveTab(tab);
+                    setSelectedEntity(0);
+                  }}
+                  className={`
+                    whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm
+                    ${activeTab === tab
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }
+                  `}
+                >
+                  {getTabLabel(tab)}
+                </button>
+              ))}
+            </nav>
           </div>
 
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="border border-gray-300 rounded-lg px-4 py-2 w-full sm:w-auto"
-            >
-              <option value="all">All Types</option>
-              <option value="impact">Impact</option>
-              <option value="outcome">Outcome</option>
-              <option value="output">Output</option>
-              <option value="process">Process</option>
-            </select>
+          {/* Entity Selector */}
+          <div className="p-4">
+            {loadingEntities ? (
+              <p className="text-gray-500">Loading {getTabLabel(activeTab).toLowerCase()}...</p>
+            ) : entities.length === 0 ? (
+              <p className="text-gray-500">No {getTabLabel(activeTab).toLowerCase()} found</p>
+            ) : (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                  Select {activeTab.replace('_', ' ')}:
+                </label>
+                <select
+                  value={selectedEntity}
+                  onChange={(e) => setSelectedEntity(parseInt(e.target.value))}
+                  className="w-full sm:w-auto flex-1 border border-gray-300 rounded-lg px-4 py-2"
+                >
+                  <option value="0">Select...</option>
+                  {entities.map((entity) => (
+                    <option key={entity.id} value={entity.id}>
+                      {entity.name}
+                    </option>
+                  ))}
+                </select>
 
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="border border-gray-300 rounded-lg px-4 py-2 w-full sm:w-auto"
-            >
-              <option value="all">All Status</option>
-              <option value="on-track">On Track</option>
-              <option value="at-risk">At Risk</option>
-              <option value="off-track">Off Track</option>
-              <option value="not-started">Not Started</option>
-            </select>
+                {selectedEntity > 0 && (
+                  <button
+                    onClick={() => setShowForm(true)}
+                    className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+                  >
+                    <span>+</span> Add Indicator
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Selected Entity Info & Filters */}
+        {selectedEntity > 0 && (
+          <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">{selectedEntityName}</h2>
+                <p className="text-sm text-gray-500">Indicators for this {activeTab.replace('_', ' ')}</p>
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="border border-gray-300 rounded-lg px-4 py-2 w-full sm:w-auto"
+              >
+                <option value="all">All Types</option>
+                <option value="impact">Impact</option>
+                <option value="outcome">Outcome</option>
+                <option value="output">Output</option>
+                <option value="process">Process</option>
+              </select>
+
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="border border-gray-300 rounded-lg px-4 py-2 w-full sm:w-auto"
+              >
+                <option value="all">All Status</option>
+                <option value="on-track">On Track</option>
+                <option value="at-risk">At Risk</option>
+                <option value="off-track">Off Track</option>
+                <option value="not-started">Not Started</option>
+              </select>
+            </div>
+          </div>
+        )}
 
         {/* Indicator Form Modal */}
         {showForm && (
@@ -354,58 +406,11 @@ const IndicatorsManagement: React.FC = () => {
                 <h2 className="text-xl sm:text-2xl font-bold mb-4">
                   {editingIndicator ? 'Edit Indicator' : 'Add New Indicator'}
                 </h2>
+                <p className="text-sm text-gray-600 mb-4">
+                  For: <span className="font-semibold">{selectedEntityName}</span>
+                </p>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  {/* Entity Selection - only show when not coming from specific entity page */}
-                  {!entityType && (
-                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg mb-4">
-                      <h3 className="text-sm font-medium text-blue-900 mb-3">Link Indicator To:</h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Entity Type *
-                          </label>
-                          <select
-                            value={formData.entity_type}
-                            onChange={(e) => setFormData({ ...formData, entity_type: e.target.value as any, entity_id: 0 })}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                            required
-                          >
-                            <option value="module">Module (Program Goal)</option>
-                            <option value="sub_program">Sub-Program (Outcome)</option>
-                            <option value="component">Component (Output)</option>
-                            <option value="activity">Activity</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Select {formData.entity_type.replace('_', ' ')} *
-                          </label>
-                          <select
-                            value={formData.entity_id}
-                            onChange={(e) => setFormData({ ...formData, entity_id: parseInt(e.target.value) })}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                            required
-                            disabled={loadingEntities || availableEntities.length === 0}
-                          >
-                            <option value="0">
-                              {loadingEntities ? 'Loading...' : availableEntities.length === 0 ? 'No items available' : 'Select an option'}
-                            </option>
-                            {availableEntities.map((entity) => (
-                              <option key={entity.id} value={entity.id}>
-                                {entity.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-600 mt-2">
-                        💡 The indicator will be linked to the selected entity for tracking and reporting.
-                      </p>
-                    </div>
-                  )}
-
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -585,92 +590,106 @@ const IndicatorsManagement: React.FC = () => {
         )}
 
         {/* Indicators List */}
-        <div className="grid gap-4">
-          {indicators.length === 0 ? (
-            <div className="bg-white rounded-lg shadow p-8 text-center">
-              <p className="text-gray-500 text-lg">No indicators found</p>
-              <p className="text-gray-400 text-sm mt-2">Click "Add Indicator" to create your first indicator</p>
-            </div>
-          ) : (
-            indicators.map((indicator) => (
-              <div key={indicator.id} className="bg-white rounded-lg shadow p-4 sm:p-6 hover:shadow-lg transition-shadow">
-                <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                  <div className="flex-1 w-full">
-                    <div className="flex flex-wrap items-center gap-2 mb-3">
-                      <h3 className="text-lg sm:text-xl font-semibold text-gray-900 break-words">{indicator.name}</h3>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getTypeColor(indicator.type)}`}>
-                        {indicator.type.toUpperCase()}
-                      </span>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(indicator.status)}`}>
-                        {indicator.status.replace('-', ' ').toUpperCase()}
-                      </span>
+        {selectedEntity > 0 && (
+          <div className="grid gap-4">
+            {loading ? (
+              <div className="bg-white rounded-lg shadow p-8 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-4 text-gray-600">Loading indicators...</p>
+              </div>
+            ) : indicators.length === 0 ? (
+              <div className="bg-white rounded-lg shadow p-8 text-center">
+                <p className="text-gray-500 text-lg">No indicators found</p>
+                <p className="text-gray-400 text-sm mt-2">Click "Add Indicator" to create your first indicator</p>
+              </div>
+            ) : (
+              indicators.map((indicator) => (
+                <div key={indicator.id} className="bg-white rounded-lg shadow p-4 sm:p-6 hover:shadow-lg transition-shadow">
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                    <div className="flex-1 w-full">
+                      <div className="flex flex-wrap items-center gap-2 mb-3">
+                        <h3 className="text-lg sm:text-xl font-semibold text-gray-900 break-words">{indicator.name}</h3>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${getTypeColor(indicator.type)}`}>
+                          {indicator.type.toUpperCase()}
+                        </span>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(indicator.status)}`}>
+                          {indicator.status.replace('-', ' ').toUpperCase()}
+                        </span>
+                      </div>
+
+                      <p className="text-gray-600 text-sm mb-3">{indicator.description}</p>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4">
+                        <div>
+                          <p className="text-xs text-gray-500">Code</p>
+                          <p className="font-medium text-sm">{indicator.code}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Baseline</p>
+                          <p className="font-medium text-sm">{indicator.baseline_value} {indicator.unit_of_measure}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Current</p>
+                          <p className="font-medium text-sm">{indicator.current_value} {indicator.unit_of_measure}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Target</p>
+                          <p className="font-medium text-sm">{indicator.target_value} {indicator.unit_of_measure}</p>
+                        </div>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="mb-3">
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-gray-600">Achievement</span>
+                          <span className="font-semibold">{indicator.achievement_percentage.toFixed(1)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full ${
+                              indicator.achievement_percentage >= 75 ? 'bg-green-500' :
+                              indicator.achievement_percentage >= 50 ? 'bg-yellow-500' :
+                              'bg-red-500'
+                            }`}
+                            style={{ width: `${Math.min(indicator.achievement_percentage, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {indicator.responsible_person && (
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Responsible:</span> {indicator.responsible_person}
+                        </p>
+                      )}
                     </div>
 
-                    <p className="text-gray-600 text-sm mb-3">{indicator.description}</p>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4">
-                      <div>
-                        <p className="text-xs text-gray-500">Code</p>
-                        <p className="font-medium text-sm">{indicator.code}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Baseline</p>
-                        <p className="font-medium text-sm">{indicator.baseline_value} {indicator.unit_of_measure}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Current</p>
-                        <p className="font-medium text-sm">{indicator.current_value} {indicator.unit_of_measure}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Target</p>
-                        <p className="font-medium text-sm">{indicator.target_value} {indicator.unit_of_measure}</p>
-                      </div>
+                    <div className="flex sm:flex-col gap-2 w-full sm:w-auto">
+                      <button
+                        onClick={() => handleEdit(indicator)}
+                        className="flex-1 sm:flex-none px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(indicator.id)}
+                        className="flex-1 sm:flex-none px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
+                      >
+                        Delete
+                      </button>
                     </div>
-
-                    {/* Progress Bar */}
-                    <div className="mb-3">
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-gray-600">Achievement</span>
-                        <span className="font-semibold">{indicator.achievement_percentage.toFixed(1)}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full ${
-                            indicator.achievement_percentage >= 75 ? 'bg-green-500' :
-                            indicator.achievement_percentage >= 50 ? 'bg-yellow-500' :
-                            'bg-red-500'
-                          }`}
-                          style={{ width: `${Math.min(indicator.achievement_percentage, 100)}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    {indicator.responsible_person && (
-                      <p className="text-sm text-gray-600">
-                        <span className="font-medium">Responsible:</span> {indicator.responsible_person}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex sm:flex-col gap-2 w-full sm:w-auto">
-                    <button
-                      onClick={() => handleEdit(indicator)}
-                      className="flex-1 sm:flex-none px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(indicator.id)}
-                      className="flex-1 sm:flex-none px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
-                    >
-                      Delete
-                    </button>
                   </div>
                 </div>
-              </div>
-            ))
-          )}
-        </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* No Entity Selected State */}
+        {selectedEntity === 0 && !loadingEntities && (
+          <div className="bg-white rounded-lg shadow p-8 text-center">
+            <p className="text-gray-500 text-lg">Select a {activeTab.replace('_', ' ')} to view and manage indicators</p>
+          </div>
+        )}
       </div>
     </div>
   );
