@@ -36,27 +36,27 @@ class IndicatorsService {
                 this.sanitizeValue(data.module_id),
                 this.sanitizeValue(data.sub_program_id),
                 this.sanitizeValue(data.component_id),
-                data.name || null,  // Required fields should still be validated, but handle undefined
-                data.code || null,
+                this.sanitizeValue(data.name),
+                this.sanitizeValue(data.code),
                 this.sanitizeValue(data.description),
-                data.type || null,
+                this.sanitizeValue(data.type),
                 this.sanitizeValue(data.category),
                 this.sanitizeValue(data.unit_of_measure),
                 this.sanitizeValue(data.baseline_value),
                 this.sanitizeValue(data.baseline_date),
-                data.target_value !== undefined ? data.target_value : null,
+                this.sanitizeValue(data.target_value),
                 this.sanitizeValue(data.target_date),
                 this.sanitizeValue(data.current_value, 0),
                 this.sanitizeValue(data.collection_frequency, 'monthly'),
                 this.sanitizeValue(data.data_source),
                 this.sanitizeValue(data.verification_method),
-                data.disaggregation ? JSON.stringify(data.disaggregation) : null,
+                this.sanitizeValue(data.disaggregation ? JSON.stringify(data.disaggregation) : null),
                 this.sanitizeValue(data.status, 'not-started'),
                 this.sanitizeValue(data.achievement_percentage, 0),
                 this.sanitizeValue(data.responsible_person),
                 this.sanitizeValue(data.notes),
                 this.sanitizeValue(data.clickup_custom_field_id),
-                data.is_active !== undefined ? data.is_active : 1
+                this.sanitizeValue(data.is_active, 1)
             ];
 
             // Check for undefined values
