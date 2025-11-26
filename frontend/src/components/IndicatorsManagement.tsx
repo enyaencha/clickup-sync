@@ -18,6 +18,8 @@ interface Indicator {
   status: 'on-track' | 'at-risk' | 'off-track' | 'not-started';
   responsible_person: string;
   collection_frequency: string;
+  data_source?: string;
+  verification_method?: string;
   entity_name?: string;
   module_id?: number;
   sub_program_id?: number;
@@ -56,12 +58,17 @@ const IndicatorsManagement: React.FC = () => {
     code: '',
     description: '',
     type: 'output' as 'impact' | 'outcome' | 'output' | 'process',
+    category: '',
     unit_of_measure: '',
     baseline_value: 0,
     baseline_date: '',
     target_value: 0,
     target_date: '',
+    current_value: 0,
     collection_frequency: 'monthly',
+    data_source: '',
+    verification_method: '',
+    status: 'not-started' as 'on-track' | 'at-risk' | 'off-track' | 'not-started',
     responsible_person: ''
   });
 
@@ -162,12 +169,17 @@ const IndicatorsManagement: React.FC = () => {
 
       // Add optional fields only if they have values
       if (formData.description) payload.description = formData.description;
+      if (formData.category) payload.category = formData.category;
       if (formData.unit_of_measure) payload.unit_of_measure = formData.unit_of_measure;
       if (formData.baseline_value) payload.baseline_value = formData.baseline_value;
       if (formData.baseline_date) payload.baseline_date = formData.baseline_date;
       if (formData.target_value) payload.target_value = formData.target_value;
       if (formData.target_date) payload.target_date = formData.target_date;
+      if (formData.current_value !== undefined && formData.current_value !== null) payload.current_value = formData.current_value;
       if (formData.collection_frequency) payload.collection_frequency = formData.collection_frequency;
+      if (formData.data_source) payload.data_source = formData.data_source;
+      if (formData.verification_method) payload.verification_method = formData.verification_method;
+      if (formData.status) payload.status = formData.status;
       if (formData.responsible_person) payload.responsible_person = formData.responsible_person;
 
       // Set the entity ID based on active tab
@@ -230,12 +242,17 @@ const IndicatorsManagement: React.FC = () => {
       code: indicator.code,
       description: indicator.description || '',
       type: indicator.type,
+      category: indicator.category || '',
       unit_of_measure: indicator.unit_of_measure || '',
       baseline_value: indicator.baseline_value || 0,
       baseline_date: indicator.baseline_date || '',
       target_value: indicator.target_value,
       target_date: indicator.target_date || '',
+      current_value: indicator.current_value || 0,
       collection_frequency: indicator.collection_frequency || 'monthly',
+      data_source: indicator.data_source || '',
+      verification_method: indicator.verification_method || '',
+      status: indicator.status || 'not-started',
       responsible_person: indicator.responsible_person || ''
     });
     setShowForm(true);
@@ -249,12 +266,17 @@ const IndicatorsManagement: React.FC = () => {
       code: '',
       description: '',
       type: 'output',
+      category: '',
       unit_of_measure: '',
       baseline_value: 0,
       baseline_date: '',
       target_value: 0,
       target_date: '',
+      current_value: 0,
       collection_frequency: 'monthly',
+      data_source: '',
+      verification_method: '',
+      status: 'not-started',
       responsible_person: ''
     });
   };
@@ -471,6 +493,21 @@ const IndicatorsManagement: React.FC = () => {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Category
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.category}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        placeholder="e.g., Health, Education, Infrastructure"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Unit of Measure
                       </label>
                       <input
@@ -480,6 +517,22 @@ const IndicatorsManagement: React.FC = () => {
                         placeholder="e.g., people, households, %, Kg"
                         className="w-full border border-gray-300 rounded-lg px-3 py-2"
                       />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Status
+                      </label>
+                      <select
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      >
+                        <option value="not-started">Not Started</option>
+                        <option value="on-track">On Track</option>
+                        <option value="at-risk">At Risk</option>
+                        <option value="off-track">Off Track</option>
+                      </select>
                     </div>
                   </div>
 
@@ -541,6 +594,19 @@ const IndicatorsManagement: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Current Value
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={formData.current_value || ''}
+                        onChange={(e) => setFormData({ ...formData, current_value: e.target.value ? parseFloat(e.target.value) : 0 })}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Collection Frequency
                       </label>
                       <select
@@ -567,6 +633,32 @@ const IndicatorsManagement: React.FC = () => {
                         className="w-full border border-gray-300 rounded-lg px-3 py-2"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Data Source
+                    </label>
+                    <textarea
+                      value={formData.data_source}
+                      onChange={(e) => setFormData({ ...formData, data_source: e.target.value })}
+                      placeholder="Where will the data come from?"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      rows={2}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Verification Method
+                    </label>
+                    <textarea
+                      value={formData.verification_method}
+                      onChange={(e) => setFormData({ ...formData, verification_method: e.target.value })}
+                      placeholder="How will the data be verified?"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      rows={2}
+                    />
                   </div>
 
                   <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
