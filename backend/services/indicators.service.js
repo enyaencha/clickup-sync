@@ -10,6 +10,14 @@ class IndicatorsService {
         this.db = db;
     }
 
+    // Helper function to convert undefined to null
+    sanitizeValue(value, defaultValue = null) {
+        if (value === undefined || value === '' || value === 'undefined') {
+            return defaultValue;
+        }
+        return value;
+    }
+
     // ==============================================
     // CREATE
     // ==============================================
@@ -29,32 +37,32 @@ class IndicatorsService {
                     is_active, created_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
             `, [
-                data.program_id || null,
-                data.project_id || null,
-                data.activity_id || null,
-                data.module_id || null,
-                data.sub_program_id || null,
-                data.component_id || null,
+                this.sanitizeValue(data.program_id),
+                this.sanitizeValue(data.project_id),
+                this.sanitizeValue(data.activity_id),
+                this.sanitizeValue(data.module_id),
+                this.sanitizeValue(data.sub_program_id),
+                this.sanitizeValue(data.component_id),
                 data.name,
                 data.code,
-                data.description || null,
+                this.sanitizeValue(data.description),
                 data.type, // output, outcome, impact, process
-                data.category || null,
-                data.unit_of_measure || null,
-                data.baseline_value || null,
-                data.baseline_date || null,
+                this.sanitizeValue(data.category),
+                this.sanitizeValue(data.unit_of_measure),
+                this.sanitizeValue(data.baseline_value),
+                this.sanitizeValue(data.baseline_date),
                 data.target_value,
-                data.target_date || null,
-                data.current_value || 0,
-                data.collection_frequency || 'monthly',
-                data.data_source || null,
-                data.verification_method || null,
+                this.sanitizeValue(data.target_date),
+                this.sanitizeValue(data.current_value, 0),
+                this.sanitizeValue(data.collection_frequency, 'monthly'),
+                this.sanitizeValue(data.data_source),
+                this.sanitizeValue(data.verification_method),
                 data.disaggregation ? JSON.stringify(data.disaggregation) : null,
-                data.status || 'not-started',
-                data.achievement_percentage || 0,
-                data.responsible_person || null,
-                data.notes || null,
-                data.clickup_custom_field_id || null,
+                this.sanitizeValue(data.status, 'not-started'),
+                this.sanitizeValue(data.achievement_percentage, 0),
+                this.sanitizeValue(data.responsible_person),
+                this.sanitizeValue(data.notes),
+                this.sanitizeValue(data.clickup_custom_field_id),
                 data.is_active !== undefined ? data.is_active : 1
             ]);
 

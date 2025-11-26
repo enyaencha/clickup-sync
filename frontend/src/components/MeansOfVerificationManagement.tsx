@@ -67,13 +67,13 @@ const MeansOfVerificationManagement: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="bg-white shadow rounded-lg p-6 mb-6">
+        <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Means of Verification</h1>
-              <p className="text-gray-600 mt-1">Evidence sources and verification methods</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Means of Verification</h1>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">Evidence sources and verification methods</p>
             </div>
           </div>
         </div>
@@ -86,10 +86,10 @@ const MeansOfVerificationManagement: React.FC = () => {
             </div>
           ) : (
             verifications.map((verification) => (
-              <div key={verification.id} className="bg-white rounded-lg shadow p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-3">
-                    <span className={`px-3 py-1 rounded text-sm font-medium ${getStatusColor(verification.verification_status)}`}>
+              <div key={verification.id} className="bg-white rounded-lg shadow p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-3 mb-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`px-3 py-1 rounded text-xs sm:text-sm font-medium ${getStatusColor(verification.verification_status)}`}>
                       {verification.verification_status.toUpperCase()}
                     </span>
                     <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
@@ -98,14 +98,14 @@ const MeansOfVerificationManagement: React.FC = () => {
                   </div>
                 </div>
 
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{verification.verification_method}</h3>
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">{verification.verification_method}</h3>
                 {verification.description && (
-                  <p className="text-gray-600 mb-3">{verification.description}</p>
+                  <p className="text-sm sm:text-base text-gray-600 mb-3">{verification.description}</p>
                 )}
 
                 {verification.document_name && (
                   <div className="p-3 bg-gray-50 rounded mb-3">
-                    <p className="text-sm font-medium text-gray-700">Document: {verification.document_name}</p>
+                    <p className="text-sm font-medium text-gray-700 break-words">Document: {verification.document_name}</p>
                     {verification.document_date && (
                       <p className="text-xs text-gray-500">Date: {new Date(verification.document_date).toLocaleDateString()}</p>
                     )}

@@ -10,6 +10,14 @@ class MeansOfVerificationService {
         this.db = db;
     }
 
+    // Helper function to convert undefined to null
+    sanitizeValue(value, defaultValue = null) {
+        if (value === undefined || value === '' || value === 'undefined') {
+            return defaultValue;
+        }
+        return value;
+    }
+
     // ==============================================
     // CREATE
     // ==============================================
@@ -27,19 +35,19 @@ class MeansOfVerificationService {
                 data.entity_type,
                 data.entity_id,
                 data.verification_method,
-                data.description || null,
+                this.sanitizeValue(data.description),
                 data.evidence_type,
-                data.document_name || null,
-                data.document_path || null,
-                data.document_date || null,
-                data.verification_status || 'pending',
-                data.verified_by || null,
-                data.verified_date || null,
-                data.verification_notes || null,
-                data.collection_frequency || 'monthly',
-                data.responsible_person || null,
-                data.notes || null,
-                data.created_by || null
+                this.sanitizeValue(data.document_name),
+                this.sanitizeValue(data.document_path),
+                this.sanitizeValue(data.document_date),
+                this.sanitizeValue(data.verification_status, 'pending'),
+                this.sanitizeValue(data.verified_by),
+                this.sanitizeValue(data.verified_date),
+                this.sanitizeValue(data.verification_notes),
+                this.sanitizeValue(data.collection_frequency, 'monthly'),
+                this.sanitizeValue(data.responsible_person),
+                this.sanitizeValue(data.notes),
+                this.sanitizeValue(data.created_by)
             ]);
 
             const verificationId = result.insertId;

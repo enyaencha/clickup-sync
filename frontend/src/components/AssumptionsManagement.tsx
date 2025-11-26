@@ -201,29 +201,29 @@ const AssumptionsManagement: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="bg-white shadow rounded-lg p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
+        <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Assumptions & Risk Management</h1>
-              <p className="text-gray-600 mt-1">Track assumptions and manage risks for your program</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Assumptions & Risk Management</h1>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">Track assumptions and manage risks for your program</p>
             </div>
             <button
               onClick={() => setShowForm(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 w-full sm:w-auto justify-center"
             >
               <span>+</span> Add Assumption
             </button>
           </div>
 
           {/* Risk Level Filter */}
-          <div className="flex gap-4">
+          <div>
             <select
               value={filterRisk}
               onChange={(e) => setFilterRisk(e.target.value)}
-              className="border border-gray-300 rounded-lg px-4 py-2"
+              className="border border-gray-300 rounded-lg px-4 py-2 w-full sm:w-auto"
             >
               <option value="all">All Risk Levels</option>
               <option value="critical">Critical</option>
@@ -238,8 +238,8 @@ const AssumptionsManagement: React.FC = () => {
         {showForm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <h2 className="text-2xl font-bold mb-4">
+              <div className="p-4 sm:p-6">
+                <h2 className="text-xl sm:text-2xl font-bold mb-4">
                   {editingAssumption ? 'Edit Assumption' : 'Add New Assumption'}
                 </h2>
 
@@ -277,7 +277,7 @@ const AssumptionsManagement: React.FC = () => {
                     </select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Likelihood *
@@ -338,17 +338,17 @@ const AssumptionsManagement: React.FC = () => {
                     />
                   </div>
 
-                  <div className="flex justify-end gap-3 mt-6">
+                  <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
                     <button
                       type="button"
                       onClick={resetForm}
-                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 w-full sm:w-auto"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 w-full sm:w-auto"
                     >
                       {editingAssumption ? 'Update' : 'Create'} Assumption
                     </button>
@@ -368,10 +368,10 @@ const AssumptionsManagement: React.FC = () => {
             </div>
           ) : (
             assumptions.map((assumption) => (
-              <div key={assumption.id} className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-3">
-                    <span className={`px-3 py-1 rounded-lg text-sm font-bold ${getRiskColor(assumption.risk_level)}`}>
+              <div key={assumption.id} className="bg-white rounded-lg shadow p-4 sm:p-6 hover:shadow-lg transition-shadow">
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-3 mb-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`px-3 py-1 rounded-lg text-xs sm:text-sm font-bold ${getRiskColor(assumption.risk_level)}`}>
                       {assumption.risk_level.toUpperCase()} RISK
                     </span>
                     <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(assumption.status)}`}>
@@ -384,22 +384,22 @@ const AssumptionsManagement: React.FC = () => {
 
                   <button
                     onClick={() => handleDelete(assumption.id)}
-                    className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
+                    className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 w-full sm:w-auto"
                   >
                     Delete
                   </button>
                 </div>
 
-                <p className="text-gray-900 font-medium mb-3">{assumption.assumption_text}</p>
+                <p className="text-gray-900 font-medium mb-3 text-sm sm:text-base">{assumption.assumption_text}</p>
 
-                <div className="grid grid-cols-2 gap-4 mb-4 p-3 bg-gray-50 rounded">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 p-3 bg-gray-50 rounded">
                   <div>
                     <p className="text-xs text-gray-500">Likelihood</p>
-                    <p className="font-medium capitalize">{assumption.likelihood.replace('-', ' ')}</p>
+                    <p className="font-medium capitalize text-sm">{assumption.likelihood.replace('-', ' ')}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Impact</p>
-                    <p className="font-medium capitalize">{assumption.impact.replace('-', ' ')}</p>
+                    <p className="font-medium capitalize text-sm">{assumption.impact.replace('-', ' ')}</p>
                   </div>
                 </div>
 
@@ -410,12 +410,12 @@ const AssumptionsManagement: React.FC = () => {
                   </div>
                 )}
 
-                <div className="flex items-center justify-between">
-                  <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                     <select
                       value={assumption.status}
                       onChange={(e) => handleValidate(assumption.id, e.target.value)}
-                      className="text-sm border border-gray-300 rounded px-2 py-1"
+                      className="text-sm border border-gray-300 rounded px-2 py-1 w-full sm:w-auto"
                     >
                       <option value="needs-review">Needs Review</option>
                       <option value="valid">Valid</option>
@@ -426,7 +426,7 @@ const AssumptionsManagement: React.FC = () => {
                     <select
                       value={assumption.mitigation_status}
                       onChange={(e) => handleUpdateMitigation(assumption.id, e.target.value)}
-                      className="text-sm border border-gray-300 rounded px-2 py-1"
+                      className="text-sm border border-gray-300 rounded px-2 py-1 w-full sm:w-auto"
                     >
                       <option value="not-started">Not Started</option>
                       <option value="in-progress">In Progress</option>
