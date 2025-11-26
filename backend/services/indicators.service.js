@@ -24,6 +24,11 @@ class IndicatorsService {
 
     async createIndicator(data) {
         try {
+            console.log('\n========================================');
+            console.log('🔥 CREATE INDICATOR CALLED');
+            console.log('========================================');
+            console.log('Received data:', JSON.stringify(data, null, 2));
+
             logger.info('=== Creating Indicator ===');
             logger.info('Received data:', JSON.stringify(data, null, 2));
 
@@ -87,12 +92,23 @@ class IndicatorsService {
             logger.info('Clean data:', JSON.stringify(cleanData, null, 2));
             logger.info('Values array:', JSON.stringify(values, null, 2));
 
+            console.log('\n--- BEFORE QUERY ---');
+            console.log('Fields:', fields);
+            console.log('Values:', values);
+            console.log('Values with types:');
+            values.forEach((v, i) => {
+                console.log(`  [${i}] ${fields[i]}: ${JSON.stringify(v)} (${v === null ? 'null' : v === undefined ? 'UNDEFINED' : typeof v})`);
+            });
+
             const sql = `
                 INSERT INTO me_indicators (
                     ${fields.join(', ')},
                     created_at
                 ) VALUES (${placeholders}, NOW())
             `;
+
+            console.log('\nSQL:', sql);
+            console.log('\n--- EXECUTING QUERY ---\n');
 
             const result = await this.db.query(sql, values);
 
