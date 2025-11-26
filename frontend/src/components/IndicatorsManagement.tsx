@@ -160,27 +160,25 @@ const IndicatorsManagement: React.FC = () => {
     }
 
     try {
-      // Build minimal payload - only send fields with values
+      // Build complete payload - send all fields (like UPDATE does, which works!)
       const payload: any = {
         name: formData.name,
         code: formData.code,
-        type: formData.type
+        description: formData.description,
+        type: formData.type,
+        category: formData.category,
+        unit_of_measure: formData.unit_of_measure,
+        baseline_value: formData.baseline_value,
+        baseline_date: formData.baseline_date,
+        target_value: formData.target_value,
+        target_date: formData.target_date,
+        current_value: formData.current_value,
+        collection_frequency: formData.collection_frequency,
+        data_source: formData.data_source,
+        verification_method: formData.verification_method,
+        status: formData.status,
+        responsible_person: formData.responsible_person
       };
-
-      // Add optional fields only if they have values
-      if (formData.description) payload.description = formData.description;
-      if (formData.category) payload.category = formData.category;
-      if (formData.unit_of_measure) payload.unit_of_measure = formData.unit_of_measure;
-      if (formData.baseline_value) payload.baseline_value = formData.baseline_value;
-      if (formData.baseline_date) payload.baseline_date = formData.baseline_date;
-      if (formData.target_value) payload.target_value = formData.target_value;
-      if (formData.target_date) payload.target_date = formData.target_date;
-      if (formData.current_value !== undefined && formData.current_value !== null) payload.current_value = formData.current_value;
-      if (formData.collection_frequency) payload.collection_frequency = formData.collection_frequency;
-      if (formData.data_source) payload.data_source = formData.data_source;
-      if (formData.verification_method) payload.verification_method = formData.verification_method;
-      if (formData.status) payload.status = formData.status;
-      if (formData.responsible_person) payload.responsible_person = formData.responsible_person;
 
       // Set the entity ID based on active tab
       if (activeTab === 'module') payload.module_id = selectedEntity;
@@ -188,7 +186,7 @@ const IndicatorsManagement: React.FC = () => {
       if (activeTab === 'component') payload.component_id = selectedEntity;
       if (activeTab === 'activity') payload.activity_id = selectedEntity;
 
-      console.log('Submitting minimal payload:', payload);
+      console.log('Submitting complete payload:', payload);
 
       const url = editingIndicator
         ? `/api/indicators/${editingIndicator.id}`
