@@ -111,18 +111,27 @@ const IndicatorsManagement: React.FC = () => {
       const payload = {
         ...indicatorData,
         // Set all entity IDs to null first
+        program_id: null,  // Old hierarchy field
+        project_id: null,  // Old hierarchy field
         module_id: null,
         sub_program_id: null,
         component_id: null,
         activity_id: null,
         // Then set the specific one based on entity_type
-        [`${entity_type}_id`]: entity_id || null,
+        [`${entity_type}_id`]: entity_id && entity_id !== 0 ? entity_id : null,
         // Ensure empty strings become null for optional fields
         description: indicatorData.description || null,
+        category: null,
         unit_of_measure: indicatorData.unit_of_measure || null,
         baseline_date: indicatorData.baseline_date || null,
         target_date: indicatorData.target_date || null,
-        responsible_person: indicatorData.responsible_person || null
+        responsible_person: indicatorData.responsible_person || null,
+        data_source: null,
+        verification_method: null,
+        disaggregation: null,
+        notes: null,
+        clickup_custom_field_id: null,
+        is_active: 1
       };
 
       const url = editingIndicator
