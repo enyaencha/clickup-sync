@@ -643,16 +643,16 @@ const IndicatorsManagement: React.FC = () => {
                       <div className="mb-3">
                         <div className="flex justify-between text-sm mb-1">
                           <span className="text-gray-600">Achievement</span>
-                          <span className="font-semibold">{indicator.achievement_percentage.toFixed(1)}%</span>
+                          <span className="font-semibold">{Number(indicator.achievement_percentage || 0).toFixed(1)}%</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
                             className={`h-2 rounded-full ${
-                              indicator.achievement_percentage >= 75 ? 'bg-green-500' :
-                              indicator.achievement_percentage >= 50 ? 'bg-yellow-500' :
+                              Number(indicator.achievement_percentage) >= 75 ? 'bg-green-500' :
+                              Number(indicator.achievement_percentage) >= 50 ? 'bg-yellow-500' :
                               'bg-red-500'
                             }`}
-                            style={{ width: `${Math.min(indicator.achievement_percentage, 100)}%` }}
+                            style={{ width: `${Math.min(Number(indicator.achievement_percentage || 0), 100)}%` }}
                           />
                         </div>
                       </div>
