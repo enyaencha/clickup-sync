@@ -357,8 +357,8 @@ const IndicatorsManagement: React.FC = () => {
                       <input
                         type="number"
                         step="0.01"
-                        value={formData.baseline_value}
-                        onChange={(e) => setFormData({ ...formData, baseline_value: parseFloat(e.target.value) })}
+                        value={formData.baseline_value || ''}
+                        onChange={(e) => setFormData({ ...formData, baseline_value: e.target.value ? parseFloat(e.target.value) : 0 })}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2"
                       />
                     </div>
@@ -385,8 +385,8 @@ const IndicatorsManagement: React.FC = () => {
                         type="number"
                         step="0.01"
                         required
-                        value={formData.target_value}
-                        onChange={(e) => setFormData({ ...formData, target_value: parseFloat(e.target.value) })}
+                        value={formData.target_value || ''}
+                        onChange={(e) => setFormData({ ...formData, target_value: e.target.value ? parseFloat(e.target.value) : 0 })}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2"
                       />
                     </div>
