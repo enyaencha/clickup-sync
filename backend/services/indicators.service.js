@@ -69,19 +69,8 @@ class IndicatorsService {
 
             console.log('Clean indicator data:', JSON.stringify(indicatorData, null, 2));
 
-            const result = await this.db.query(`
-                INSERT INTO me_indicators (
-                    program_id, project_id, activity_id,
-                    module_id, sub_program_id, component_id,
-                    name, code, description, type, category,
-                    unit_of_measure, baseline_value, baseline_date,
-                    target_value, target_date, current_value,
-                    collection_frequency, data_source, verification_method,
-                    disaggregation, status, achievement_percentage,
-                    responsible_person, notes, clickup_custom_field_id,
-                    is_active, last_measured_date, next_measurement_date
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `, [
+            // Build parameters array
+            const params = [
                 indicatorData.program_id,
                 indicatorData.project_id,
                 indicatorData.activity_id,
@@ -111,7 +100,47 @@ class IndicatorsService {
                 indicatorData.is_active,
                 indicatorData.last_measured_date,
                 indicatorData.next_measurement_date
-            ]);
+            ];
+
+            // DEBUG: Check for undefined values
+            const paramNames = [
+                'program_id', 'project_id', 'activity_id', 'module_id', 'sub_program_id', 'component_id',
+                'name', 'code', 'description', 'type', 'category', 'unit_of_measure',
+                'baseline_value', 'baseline_date', 'target_value', 'target_date', 'current_value',
+                'collection_frequency', 'data_source', 'verification_method', 'disaggregation',
+                'status', 'achievement_percentage', 'responsible_person', 'notes',
+                'clickup_custom_field_id', 'is_active', 'last_measured_date', 'next_measurement_date'
+            ];
+
+            const undefinedParams = [];
+            params.forEach((param, index) => {
+                if (param === undefined) {
+                    undefinedParams.push(`${paramNames[index]} (index ${index})`);
+                }
+            });
+
+            if (undefinedParams.length > 0) {
+                console.error('❌ UNDEFINED PARAMETERS FOUND:');
+                console.error(undefinedParams.join(', '));
+                throw new Error(`Undefined parameters: ${undefinedParams.join(', ')}`);
+            }
+
+            console.log('✅ All parameters validated - no undefined values');
+            console.log('Parameter count:', params.length);
+
+            const result = await this.db.query(`
+                INSERT INTO me_indicators (
+                    program_id, project_id, activity_id,
+                    module_id, sub_program_id, component_id,
+                    name, code, description, type, category,
+                    unit_of_measure, baseline_value, baseline_date,
+                    target_value, target_date, current_value,
+                    collection_frequency, data_source, verification_method,
+                    disaggregation, status, achievement_percentage,
+                    responsible_person, notes, clickup_custom_field_id,
+                    is_active, last_measured_date, next_measurement_date
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `, params);
 
             const indicatorId = result.insertId;
             logger.info(`✅ Created indicator ${indicatorId}: ${indicatorData.name}`);
