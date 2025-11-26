@@ -24,34 +24,27 @@ class IndicatorsService {
 
     async createIndicator(data) {
         try {
-            const result = await this.db.query(`
-                INSERT INTO me_indicators (
-                    program_id, project_id, activity_id,
-                    module_id, sub_program_id, component_id,
-                    name, code, description, type, category,
-                    unit_of_measure, baseline_value, baseline_date,
-                    target_value, target_date, current_value,
-                    collection_frequency, data_source, verification_method,
-                    disaggregation, status, achievement_percentage,
-                    responsible_person, notes, clickup_custom_field_id,
-                    is_active, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-            `, [
+            // Log incoming data for debugging
+            logger.info('=== Creating Indicator ===');
+            logger.info('Received data:', JSON.stringify(data, null, 2));
+
+            // Build parameters array with all values sanitized
+            const params = [
                 this.sanitizeValue(data.program_id),
                 this.sanitizeValue(data.project_id),
                 this.sanitizeValue(data.activity_id),
                 this.sanitizeValue(data.module_id),
                 this.sanitizeValue(data.sub_program_id),
                 this.sanitizeValue(data.component_id),
-                data.name,
-                data.code,
+                data.name || null,  // Required fields should still be validated, but handle undefined
+                data.code || null,
                 this.sanitizeValue(data.description),
-                data.type, // output, outcome, impact, process
+                data.type || null,
                 this.sanitizeValue(data.category),
                 this.sanitizeValue(data.unit_of_measure),
                 this.sanitizeValue(data.baseline_value),
                 this.sanitizeValue(data.baseline_date),
-                data.target_value,
+                data.target_value !== undefined ? data.target_value : null,
                 this.sanitizeValue(data.target_date),
                 this.sanitizeValue(data.current_value, 0),
                 this.sanitizeValue(data.collection_frequency, 'monthly'),
@@ -64,10 +57,47 @@ class IndicatorsService {
                 this.sanitizeValue(data.notes),
                 this.sanitizeValue(data.clickup_custom_field_id),
                 data.is_active !== undefined ? data.is_active : 1
-            ]);
+            ];
+
+            // Check for undefined values
+            const fieldNames = [
+                'program_id', 'project_id', 'activity_id', 'module_id', 'sub_program_id', 'component_id',
+                'name', 'code', 'description', 'type', 'category', 'unit_of_measure',
+                'baseline_value', 'baseline_date', 'target_value', 'target_date', 'current_value',
+                'collection_frequency', 'data_source', 'verification_method', 'disaggregation',
+                'status', 'achievement_percentage', 'responsible_person', 'notes',
+                'clickup_custom_field_id', 'is_active'
+            ];
+
+            let hasUndefined = false;
+            params.forEach((param, index) => {
+                if (param === undefined) {
+                    hasUndefined = true;
+                    logger.error(`❌ Parameter at index ${index} (${fieldNames[index]}) is UNDEFINED`);
+                    logger.error(`   Original value: ${JSON.stringify(data[fieldNames[index]])}`);
+                }
+            });
+
+            if (hasUndefined) {
+                throw new Error('Bind parameters must not contain undefined. To pass SQL NULL specify JS null');
+            }
+
+            const result = await this.db.query(`
+                INSERT INTO me_indicators (
+                    program_id, project_id, activity_id,
+                    module_id, sub_program_id, component_id,
+                    name, code, description, type, category,
+                    unit_of_measure, baseline_value, baseline_date,
+                    target_value, target_date, current_value,
+                    collection_frequency, data_source, verification_method,
+                    disaggregation, status, achievement_percentage,
+                    responsible_person, notes, clickup_custom_field_id,
+                    is_active, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            `, params);
 
             const indicatorId = result.insertId;
-            logger.info(`Created indicator ${indicatorId}: ${data.name}`);
+            logger.info(`✅ Created indicator ${indicatorId}: ${data.name}`);
 
             // Calculate initial achievement percentage
             await this.calculateAchievement(indicatorId);
