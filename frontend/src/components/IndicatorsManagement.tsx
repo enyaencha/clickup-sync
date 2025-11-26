@@ -105,9 +105,24 @@ const IndicatorsManagement: React.FC = () => {
     e.preventDefault();
 
     try {
+      // Build clean payload with proper null values for undefined fields
+      const { entity_type, entity_id, ...indicatorData } = formData;
+
       const payload = {
-        ...formData,
-        [`${formData.entity_type}_id`]: formData.entity_id
+        ...indicatorData,
+        // Set all entity IDs to null first
+        module_id: null,
+        sub_program_id: null,
+        component_id: null,
+        activity_id: null,
+        // Then set the specific one based on entity_type
+        [`${entity_type}_id`]: entity_id || null,
+        // Ensure empty strings become null for optional fields
+        description: indicatorData.description || null,
+        unit_of_measure: indicatorData.unit_of_measure || null,
+        baseline_date: indicatorData.baseline_date || null,
+        target_date: indicatorData.target_date || null,
+        responsible_person: indicatorData.responsible_person || null
       };
 
       const url = editingIndicator
@@ -122,13 +137,17 @@ const IndicatorsManagement: React.FC = () => {
         body: JSON.stringify(payload)
       });
 
-      if (!response.ok) throw new Error('Failed to save indicator');
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Server error:', errorData);
+        throw new Error(errorData.error || 'Failed to save indicator');
+      }
 
       await fetchIndicators();
       resetForm();
     } catch (err) {
       console.error('Error saving indicator:', err);
-      alert('Failed to save indicator');
+      alert('Failed to save indicator: ' + (err as Error).message);
     }
   };
 
