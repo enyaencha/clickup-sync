@@ -75,6 +75,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           description: 'SMART Indicators'
         },
         {
+          icon: '🔗',
+          label: 'Results Chain',
+          path: '/logframe/results-chain',
+          description: 'Contribution Links'
+        },
+        {
+          icon: '📋',
+          label: 'Verification',
+          path: '/logframe/verification',
+          description: 'Evidence & MoV'
+        },
+        {
           icon: '⚠️',
           label: 'Assumptions',
           path: '/logframe/assumptions',
