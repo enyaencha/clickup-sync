@@ -79,12 +79,38 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Request logging
+// Enhanced request/response logging
 app.use((req, res, next) => {
+    const startTime = Date.now();
+
+    // Log incoming request
+    console.log('\n========================================');
+    console.log(`📥 INCOMING: ${req.method} ${req.path}`);
+    console.log('========================================');
+    if (Object.keys(req.query).length > 0) {
+        console.log('Query params:', req.query);
+    }
+    if (req.body && Object.keys(req.body).length > 0) {
+        console.log('Request body:', JSON.stringify(req.body, null, 2));
+    }
+
     logger.info(`${req.method} ${req.path}`, {
         ip: req.ip,
         query: req.query
     });
+
+    // Intercept response to log it
+    const originalSend = res.send;
+    res.send = function(data) {
+        const duration = Date.now() - startTime;
+        console.log(`📤 RESPONSE: ${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
+        if (res.statusCode >= 400) {
+            console.error('Error response:', typeof data === 'string' ? data : JSON.stringify(data, null, 2));
+        }
+        console.log('========================================\n');
+        return originalSend.call(this, data);
+    };
+
     next();
 });
 
@@ -211,8 +237,11 @@ async function initializeServices() {
         try {
             console.log('Initializing Logframe Services...');
             const IndicatorsService = require('./services/indicators.service');
+            console.log('Creating IndicatorsService instance...');
             const indicatorsService = new IndicatorsService(dbManager);
+            console.log('Registering /api/indicators routes...');
             app.use('/api/indicators', require('./routes/indicators.routes')(indicatorsService));
+            console.log('✅ Indicators routes registered at /api/indicators');
             logger.info('✅ Indicators routes registered');
 
             const MeansOfVerificationService = require('./services/means-of-verification.service');
@@ -245,6 +274,10 @@ async function initializeServices() {
 
         // Global error handler
         app.use((err, req, res, next) => {
+            console.error('\n❌ ERROR CAUGHT BY GLOBAL HANDLER:');
+            console.error('Path:', req.method, req.path);
+            console.error('Error:', err.message);
+            console.error('Stack:', err.stack);
             logger.error('Unhandled error:', err);
             res.status(err.status || 500).json({
                 success: false,
