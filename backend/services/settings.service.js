@@ -33,6 +33,10 @@ class SettingsService {
             enable_activity_locking: true,
             enable_strict_workflow: false,
 
+            // Verification Approval Settings
+            allow_edit_verified_items: false,
+            show_verification_approval_on_original_page: true,
+
             // Notification Settings (for future use)
             notify_on_status_change: true,
             notify_on_approval_request: true,
@@ -264,6 +268,41 @@ class SettingsService {
         }
 
         return { allowed: true };
+    }
+
+    /**
+     * Check if a verification can be edited based on current workflow settings
+     */
+    async canEditVerification(verification, settings = null) {
+        if (!settings) {
+            settings = await this.getSettings();
+        }
+
+        // Check if verified items can be edited
+        if (!settings.allow_edit_verified_items && verification.verification_status === 'verified') {
+            return {
+                allowed: false,
+                reason: 'Cannot edit verified items. This is locked by workflow settings.'
+            };
+        }
+
+        return { allowed: true };
+    }
+
+    /**
+     * Check if verification approval actions should be shown on original page
+     */
+    async showVerificationApprovalOnOriginalPage(settings = null) {
+        if (!settings) {
+            settings = await this.getSettings();
+        }
+
+        return {
+            show: settings.show_verification_approval_on_original_page ?? true,
+            message: settings.show_verification_approval_on_original_page
+                ? 'Approval actions are available on this page'
+                : 'Approval actions are only available on the Approvals page'
+        };
     }
 }
 
