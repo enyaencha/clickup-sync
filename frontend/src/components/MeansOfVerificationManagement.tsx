@@ -111,17 +111,41 @@ const MeansOfVerificationManagement: React.FC = () => {
         ? `/api/means-of-verification/entity/${entityType}/${entityId}`
         : '/api/means-of-verification';
 
-      // Add module filter if selected
-      if (selectedModuleId > 0 && !entityType) {
-        // When filtering by module, we need to get verifications for entities in that module
-        // This would require a backend enhancement, for now we'll filter client-side
-      }
-
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch verifications');
 
       const data = await response.json();
-      const verifs = data.data || [];
+      let verifs = data.data || [];
+
+      // Client-side filtering by module
+      if (selectedModuleId > 0 && !entityType) {
+        verifs = verifs.filter((verif: Verification) => {
+          // Filter based on entity type
+          if (verif.entity_type === 'module') {
+            return verif.entity_id === selectedModuleId;
+          } else if (verif.entity_type === 'sub_program') {
+            const subProgram = subPrograms.find((sp: any) => sp.id === verif.entity_id);
+            return subProgram && subProgram.module_id === selectedModuleId;
+          } else if (verif.entity_type === 'component') {
+            const component = components.find((c: any) => c.id === verif.entity_id);
+            if (!component) return false;
+            const subProgram = subPrograms.find((sp: any) => sp.id === component.sub_program_id);
+            return subProgram && subProgram.module_id === selectedModuleId;
+          } else if (verif.entity_type === 'activity') {
+            const activity = activities.find((a: any) => a.id === verif.entity_id);
+            if (!activity) return false;
+            const component = components.find((c: any) => c.id === activity.component_id);
+            if (!component) return false;
+            const subProgram = subPrograms.find((sp: any) => sp.id === component.sub_program_id);
+            return subProgram && subProgram.module_id === selectedModuleId;
+          } else if (verif.entity_type === 'indicator') {
+            const indicator = indicators.find((i: any) => i.id === verif.entity_id);
+            return indicator && indicator.module_id === selectedModuleId;
+          }
+          return false;
+        });
+      }
+
       setVerifications(verifs);
 
       // Fetch attachments for each verification
