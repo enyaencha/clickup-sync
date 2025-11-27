@@ -258,10 +258,21 @@ async function initializeServices() {
             const resultsChainService = new ResultsChainService(dbManager);
             app.use('/api/results-chain', require('./routes/results-chain.routes')(resultsChainService));
             logger.info('✅ Results Chain routes registered');
+
+            const AttachmentsService = require('./services/attachments.service');
+            const attachmentsService = new AttachmentsService(dbManager);
+            await attachmentsService.ensureUploadsDir();
+            app.use('/api/attachments', require('./routes/attachments.routes')(attachmentsService));
+            logger.info('✅ Attachments routes registered');
         } catch (error) {
             console.error('❌ Failed to register Logframe Routes:', error);
             throw error;
         }
+
+        // Serve uploaded files
+        const path = require('path');
+        app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+        logger.info('✅ Static uploads directory configured');
 
         // Register error handlers AFTER routes (must be last)
         // 404 handler
