@@ -244,9 +244,9 @@ const IndicatorsManagement: React.FC = () => {
       category: indicator.category || '',
       unit_of_measure: indicator.unit_of_measure || '',
       baseline_value: indicator.baseline_value || 0,
-      baseline_date: indicator.baseline_date || '',
+      baseline_date: formatDateForInput(indicator.baseline_date),
       target_value: indicator.target_value,
-      target_date: indicator.target_date || '',
+      target_date: formatDateForInput(indicator.target_date),
       current_value: indicator.current_value || 0,
       collection_frequency: indicator.collection_frequency || 'monthly',
       data_source: indicator.data_source || '',
@@ -305,6 +305,17 @@ const IndicatorsManagement: React.FC = () => {
       case 'sub_program': return 'Sub-Programs';
       case 'component': return 'Components';
       case 'activity': return 'Activities';
+    }
+  };
+
+  // Helper to convert ISO date to YYYY-MM-DD for date inputs
+  const formatDateForInput = (dateString: string | null | undefined): string => {
+    if (!dateString) return '';
+    try {
+      // Handle ISO format: "2025-11-24T21:00:00.000Z" -> "2025-11-24"
+      return dateString.split('T')[0];
+    } catch {
+      return '';
     }
   };
 
