@@ -100,6 +100,17 @@ const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
     }
   };
 
+  // Helper to format dates for input fields (ISO to YYYY-MM-DD)
+  const formatDateForInput = (dateString: string | null | undefined): string => {
+    if (!dateString) return '';
+    try {
+      // Handle ISO format: "2025-11-24T21:00:00.000Z" -> "2025-11-24"
+      return dateString.split('T')[0];
+    } catch {
+      return '';
+    }
+  };
+
   const handleEdit = async () => {
     if (!activity) return;
 
@@ -117,9 +128,23 @@ const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
         return;
       }
 
+      // Populate formData with activity values, formatting dates properly
+      setFormData({
+        ...activity,
+        activity_date: formatDateForInput(activity.activity_date),
+        start_date: formatDateForInput(activity.start_date),
+        end_date: formatDateForInput(activity.end_date),
+      });
       setIsEditing(true);
     } catch (err) {
       console.error('Validation error:', err);
+      // Populate formData even if validation fails
+      setFormData({
+        ...activity,
+        activity_date: formatDateForInput(activity.activity_date),
+        start_date: formatDateForInput(activity.start_date),
+        end_date: formatDateForInput(activity.end_date),
+      });
       setIsEditing(true); // Allow editing if validation fails
     }
   };
