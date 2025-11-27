@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
   isMobileOpen: boolean;
@@ -9,6 +10,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
   const [isExpanded, setIsExpanded] = useState(true);
 
   const isActive = (path: string) => location.pathname === path;
@@ -16,6 +18,27 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
   const handleNavigate = (path: string) => {
     navigate(path);
     onClose(); // Close mobile menu after navigation
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!user) return '??';
+    if (user.full_name) {
+      const names = user.full_name.split(' ');
+      return names.length >= 2
+        ? `${names[0][0]}${names[1][0]}`.toUpperCase()
+        : names[0].substring(0, 2).toUpperCase();
+    }
+    return user.username.substring(0, 2).toUpperCase();
   };
 
   const menuItems = [
@@ -241,14 +264,30 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
         <div className="absolute bottom-0 left-0 right-0 p-3 lg:p-4 border-t border-blue-700/50 bg-blue-900/50 backdrop-blur">
           {isExpanded ? (
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center font-bold text-blue-900 shadow-lg flex-shrink-0 text-sm">
-                MO
-              </div>
+              {user?.profile_picture ? (
+                <img
+                  src={user.profile_picture}
+                  alt={user.full_name || user.username}
+                  className="w-10 h-10 rounded-full object-cover shadow-lg flex-shrink-0"
+                />
+              ) : (
+                <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center font-bold text-blue-900 shadow-lg flex-shrink-0 text-sm">
+                  {getUserInitials()}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">M&E Officer</p>
-                <p className="text-xs text-blue-200 truncate">officer@caritas.org</p>
+                <p className="text-sm font-medium truncate">
+                  {user?.full_name || user?.username || 'User'}
+                </p>
+                <p className="text-xs text-blue-200 truncate">
+                  {user?.email || ''}
+                </p>
               </div>
-              <button className="text-blue-200 hover:text-white transition-colors flex-shrink-0">
+              <button
+                onClick={handleLogout}
+                className="text-blue-200 hover:text-white transition-colors flex-shrink-0"
+                title="Logout"
+              >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
@@ -256,9 +295,23 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
             </div>
           ) : (
             <div className="flex justify-center">
-              <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center font-bold text-blue-900 shadow-lg text-sm">
-                MO
-              </div>
+              {user?.profile_picture ? (
+                <img
+                  src={user.profile_picture}
+                  alt={user.full_name || user.username}
+                  className="w-10 h-10 rounded-full object-cover shadow-lg"
+                  title={`${user.full_name || user.username} - Click to logout`}
+                  onClick={handleLogout}
+                />
+              ) : (
+                <button
+                  onClick={handleLogout}
+                  className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center font-bold text-blue-900 shadow-lg text-sm hover:scale-105 transition-transform"
+                  title="Logout"
+                >
+                  {getUserInitials()}
+                </button>
+              )}
             </div>
           )}
         </div>
