@@ -29,11 +29,21 @@ const ResultsChainManagement: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingLink, setEditingLink] = useState<ResultsChainLink | null>(null);
 
+  // Module filter
+  const [selectedModuleId, setSelectedModuleId] = useState<number>(
+    moduleId ? parseInt(moduleId) : 0
+  );
+
   // Entities for dropdowns
   const [modules, setModules] = useState<Entity[]>([]);
   const [subPrograms, setSubPrograms] = useState<Entity[]>([]);
   const [components, setComponents] = useState<Entity[]>([]);
   const [activities, setActivities] = useState<Entity[]>([]);
+
+  // Filtered entities based on selected module
+  const [filteredSubPrograms, setFilteredSubPrograms] = useState<Entity[]>([]);
+  const [filteredComponents, setFilteredComponents] = useState<Entity[]>([]);
+  const [filteredActivities, setFilteredActivities] = useState<Entity[]>([]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -53,15 +63,21 @@ const ResultsChainManagement: React.FC = () => {
   const [filteredToEntities, setFilteredToEntities] = useState<Entity[]>([]);
 
   useEffect(() => {
-    fetchLinks();
     fetchEntities();
-  }, [moduleId]);
+  }, []);
+
+  useEffect(() => {
+    fetchLinks();
+    if (selectedModuleId > 0) {
+      filterEntitiesByModule();
+    }
+  }, [selectedModuleId, subPrograms, components, activities]);
 
   const fetchLinks = async () => {
     try {
       setLoading(true);
-      const url = moduleId
-        ? `/api/results-chain?module_id=${moduleId}`
+      const url = selectedModuleId > 0
+        ? `/api/results-chain?module_id=${selectedModuleId}`
         : '/api/results-chain';
 
       const response = await fetch(url);
@@ -74,6 +90,35 @@ const ResultsChainManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const filterEntitiesByModule = () => {
+    if (selectedModuleId === 0) {
+      setFilteredSubPrograms([]);
+      setFilteredComponents([]);
+      setFilteredActivities([]);
+      return;
+    }
+
+    // Filter sub-programs by module
+    const moduleSubPrograms = subPrograms.filter(
+      (sp: any) => sp.module_id === selectedModuleId
+    );
+    setFilteredSubPrograms(moduleSubPrograms);
+
+    // Filter components by sub-programs in this module
+    const subProgramIds = moduleSubPrograms.map(sp => sp.id);
+    const moduleComponents = components.filter(
+      (c: any) => subProgramIds.includes(c.sub_program_id)
+    );
+    setFilteredComponents(moduleComponents);
+
+    // Filter activities by components in this module
+    const componentIds = moduleComponents.map(c => c.id);
+    const moduleActivities = activities.filter(
+      (a: any) => componentIds.includes(a.component_id)
+    );
+    setFilteredActivities(moduleActivities);
   };
 
   const fetchEntities = async () => {
@@ -255,6 +300,17 @@ const ResultsChainManagement: React.FC = () => {
   };
 
   const getEntityOptions = (entityType: EntityType): Entity[] => {
+    // If module is selected, return filtered entities
+    if (selectedModuleId > 0) {
+      switch (entityType) {
+        case 'module': return modules.filter(m => m.id === selectedModuleId);
+        case 'sub_program': return filteredSubPrograms;
+        case 'component': return filteredComponents;
+        case 'activity': return filteredActivities;
+      }
+    }
+
+    // Otherwise return all
     switch (entityType) {
       case 'module': return modules;
       case 'sub_program': return subPrograms;
@@ -297,7 +353,7 @@ const ResultsChainManagement: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Results Chain Management</h1>
               <p className="text-sm sm:text-base text-gray-600 mt-1">Link activities to outputs and outcomes</p>
@@ -308,6 +364,33 @@ const ResultsChainManagement: React.FC = () => {
             >
               <span>+</span> Create Link
             </button>
+          </div>
+
+          {/* Module Filter */}
+          <div className="border-t pt-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                Filter by Program:
+              </label>
+              <select
+                value={selectedModuleId}
+                onChange={(e) => setSelectedModuleId(parseInt(e.target.value))}
+                className="w-full sm:w-64 border border-gray-300 rounded-lg px-3 py-2"
+              >
+                <option value="0">All Programs</option>
+                {modules.map((module) => (
+                  <option key={module.id} value={module.id}>
+                    {module.name}
+                  </option>
+                ))}
+              </select>
+              {selectedModuleId > 0 && (
+                <div className="text-xs text-gray-600 bg-blue-50 px-3 py-1 rounded">
+                  <span className="font-medium">Filtered:</span>{' '}
+                  {filteredSubPrograms.length} sub-programs, {filteredComponents.length} components, {filteredActivities.length} activities
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
