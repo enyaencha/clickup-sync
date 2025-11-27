@@ -21,6 +21,10 @@ interface WorkflowSettings {
   allow_checklist_edit_after_approval: boolean;
   allow_approver_to_complete_checklist: boolean;
 
+  // Verification Approval Workflow Settings
+  allow_edit_verified_items: boolean;
+  show_verification_approval_on_original_page: boolean;
+
   // General Settings
   enable_activity_locking: boolean;
   enable_strict_workflow: boolean;
@@ -372,6 +376,39 @@ const Settings: React.FC = () => {
               <ToggleSwitch
                 checked={settings.allow_approver_to_complete_checklist}
                 onChange={() => handleToggle('allow_approver_to_complete_checklist')}
+                disabled={saving}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Verification Approval Workflow Settings */}
+        <div className="bg-white rounded-lg shadow mb-6">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Verification Approval Workflow</h2>
+            <p className="text-sm text-gray-600 mt-1">Configure verification evidence approval process</p>
+          </div>
+          <div className="px-6 py-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <label className="text-sm font-medium text-gray-900">Allow Editing Verified Items</label>
+                <p className="text-xs text-gray-600 mt-1">Allow editing verification items after they have been verified (not recommended for data integrity)</p>
+              </div>
+              <ToggleSwitch
+                checked={settings.allow_edit_verified_items}
+                onChange={() => handleToggle('allow_edit_verified_items')}
+                disabled={saving}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <label className="text-sm font-medium text-gray-900">Show Approval Actions on Verification Page</label>
+                <p className="text-xs text-gray-600 mt-1">Show Verify/Reject buttons on the Verification page. If disabled, approvals must be done from the Approvals page only</p>
+              </div>
+              <ToggleSwitch
+                checked={settings.show_verification_approval_on_original_page}
+                onChange={() => handleToggle('show_verification_approval_on_original_page')}
                 disabled={saving}
               />
             </div>
