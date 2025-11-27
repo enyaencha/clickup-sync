@@ -198,6 +198,23 @@ async function initializeServices() {
         await dbManager.initialize();
         logger.info('✅ Database connected');
 
+        // Initialize Authentication Service
+        try {
+            console.log('Initializing Authentication Service...');
+            const AuthService = require('./services/auth.service');
+            const authService = new AuthService(dbManager);
+            app.locals.authService = authService; // Make available globally
+            logger.info('✅ Authentication Service initialized');
+
+            // Register Auth Routes (public, no auth required)
+            console.log('Registering Auth Routes...');
+            app.use('/api/auth', require('./routes/auth.routes')(authService));
+            logger.info('✅ Auth Routes registered at /api/auth');
+        } catch (error) {
+            console.error('❌ Failed to initialize Authentication:', error);
+            throw error;
+        }
+
         // Initialize M&E Service
         console.log('Creating MEService instance...');
         meService = new MEService(dbManager);
