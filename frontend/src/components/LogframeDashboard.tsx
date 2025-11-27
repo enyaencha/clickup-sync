@@ -224,7 +224,7 @@ const LogframeDashboard: React.FC = () => {
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-gray-700">Average Achievement</span>
                     <span className="text-2xl font-bold text-green-600">
-                      {statistics.indicators.avg_achievement?.toFixed(1) || 0}%
+                      {Number(statistics.indicators.avg_achievement || 0).toFixed(1)}%
                     </span>
                   </div>
                 </div>
@@ -322,7 +322,7 @@ const LogframeDashboard: React.FC = () => {
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-gray-600">Linkage Completeness</span>
                     <span className="font-semibold">
-                      {statistics.results_chain.activity_linkage_percentage || 0}%
+                      {Number(statistics.results_chain.activity_linkage_percentage || 0).toFixed(1)}%
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
