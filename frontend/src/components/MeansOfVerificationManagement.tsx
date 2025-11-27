@@ -26,6 +26,20 @@ interface Entity {
   name: string;
 }
 
+interface Attachment {
+  id: number;
+  entity_type: string;
+  entity_id: number;
+  file_name: string;
+  file_path: string | null;
+  file_url: string | null;
+  file_type: string | null;
+  file_size: number | null;
+  attachment_type: string;
+  description: string | null;
+  created_at: string;
+}
+
 type EntityType = 'module' | 'sub_program' | 'component' | 'activity' | 'indicator';
 
 const MeansOfVerificationManagement: React.FC = () => {
@@ -51,6 +65,11 @@ const MeansOfVerificationManagement: React.FC = () => {
   const [filteredComponents, setFilteredComponents] = useState<Entity[]>([]);
   const [filteredActivities, setFilteredActivities] = useState<Entity[]>([]);
   const [filteredIndicators, setFilteredIndicators] = useState<Entity[]>([]);
+
+  // File upload state
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [attachments, setAttachments] = useState<Record<number, Attachment[]>>({});
 
   // Form state
   const [formData, setFormData] = useState({
@@ -96,12 +115,103 @@ const MeansOfVerificationManagement: React.FC = () => {
       if (!response.ok) throw new Error('Failed to fetch verifications');
 
       const data = await response.json();
-      setVerifications(data.data || []);
+      const verifs = data.data || [];
+      setVerifications(verifs);
+
+      // Fetch attachments for each verification
+      for (const verif of verifs) {
+        fetchAttachmentsForVerification(verif.id);
+      }
     } catch (err) {
       console.error('Error fetching verifications:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchAttachmentsForVerification = async (verificationId: number) => {
+    try {
+      const response = await fetch(`/api/attachments?entity_type=verification&entity_id=${verificationId}`);
+      if (!response.ok) return;
+
+      const data = await response.json();
+      setAttachments(prev => ({
+        ...prev,
+        [verificationId]: data.data || []
+      }));
+    } catch (err) {
+      console.error('Error fetching attachments:', err);
+    }
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setSelectedFile(event.target.files[0]);
+    }
+  };
+
+  const handleFileUpload = async (verificationId: number) => {
+    if (!selectedFile) {
+      alert('Please select a file first');
+      return;
+    }
+
+    setUploadingFile(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('entity_type', 'verification');
+      formData.append('entity_id', verificationId.toString());
+      formData.append('attachment_type', 'document');
+      formData.append('description', selectedFile.name);
+
+      const response = await fetch('/api/attachments/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      alert('File uploaded successfully!');
+      setSelectedFile(null);
+
+      // Refresh attachments
+      await fetchAttachmentsForVerification(verificationId);
+    } catch (err) {
+      console.error('Error uploading file:', err);
+      alert('Failed to upload file: ' + (err as Error).message);
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentId: number, verificationId: number) => {
+    if (!confirm('Are you sure you want to delete this attachment?')) return;
+
+    try {
+      const response = await fetch(`/api/attachments/${attachmentId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) throw new Error('Failed to delete attachment');
+
+      alert('Attachment deleted successfully!');
+      await fetchAttachmentsForVerification(verificationId);
+    } catch (err) {
+      console.error('Error deleting attachment:', err);
+      alert('Failed to delete attachment');
+    }
+  };
+
+  const formatFileSize = (bytes: number | null): string => {
+    if (!bytes) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
   const filterEntitiesByModule = () => {
@@ -711,6 +821,57 @@ const MeansOfVerificationManagement: React.FC = () => {
                         <span className="font-medium">Notes:</span> {verification.verification_notes}
                       </div>
                     )}
+
+                    {/* Attachments Section */}
+                    <div className="mt-4 border-t pt-3">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2">📎 Attachments</h4>
+
+                      {/* Display existing attachments */}
+                      {attachments[verification.id] && attachments[verification.id].length > 0 && (
+                        <div className="space-y-2 mb-3">
+                          {attachments[verification.id].map((attachment) => (
+                            <div key={attachment.id} className="flex items-center justify-between p-2 bg-gray-50 rounded text-xs sm:text-sm">
+                              <div className="flex-1 min-w-0">
+                                <a
+                                  href={`http://localhost:3000${attachment.file_path || attachment.file_url}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline font-medium truncate block"
+                                >
+                                  {attachment.file_name}
+                                </a>
+                                <p className="text-gray-500 text-xs">
+                                  {formatFileSize(attachment.file_size)} • {new Date(attachment.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => handleDeleteAttachment(attachment.id, verification.id)}
+                                className="ml-2 text-red-600 hover:text-red-800 text-xs"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* File upload */}
+                      <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                        <input
+                          type="file"
+                          onChange={handleFileSelect}
+                          className="text-xs sm:text-sm file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 w-full sm:w-auto"
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt,.csv"
+                        />
+                        <button
+                          onClick={() => handleFileUpload(verification.id)}
+                          disabled={!selectedFile || uploadingFile}
+                          className="px-3 py-1 text-xs sm:text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed w-full sm:w-auto"
+                        >
+                          {uploadingFile ? 'Uploading...' : 'Upload'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Actions */}
