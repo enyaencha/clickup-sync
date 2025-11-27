@@ -46,6 +46,12 @@ const ResultsChainManagement: React.FC = () => {
     notes: ''
   });
 
+  // Store full entity objects with parent IDs
+  const [selectedFromEntity, setSelectedFromEntity] = useState<any>(null);
+
+  // Filtered entities based on hierarchy
+  const [filteredToEntities, setFilteredToEntities] = useState<Entity[]>([]);
+
   useEffect(() => {
     fetchLinks();
     fetchEntities();
@@ -177,6 +183,77 @@ const ResultsChainManagement: React.FC = () => {
     });
   };
 
+  // Filter "to" entities based on hierarchy when "from" entity changes
+  useEffect(() => {
+    if (formData.from_entity_id === 0 || !selectedFromEntity) {
+      setFilteredToEntities([]);
+      return;
+    }
+
+    filterValidToEntities();
+  }, [formData.from_entity_id, formData.to_entity_type, selectedFromEntity]);
+
+  const filterValidToEntities = () => {
+    if (!selectedFromEntity) {
+      setFilteredToEntities([]);
+      return;
+    }
+
+    let validEntities: Entity[] = [];
+
+    // Activity → Component: Only the component it belongs to
+    if (formData.from_entity_type === 'activity' && formData.to_entity_type === 'component') {
+      if (selectedFromEntity.component_id) {
+        validEntities = components.filter(c => c.id === selectedFromEntity.component_id);
+      }
+    }
+    // Activity → Sub-Program: Only the sub-program of its component
+    else if (formData.from_entity_type === 'activity' && formData.to_entity_type === 'sub_program') {
+      const parentComponent = components.find(c => c.id === selectedFromEntity.component_id);
+      if (parentComponent && (parentComponent as any).sub_program_id) {
+        validEntities = subPrograms.filter(sp => sp.id === (parentComponent as any).sub_program_id);
+      }
+    }
+    // Component → Sub-Program: Only the sub-program it belongs to
+    else if (formData.from_entity_type === 'component' && formData.to_entity_type === 'sub_program') {
+      if ((selectedFromEntity as any).sub_program_id) {
+        validEntities = subPrograms.filter(sp => sp.id === (selectedFromEntity as any).sub_program_id);
+      }
+    }
+    // Component → Module: Only the module of its sub-program
+    else if (formData.from_entity_type === 'component' && formData.to_entity_type === 'module') {
+      const parentSubProgram = subPrograms.find(sp => sp.id === (selectedFromEntity as any).sub_program_id);
+      if (parentSubProgram && (parentSubProgram as any).module_id) {
+        validEntities = modules.filter(m => m.id === (parentSubProgram as any).module_id);
+      }
+    }
+    // Sub-Program → Module: Only the module it belongs to
+    else if (formData.from_entity_type === 'sub_program' && formData.to_entity_type === 'module') {
+      if ((selectedFromEntity as any).module_id) {
+        validEntities = modules.filter(m => m.id === (selectedFromEntity as any).module_id);
+      }
+    }
+
+    setFilteredToEntities(validEntities);
+
+    // Auto-select if only one valid option
+    if (validEntities.length === 1) {
+      setFormData(prev => ({ ...prev, to_entity_id: validEntities[0].id }));
+    }
+  };
+
+  const handleFromEntityChange = (entityId: number) => {
+    const entityList = getEntityOptions(formData.from_entity_type);
+    const entity = entityList.find(e => e.id === entityId);
+
+    setSelectedFromEntity(entity || null);
+    setFormData(prev => ({
+      ...prev,
+      from_entity_id: entityId,
+      to_entity_id: 0 // Reset to selection
+    }));
+  };
+
   const getEntityOptions = (entityType: EntityType): Entity[] => {
     switch (entityType) {
       case 'module': return modules;
@@ -184,6 +261,15 @@ const ResultsChainManagement: React.FC = () => {
       case 'component': return components;
       case 'activity': return activities;
     }
+  };
+
+  const getToEntityOptions = (): Entity[] => {
+    // If we have filtered entities based on hierarchy, use those
+    if (filteredToEntities.length > 0) {
+      return filteredToEntities;
+    }
+    // Otherwise show all (for editing existing links)
+    return getEntityOptions(formData.to_entity_type);
   };
 
   const getEntityTypeLabel = (type: string) => {
@@ -274,7 +360,7 @@ const ResultsChainManagement: React.FC = () => {
                         <select
                           required
                           value={formData.from_entity_id}
-                          onChange={(e) => setFormData({ ...formData, from_entity_id: parseInt(e.target.value) })}
+                          onChange={(e) => handleFromEntityChange(parseInt(e.target.value))}
                           className="w-full border border-gray-300 rounded-lg px-3 py-2"
                         >
                           <option value="0">Select...</option>
@@ -310,20 +396,33 @@ const ResultsChainManagement: React.FC = () => {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Select {getEntityTypeLabel(formData.to_entity_type)} *
+                          {filteredToEntities.length > 0 && (
+                            <span className="ml-2 text-xs text-green-600">
+                              (Filtered by hierarchy ✓)
+                            </span>
+                          )}
                         </label>
                         <select
                           required
                           value={formData.to_entity_id}
                           onChange={(e) => setFormData({ ...formData, to_entity_id: parseInt(e.target.value) })}
                           className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                          disabled={formData.from_entity_id === 0}
                         >
-                          <option value="0">Select...</option>
-                          {getEntityOptions(formData.to_entity_type).map((entity) => (
+                          <option value="0">
+                            {formData.from_entity_id === 0 ? 'Select "From" entity first...' : 'Select...'}
+                          </option>
+                          {getToEntityOptions().map((entity) => (
                             <option key={entity.id} value={entity.id}>
                               {entity.name}
                             </option>
                           ))}
                         </select>
+                        {formData.from_entity_id > 0 && filteredToEntities.length === 0 && (
+                          <p className="text-xs text-red-600 mt-1">
+                            No valid entities found. This entity may not have the required parent relationships.
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
