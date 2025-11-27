@@ -37,7 +37,8 @@ interface Attachment {
   file_size: number | null;
   attachment_type: string;
   description: string | null;
-  created_at: string;
+  uploaded_at: string;
+  uploaded_by: number | null;
 }
 
 type EntityType = 'module' | 'sub_program' | 'component' | 'activity' | 'indicator';
@@ -841,7 +842,7 @@ const MeansOfVerificationManagement: React.FC = () => {
                                   {attachment.file_name}
                                 </a>
                                 <p className="text-gray-500 text-xs">
-                                  {formatFileSize(attachment.file_size)} • {new Date(attachment.created_at).toLocaleDateString()}
+                                  {formatFileSize(attachment.file_size)} • {new Date(attachment.uploaded_at).toLocaleDateString()}
                                 </p>
                               </div>
                               <button

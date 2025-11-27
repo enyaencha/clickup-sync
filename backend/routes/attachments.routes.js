@@ -83,7 +83,7 @@ module.exports = (attachmentsService) => {
                 file_size: req.file.size,
                 attachment_type: attachment_type || 'document',
                 description: description || null,
-                created_by: req.user?.id || 1 // TODO: Get from auth
+                uploaded_by: req.user?.id || 1 // TODO: Get from auth
             });
 
             res.json({

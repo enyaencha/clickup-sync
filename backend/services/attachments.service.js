@@ -34,7 +34,7 @@ class AttachmentsService {
                 INSERT INTO attachments (
                     entity_type, entity_id, file_name, file_path,
                     file_url, file_type, file_size, attachment_type,
-                    description, created_by
+                    description, uploaded_by
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
                 data.entity_type,
@@ -46,7 +46,7 @@ class AttachmentsService {
                 data.file_size || null,
                 data.attachment_type || 'other',
                 data.description || null,
-                data.created_by || null
+                data.uploaded_by || null
             ]);
 
             const attachmentId = result.insertId;
