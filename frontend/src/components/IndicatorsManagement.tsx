@@ -188,9 +188,10 @@ const IndicatorsManagement: React.FC = () => {
 
       console.log('Submitting complete payload:', payload);
 
+      // Use new direct-create endpoint for CREATE, regular endpoint for UPDATE
       const url = editingIndicator
         ? `/api/indicators/${editingIndicator.id}`
-        : '/api/indicators';
+        : '/api/indicators/direct-create';
 
       const method = editingIndicator ? 'PUT' : 'POST';
 
