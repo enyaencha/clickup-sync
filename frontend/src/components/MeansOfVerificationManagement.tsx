@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import EvidenceViewer from './EvidenceViewer';
 
 interface Verification {
   id: number;
@@ -71,6 +72,10 @@ const MeansOfVerificationManagement: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [attachments, setAttachments] = useState<Record<number, Attachment[]>>({});
+
+  // Evidence viewer state
+  const [showEvidenceViewer, setShowEvidenceViewer] = useState(false);
+  const [viewingVerification, setViewingVerification] = useState<Verification | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -213,6 +218,11 @@ const MeansOfVerificationManagement: React.FC = () => {
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  const handleViewEvidence = (verification: Verification) => {
+    setViewingVerification(verification);
+    setShowEvidenceViewer(true);
   };
 
   const filterEntitiesByModule = () => {
@@ -877,6 +887,14 @@ const MeansOfVerificationManagement: React.FC = () => {
 
                   {/* Actions */}
                   <div className="flex flex-wrap gap-2">
+                    {attachments[verification.id] && attachments[verification.id].length > 0 && (
+                      <button
+                        onClick={() => handleViewEvidence(verification)}
+                        className="px-3 py-1 text-sm bg-purple-100 text-purple-700 rounded hover:bg-purple-200 font-medium"
+                      >
+                        👁️ View Evidence ({attachments[verification.id].length})
+                      </button>
+                    )}
                     {verification.verification_status === 'pending' && (
                       <>
                         <button
@@ -912,6 +930,24 @@ const MeansOfVerificationManagement: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Evidence Viewer Modal */}
+      {showEvidenceViewer && viewingVerification && (
+        <EvidenceViewer
+          attachments={attachments[viewingVerification.id] || []}
+          verificationMethod={viewingVerification.verification_method}
+          onClose={() => {
+            setShowEvidenceViewer(false);
+            setViewingVerification(null);
+          }}
+          onDelete={async (attachmentId) => {
+            await handleDeleteAttachment(attachmentId, viewingVerification.id);
+            // Refresh attachments after delete
+            await fetchAttachmentsForVerification(viewingVerification.id);
+          }}
+          canDelete={true}
+        />
+      )}
     </div>
   );
 };
