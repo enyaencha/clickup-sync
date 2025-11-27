@@ -12,6 +12,83 @@ module.exports = (indicatorsService) => {
     // ==============================================
 
     /**
+     * NEW SIMPLE CREATE - Uses exact SQL pattern from working seed script
+     * POST /api/indicators/direct-create
+     */
+    router.post('/direct-create', async (req, res) => {
+        try {
+            console.log('\n🚀 NEW DIRECT CREATE ENDPOINT');
+            console.log('Received body:', JSON.stringify(req.body, null, 2));
+
+            const data = req.body;
+
+            // Simple, direct SQL insert (exactly like seed script)
+            const result = await indicatorsService.db.query(`
+                INSERT INTO me_indicators (
+                    program_id, project_id, activity_id,
+                    module_id, sub_program_id, component_id,
+                    name, code, description, type, category,
+                    unit_of_measure, baseline_value, baseline_date,
+                    target_value, target_date, current_value,
+                    collection_frequency, data_source, verification_method,
+                    disaggregation, status, achievement_percentage,
+                    responsible_person, notes, clickup_custom_field_id,
+                    is_active, last_measured_date, next_measurement_date
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `, [
+                data.program_id || null,
+                data.project_id || null,
+                data.activity_id || null,
+                data.module_id || null,
+                data.sub_program_id || null,
+                data.component_id || null,
+                data.name,
+                data.code,
+                data.description || null,
+                data.type,
+                data.category || null,
+                data.unit_of_measure || null,
+                data.baseline_value || null,
+                data.baseline_date || null,
+                data.target_value || null,
+                data.target_date || null,
+                data.current_value || 0,
+                data.collection_frequency || 'monthly',
+                data.data_source || null,
+                data.verification_method || null,
+                null, // disaggregation
+                data.status || 'not-started',
+                0, // achievement_percentage - will be calculated
+                data.responsible_person || null,
+                data.notes || null,
+                data.clickup_custom_field_id || null,
+                1, // is_active
+                null, // last_measured_date
+                null  // next_measurement_date
+            ]);
+
+            const indicatorId = result.insertId;
+            console.log(`✅ Direct create SUCCESS! ID: ${indicatorId}`);
+
+            // Calculate achievement
+            await indicatorsService.calculateAchievement(indicatorId);
+
+            res.json({
+                success: true,
+                id: indicatorId,
+                message: 'Indicator created successfully via direct-create'
+            });
+        } catch (error) {
+            console.error('❌ Direct create error:', error.message);
+            console.error('Stack:', error.stack);
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    });
+
+    /**
      * Create a new indicator
      * POST /api/indicators
      */
