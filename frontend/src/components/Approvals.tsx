@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import EvidenceViewer from './EvidenceViewer';
 
 interface Activity {
   id: number;
@@ -20,6 +21,41 @@ interface Activity {
   priority: string;
 }
 
+interface Verification {
+  id: number;
+  entity_type: string;
+  entity_id: number;
+  verification_method: string;
+  description: string;
+  evidence_type: string;
+  document_name: string;
+  document_path: string;
+  document_date: string;
+  verification_status: 'pending' | 'verified' | 'rejected' | 'needs-update';
+  verified_by: number | null;
+  verified_date: string | null;
+  verification_notes: string;
+  collection_frequency: string;
+  responsible_person: string;
+  notes: string;
+  entity_name?: string;
+}
+
+interface Attachment {
+  id: number;
+  entity_type: string;
+  entity_id: number;
+  file_name: string;
+  file_path: string | null;
+  file_url: string | null;
+  file_type: string | null;
+  file_size: number | null;
+  attachment_type: string;
+  description: string | null;
+  uploaded_at: string;
+  uploaded_by: number | null;
+}
+
 interface ChecklistStatus {
   total: number;
   completed: number;
@@ -37,9 +73,11 @@ interface ChecklistItem {
 const Approvals: React.FC = () => {
   const navigate = useNavigate();
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [verifications, setVerifications] = useState<Verification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'submitted' | 'approved' | 'rejected'>('submitted');
+  const [activeTab, setActiveTab] = useState<'activities' | 'verifications'>('activities');
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [checklistStatuses, setChecklistStatuses] = useState<Record<number, ChecklistStatus>>({});
   const [checklistItems, setChecklistItems] = useState<Record<number, ChecklistItem[]>>({});
@@ -47,10 +85,19 @@ const Approvals: React.FC = () => {
   const [allowApproverToComplete, setAllowApproverToComplete] = useState(false);
   const [expandedChecklists, setExpandedChecklists] = useState<Set<number>>(new Set());
 
+  // Verification-specific state
+  const [attachments, setAttachments] = useState<Record<number, Attachment[]>>({});
+  const [showEvidenceViewer, setShowEvidenceViewer] = useState(false);
+  const [viewingVerification, setViewingVerification] = useState<Verification | null>(null);
+
   useEffect(() => {
-    fetchPendingActivities();
+    if (activeTab === 'activities') {
+      fetchPendingActivities();
+    } else if (activeTab === 'verifications') {
+      fetchPendingVerifications();
+    }
     fetchSettings();
-  }, [filter]);
+  }, [filter, activeTab]);
 
   const fetchSettings = async () => {
     try {
@@ -222,6 +269,134 @@ const Approvals: React.FC = () => {
     }
   };
 
+  const fetchPendingVerifications = async () => {
+    try {
+      setLoading(true);
+      const url = '/api/means-of-verification';
+
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch verifications');
+
+      const data = await response.json();
+      let verifs = data.data || [];
+
+      // Filter by verification status
+      if (filter === 'submitted') {
+        verifs = verifs.filter((v: Verification) => v.verification_status === 'pending');
+      } else if (filter === 'approved') {
+        verifs = verifs.filter((v: Verification) => v.verification_status === 'verified');
+      } else if (filter === 'rejected') {
+        verifs = verifs.filter((v: Verification) => v.verification_status === 'rejected');
+      }
+
+      setVerifications(verifs);
+
+      // Fetch attachments for each verification
+      for (const verif of verifs) {
+        fetchAttachmentsForVerification(verif.id);
+      }
+
+      setLoading(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      setLoading(false);
+    }
+  };
+
+  const fetchAttachmentsForVerification = async (verificationId: number) => {
+    try {
+      const response = await fetch(`/api/attachments?entity_type=verification&entity_id=${verificationId}`);
+      if (!response.ok) return;
+
+      const data = await response.json();
+      setAttachments(prev => ({
+        ...prev,
+        [verificationId]: data.data || []
+      }));
+    } catch (err) {
+      console.error('Error fetching attachments:', err);
+    }
+  };
+
+  const handleViewEvidence = (verification: Verification) => {
+    setViewingVerification(verification);
+    setShowEvidenceViewer(true);
+  };
+
+  const handleVerifyVerification = async (id: number) => {
+    const notes = prompt('Add verification notes (optional):');
+    if (notes === null) return; // User cancelled
+
+    try {
+      setProcessingId(id);
+      const response = await fetch(`/api/means-of-verification/${id}/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          verified_by: 1, // TODO: Get from auth context
+          verification_notes: notes
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to verify evidence');
+
+      await fetchPendingVerifications();
+      setProcessingId(null);
+      alert('Evidence verified successfully!');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to verify evidence');
+      setProcessingId(null);
+    }
+  };
+
+  const handleRejectVerification = async (id: number) => {
+    const notes = prompt('Reason for rejection (required):');
+    if (!notes || notes.trim() === '') {
+      alert('Rejection reason is required');
+      return;
+    }
+
+    try {
+      setProcessingId(id);
+      const response = await fetch(`/api/means-of-verification/${id}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          verified_by: 1, // TODO: Get from auth context
+          verification_notes: notes
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to reject evidence');
+
+      await fetchPendingVerifications();
+      setProcessingId(null);
+      alert('Evidence rejected');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to reject evidence');
+      setProcessingId(null);
+    }
+  };
+
+  const formatFileSize = (bytes: number | null): string => {
+    if (!bytes) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  const getEntityTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      'module': 'Module',
+      'sub_program': 'Sub-Program',
+      'component': 'Component',
+      'activity': 'Activity',
+      'indicator': 'Indicator'
+    };
+    return labels[type] || type;
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'urgent': return 'text-red-600 bg-red-50';
@@ -262,10 +437,10 @@ const Approvals: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                Activity Approvals
+                Approvals
               </h1>
               <p className="mt-1 text-xs sm:text-sm text-gray-600">
-                Review and approve field activities
+                Review and approve activities and verification evidence
               </p>
             </div>
             <button
@@ -280,8 +455,32 @@ const Approvals: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Filters */}
+        {/* Tab Switcher */}
         <div className="bg-white rounded-lg shadow p-4 mb-6">
+          <div className="flex items-center gap-2 border-b pb-3 mb-3">
+            <button
+              onClick={() => setActiveTab('activities')}
+              className={`px-4 py-2 rounded-t-lg text-sm font-medium whitespace-nowrap border-b-2 ${
+                activeTab === 'activities'
+                  ? 'border-blue-600 text-blue-600 bg-blue-50'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              📋 Activities
+            </button>
+            <button
+              onClick={() => setActiveTab('verifications')}
+              className={`px-4 py-2 rounded-t-lg text-sm font-medium whitespace-nowrap border-b-2 ${
+                activeTab === 'verifications'
+                  ? 'border-blue-600 text-blue-600 bg-blue-50'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              📎 Verification Evidence
+            </button>
+          </div>
+
+          {/* Status Filters */}
           <div className="flex items-center gap-2 overflow-x-auto">
             <button
               onClick={() => setFilter('submitted')}
@@ -291,7 +490,9 @@ const Approvals: React.FC = () => {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              Pending ({activities.filter(a => a.approval_status === 'submitted').length})
+              Pending ({activeTab === 'activities'
+                ? activities.filter(a => a.approval_status === 'submitted').length
+                : verifications.filter(v => v.verification_status === 'pending').length})
             </button>
             <button
               onClick={() => setFilter('approved')}
@@ -301,7 +502,7 @@ const Approvals: React.FC = () => {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              Approved
+              {activeTab === 'activities' ? 'Approved' : 'Verified'}
             </button>
             <button
               onClick={() => setFilter('rejected')}
@@ -317,13 +518,15 @@ const Approvals: React.FC = () => {
         </div>
 
         {/* Activities List */}
-        {activities.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <p className="text-gray-500 text-lg">No activities found for this filter</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {activities.map((activity) => (
+        {activeTab === 'activities' && (
+          <>
+            {activities.length === 0 ? (
+              <div className="bg-white rounded-lg shadow p-12 text-center">
+                <p className="text-gray-500 text-lg">No activities found for this filter</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {activities.map((activity) => (
               <div key={activity.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
                 <div className="p-6">
                   {/* Header */}
@@ -508,10 +711,168 @@ const Approvals: React.FC = () => {
                   )}
                 </div>
               </div>
-            ))}
-          </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Verifications List */}
+        {activeTab === 'verifications' && (
+          <>
+            {verifications.length === 0 ? (
+              <div className="bg-white rounded-lg shadow p-12 text-center">
+                <p className="text-gray-500 text-lg">No verification evidence found for this filter</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {verifications.map((verification) => (
+                  <div key={verification.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                    <div className="p-6">
+                      {/* Header */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`px-3 py-1 rounded text-xs font-medium ${
+                              verification.verification_status === 'verified'
+                                ? 'bg-green-100 text-green-800'
+                                : verification.verification_status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : verification.verification_status === 'rejected'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {verification.verification_status.toUpperCase()}
+                            </span>
+                            <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                              {verification.evidence_type.toUpperCase()}
+                            </span>
+                            {verification.entity_name && (
+                              <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                                {getEntityTypeLabel(verification.entity_type)}: {verification.entity_name}
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                            {verification.verification_method}
+                          </h3>
+                          {verification.description && (
+                            <p className="text-gray-700 mb-3">{verification.description}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Document Info */}
+                      {verification.document_name && (
+                        <div className="p-3 bg-gray-50 rounded mb-3">
+                          <p className="text-sm font-medium text-gray-700">📄 {verification.document_name}</p>
+                          {verification.document_date && (
+                            <p className="text-xs text-gray-500">
+                              Date: {new Date(verification.document_date).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Details */}
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
+                        {verification.collection_frequency && (
+                          <div>
+                            <span className="font-medium">Frequency:</span> {verification.collection_frequency}
+                          </div>
+                        )}
+                        {verification.responsible_person && (
+                          <div>
+                            <span className="font-medium">Responsible:</span> {verification.responsible_person}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Verification Notes */}
+                      {verification.verification_notes && (
+                        <div className="p-2 bg-yellow-50 border-l-4 border-yellow-400 text-sm text-gray-700 mb-3">
+                          <span className="font-medium">Notes:</span> {verification.verification_notes}
+                        </div>
+                      )}
+
+                      {/* Attachments */}
+                      {attachments[verification.id] && attachments[verification.id].length > 0 && (
+                        <div className="mb-3 p-3 bg-gray-50 rounded">
+                          <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                            📎 Attachments ({attachments[verification.id].length})
+                          </h4>
+                          <div className="space-y-2">
+                            {attachments[verification.id].slice(0, 3).map((attachment) => (
+                              <div key={attachment.id} className="flex items-center text-xs text-gray-600">
+                                <span className="truncate">{attachment.file_name}</span>
+                                <span className="ml-2 text-gray-400">
+                                  ({formatFileSize(attachment.file_size)})
+                                </span>
+                              </div>
+                            ))}
+                            {attachments[verification.id].length > 3 && (
+                              <p className="text-xs text-gray-500 italic">
+                                +{attachments[verification.id].length - 3} more...
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-3 pt-4 border-t">
+                        {attachments[verification.id] && attachments[verification.id].length > 0 && (
+                          <button
+                            onClick={() => handleViewEvidence(verification)}
+                            className="flex-1 bg-purple-100 text-purple-700 px-4 py-2 rounded-lg hover:bg-purple-200 font-medium"
+                          >
+                            👁️ View Evidence
+                          </button>
+                        )}
+                        {verification.verification_status === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => handleVerifyVerification(verification.id)}
+                              disabled={processingId === verification.id}
+                              className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+                            >
+                              {processingId === verification.id ? 'Processing...' : '✓ Verify'}
+                            </button>
+                            <button
+                              onClick={() => handleRejectVerification(verification.id)}
+                              disabled={processingId === verification.id}
+                              className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+                            >
+                              {processingId === verification.id ? 'Processing...' : '✗ Reject'}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </main>
+
+      {/* Evidence Viewer Modal */}
+      {showEvidenceViewer && viewingVerification && (
+        <EvidenceViewer
+          attachments={attachments[viewingVerification.id] || []}
+          verificationMethod={viewingVerification.verification_method}
+          onClose={() => {
+            setShowEvidenceViewer(false);
+            setViewingVerification(null);
+          }}
+          onDelete={async (attachmentId) => {
+            // We don't allow deletion from approvals page
+            alert('Please use the Verification page to delete attachments');
+          }}
+          canDelete={false}
+        />
+      )}
     </div>
   );
 };
