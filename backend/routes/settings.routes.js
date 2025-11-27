@@ -106,4 +106,28 @@ router.post('/validate/can-approve', async (req, res) => {
     }
 });
 
+// Validate if verification can be edited
+router.post('/validate/can-edit-verification', async (req, res) => {
+    try {
+        const { verification } = req.body;
+        if (!verification) {
+            return res.status(400).json({ success: false, error: 'Verification object required' });
+        }
+        const result = await settingsService.canEditVerification(verification);
+        res.json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Validate if verification approval actions should be shown
+router.post('/validate/show-verification-approval', async (req, res) => {
+    try {
+        const result = await settingsService.showVerificationApprovalOnOriginalPage();
+        res.json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 module.exports = router;
