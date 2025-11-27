@@ -17,13 +17,21 @@ module.exports = (indicatorsService) => {
      */
     router.post('/', async (req, res) => {
         try {
+            console.log('\n🎯 ROUTE HANDLER: POST /api/indicators');
+            console.log('Route received body:', JSON.stringify(req.body, null, 2));
+            console.log('About to call indicatorsService.createIndicator()...');
+
             const id = await indicatorsService.createIndicator(req.body);
+
+            console.log('✅ Route handler: createIndicator returned ID:', id);
             res.json({
                 success: true,
                 id,
                 message: 'Indicator created successfully'
             });
         } catch (error) {
+            console.error('❌ Route handler caught error:', error.message);
+            console.error('Error stack:', error.stack);
             res.status(500).json({
                 success: false,
                 error: error.message
