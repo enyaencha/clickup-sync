@@ -77,6 +77,11 @@ const MeansOfVerificationManagement: React.FC = () => {
   const [showEvidenceViewer, setShowEvidenceViewer] = useState(false);
   const [viewingVerification, setViewingVerification] = useState<Verification | null>(null);
 
+  // Workflow settings state
+  const [workflowSettings, setWorkflowSettings] = useState<any>(null);
+  const [showApprovalButtons, setShowApprovalButtons] = useState(true);
+  const [allowEditVerified, setAllowEditVerified] = useState(false);
+
   // Form state
   const [formData, setFormData] = useState({
     entity_type: 'activity' as EntityType,
@@ -95,6 +100,7 @@ const MeansOfVerificationManagement: React.FC = () => {
 
   useEffect(() => {
     fetchEntities();
+    fetchWorkflowSettings();
   }, []);
 
   useEffect(() => {
@@ -103,6 +109,25 @@ const MeansOfVerificationManagement: React.FC = () => {
       filterEntitiesByModule();
     }
   }, [entityType, entityId, selectedModuleId, subPrograms, components, activities, indicators]);
+
+  const fetchWorkflowSettings = async () => {
+    try {
+      const response = await fetch('/api/settings');
+      if (!response.ok) {
+        console.error('Failed to fetch settings');
+        return;
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setWorkflowSettings(data.data);
+        setShowApprovalButtons(data.data.show_verification_approval_on_original_page ?? true);
+        setAllowEditVerified(data.data.allow_edit_verified_items ?? false);
+      }
+    } catch (err) {
+      console.error('Error fetching workflow settings:', err);
+    }
+  };
 
   const fetchVerifications = async () => {
     try {
@@ -426,7 +451,26 @@ const MeansOfVerificationManagement: React.FC = () => {
     }
   };
 
-  const handleEdit = (verification: Verification) => {
+  const canEditVerification = async (verification: Verification): Promise<boolean> => {
+    // If verification is not verified, allow edit
+    if (verification.verification_status !== 'verified') {
+      return true;
+    }
+
+    // Check workflow settings
+    if (!allowEditVerified) {
+      alert('Cannot edit verified items. This is locked by workflow settings.');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleEdit = async (verification: Verification) => {
+    // Check if edit is allowed
+    const canEdit = await canEditVerification(verification);
+    if (!canEdit) return;
+
     setEditingVerification(verification);
     setFormData({
       entity_type: verification.entity_type as EntityType,
@@ -578,6 +622,35 @@ const MeansOfVerificationManagement: React.FC = () => {
             <p>• <strong>Link to Entities:</strong> Attach verification methods to activities, components, indicators, etc.</p>
           </div>
         </div>
+
+        {/* Workflow Settings Info */}
+        {!showApprovalButtons && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4 sm:mb-6">
+            <div className="flex items-start gap-2">
+              <span className="text-yellow-600 text-lg">ℹ️</span>
+              <div>
+                <h3 className="font-semibold text-yellow-900 text-sm sm:text-base">Approval Workflow Notice</h3>
+                <p className="text-yellow-800 text-xs sm:text-sm mt-1">
+                  Verification approval actions (Verify/Reject) are only available on the Approvals page.
+                  This is configured in your workflow settings.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        {!allowEditVerified && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4 sm:mb-6">
+            <div className="flex items-start gap-2">
+              <span className="text-yellow-600 text-lg">🔒</span>
+              <div>
+                <h3 className="font-semibold text-yellow-900 text-sm sm:text-base">Edit Protection Notice</h3>
+                <p className="text-yellow-800 text-xs sm:text-sm mt-1">
+                  Verified items cannot be edited. This is configured in your workflow settings to maintain data integrity.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Create/Edit Form Modal */}
         {showForm && (
@@ -919,7 +992,7 @@ const MeansOfVerificationManagement: React.FC = () => {
                         👁️ View Evidence ({attachments[verification.id].length})
                       </button>
                     )}
-                    {verification.verification_status === 'pending' && (
+                    {verification.verification_status === 'pending' && showApprovalButtons && (
                       <>
                         <button
                           onClick={() => handleVerify(verification.id)}
@@ -937,7 +1010,12 @@ const MeansOfVerificationManagement: React.FC = () => {
                     )}
                     <button
                       onClick={() => handleEdit(verification)}
-                      className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                      className={`px-3 py-1 text-sm rounded ${
+                        verification.verification_status === 'verified' && !allowEditVerified
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                      }`}
+                      disabled={verification.verification_status === 'verified' && !allowEditVerified}
                     >
                       Edit
                     </button>
