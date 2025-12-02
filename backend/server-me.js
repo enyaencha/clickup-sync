@@ -78,8 +78,10 @@ const allowedOrigins = [
     process.env.FRONTEND_URL || 'http://localhost:3001',
     'http://localhost:3001',
     'http://localhost:5173',
-    'http://21.0.0.32:3001', // Local network IP for mobile access
-    'http://21.0.0.32:5173'
+    'http://192.168.100.4:3001', // Local network IP for mobile access
+    'http://192.168.100.4:5173',
+    'http://172.17.0.1:3001', // Docker network
+    'http://172.17.0.1:5173'
 ];
 
 app.use(cors({
