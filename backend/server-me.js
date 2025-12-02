@@ -72,8 +72,33 @@ const app = express();
 // Middleware
 app.use(helmet());
 app.use(compression());
+
+// CORS configuration - allow multiple origins for mobile development
+const allowedOrigins = [
+    process.env.FRONTEND_URL || 'http://localhost:3001',
+    'http://localhost:3001',
+    'http://localhost:5173',
+    'http://21.0.0.32:3001', // Local network IP for mobile access
+    'http://21.0.0.32:5173'
+];
+
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, Postman, etc.)
+        if (!origin) return callback(null, true);
+
+        // In development, allow all origins
+        if (process.env.NODE_ENV === 'development') {
+            return callback(null, true);
+        }
+
+        // In production, check against allowed origins
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
