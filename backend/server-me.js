@@ -552,8 +552,9 @@ async function startServer() {
         console.log('Services initialized successfully!');
 
         console.log(`Starting HTTP server on port ${PORT}...`);
-        app.listen(PORT, () => {
+        app.listen(PORT, '0.0.0.0', () => {
             logger.info(`🚀 M&E System running on http://localhost:${PORT}`);
+            logger.info(`🌐 Mobile access: http://21.0.0.70:${PORT}`);
             logger.info(`📊 API Docs available at http://localhost:${PORT}/health`);
             console.log(`
 ╔══════════════════════════════════════════════════════════╗
