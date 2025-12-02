@@ -441,6 +441,22 @@ class AuthService {
             return false;
         }
     }
+
+    /**
+     * Check if user has permission (synchronous - works with loaded user object)
+     */
+    hasPermissionSync(user, resource, action) {
+        if (!user) return false;
+        if (user.is_system_admin) return true;
+
+        if (user.permissions && Array.isArray(user.permissions)) {
+            return user.permissions.some(
+                p => p.resource === resource && p.action === action
+            );
+        }
+
+        return false;
+    }
 }
 
 module.exports = AuthService;

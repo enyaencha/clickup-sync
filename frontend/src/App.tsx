@@ -9,7 +9,7 @@ import SubPrograms from './components/SubPrograms';
 import ProjectComponents from './components/ProjectComponents';
 import Activities from './components/Activities';
 import Approvals from './components/Approvals';
-import Settings from './components/Settings';
+import Settings from './components/SettingsNew';
 import LogframeDashboard from './components/LogframeDashboard';
 import IndicatorsManagement from './components/IndicatorsManagement';
 import AssumptionsManagement from './components/AssumptionsManagement';
