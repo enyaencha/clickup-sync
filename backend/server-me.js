@@ -235,21 +235,27 @@ async function initializeServices() {
 
             // Register Auth Routes (public, no auth required)
             console.log('Registering Auth Routes...');
-            app.use('/api/auth', require('./routes/auth.routes')(authService));
+            const authRoutes = require('./routes/auth.routes')(authService);
+            app.use('/api/auth', authRoutes);
             logger.info('✅ Auth Routes registered at /api/auth');
+            console.log('✅ Auth Routes registered at /api/auth');
 
             // Register User Management Routes (protected, requires auth)
             console.log('Registering User Management Routes...');
             const { authMiddleware } = require('./middleware/auth.middleware');
             app.use('/api/users', require('./routes/users.routes')(dbManager, authService, authMiddleware(authService)));
             logger.info('✅ User Management Routes registered at /api/users');
+            console.log('✅ User Management Routes registered at /api/users');
 
             // Register Roles Routes (protected, requires auth)
             console.log('Registering Roles Routes...');
             app.use('/api/roles', require('./routes/roles.routes')(dbManager, authMiddleware(authService)));
             logger.info('✅ Roles Routes registered at /api/roles');
+            console.log('✅ Roles Routes registered at /api/roles');
         } catch (error) {
             console.error('❌ Failed to initialize Authentication:', error);
+            console.error('Stack trace:', error.stack);
+            logger.error('Authentication initialization failed:', error);
             throw error;
         }
 
