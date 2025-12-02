@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { getApiUrl } from '../../config/api';
 
 interface User {
   id: number;
@@ -48,7 +49,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSuccess 
 
   const fetchRoles = async () => {
     try {
-      const response = await fetch('http://localhost:4000/api/roles', {
+      const response = await fetch(getApiUrl('/api/roles'), {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -97,7 +98,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSuccess 
         payload.password = formData.password;
       }
 
-      const response = await fetch(`http://localhost:4000/api/users/${user.id}`, {
+      const response = await fetch(getApiUrl(`/api/users/${user.id}`), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

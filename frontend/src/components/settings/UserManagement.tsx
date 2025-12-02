@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { getApiUrl } from '../../config/api';
 import AddUserModal from './AddUserModal';
 import EditUserModal from './EditUserModal';
 
@@ -34,7 +35,7 @@ const UserManagement: React.FC = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:4000/api/users', {
+      const response = await fetch(getApiUrl('/api/users'), {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -60,7 +61,7 @@ const UserManagement: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:4000/api/users/${userId}`, {
+      const response = await fetch(getApiUrl(`/api/users/${userId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -79,7 +80,7 @@ const UserManagement: React.FC = () => {
 
   const handleToggleStatus = async (userId: number, isActive: boolean) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/users/${userId}/status`, {
+      const response = await fetch(getApiUrl(`/api/users/${userId}/status`), {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
