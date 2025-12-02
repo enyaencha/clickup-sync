@@ -34,7 +34,6 @@ module.exports = (db, authService, authMiddleware) => {
                     u.last_login_at,
                     u.created_at
                 FROM users u
-                WHERE u.deleted_at IS NULL
                 ORDER BY u.created_at DESC
             `);
 
@@ -93,7 +92,7 @@ module.exports = (db, authService, authMiddleware) => {
                     u.last_login_at,
                     u.created_at
                 FROM users u
-                WHERE u.id = ? AND u.deleted_at IS NULL
+                WHERE u.id = ?
             `, [userId]);
 
             if (users.length === 0) {
@@ -345,10 +344,10 @@ module.exports = (db, authService, authMiddleware) => {
                 });
             }
 
-            // Soft delete
+            // Deactivate user (soft delete)
             await db.query(`
                 UPDATE users
-                SET deleted_at = NOW(), is_active = false
+                SET is_active = false
                 WHERE id = ?
             `, [userId]);
 
