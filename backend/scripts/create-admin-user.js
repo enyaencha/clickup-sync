@@ -2,10 +2,11 @@
  * Create Initial Admin User
  *
  * This script creates the first admin user for the system.
- * Run this AFTER migrations 001 and 002 have been applied.
+ * Run this AFTER the RBAC migrations have been applied.
  *
  * Usage:
- *   node database/migrations/003_create_initial_admin.js
+ *   cd backend
+ *   node scripts/create-admin-user.js
  */
 
 const mysql = require('mysql2/promise');
