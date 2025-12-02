@@ -213,7 +213,7 @@ async function initializeServices() {
 
             // Register User Management Routes (protected, requires auth)
             console.log('Registering User Management Routes...');
-            const authMiddleware = require('./middleware/auth.middleware');
+            const { authMiddleware } = require('./middleware/auth.middleware');
             app.use('/api/users', require('./routes/users.routes')(dbManager, authService, authMiddleware(authService)));
             logger.info('✅ User Management Routes registered at /api/users');
 
