@@ -345,7 +345,7 @@ module.exports = (db, authService, authMiddleware) => {
                 });
             }
 
-            // Soft delete
+            // Soft delete - mark as deleted and deactivate
             await db.query(`
                 UPDATE users
                 SET deleted_at = NOW(), is_active = false
