@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getApiUrl } from '../../config/api';
-import AddUserModal from './AddUserModal';
-import EditUserModal from './EditUserModal';
+import AddUserModalEnhanced from './AddUserModalEnhanced';
+import EditUserModalEnhanced from './EditUserModalEnhanced';
 
 interface User {
   id: number;
@@ -545,7 +545,7 @@ const UserManagement: React.FC = () => {
 
       {/* Modals */}
       {showAddModal && (
-        <AddUserModal
+        <AddUserModalEnhanced
           onClose={() => setShowAddModal(false)}
           onSuccess={() => {
             setShowAddModal(false);
@@ -555,7 +555,7 @@ const UserManagement: React.FC = () => {
       )}
 
       {editingUser && (
-        <EditUserModal
+        <EditUserModalEnhanced
           user={editingUser}
           onClose={() => setEditingUser(null)}
           onSuccess={() => {
