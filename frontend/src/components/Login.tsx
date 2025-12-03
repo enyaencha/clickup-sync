@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, getDefaultLandingPage } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -14,10 +14,10 @@ const Login: React.FC = () => {
   // Redirect to home if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      const from = (location.state as any)?.from?.pathname || '/';
+      const from = (location.state as any)?.from?.pathname || getDefaultLandingPage();
       navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate, location]);
+  }, [isAuthenticated, navigate, location, getDefaultLandingPage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,8 +27,8 @@ const Login: React.FC = () => {
     try {
       await login(email, password);
 
-      // Redirect to the page they tried to visit or home
-      const from = (location.state as any)?.from?.pathname || '/';
+      // Redirect to the page they tried to visit or role-based default
+      const from = (location.state as any)?.from?.pathname || getDefaultLandingPage();
       navigate(from, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
