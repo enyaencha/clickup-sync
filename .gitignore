@@ -1,5 +1,14 @@
 logs/
 
+# Build outputs
+frontend/dist/
+backend/dist/
+dist/
+build/
+
+# Dependencies
+node_modules/
+
 # Environment files
 .env.local
 .env.development.local
