@@ -130,6 +130,52 @@ module.exports = (db, authService, authMiddleware) => {
     });
 
     /**
+     * GET /api/users/:id/modules
+     * Get user's module assignments
+     */
+    router.get('/:id/modules', async (req, res) => {
+        try {
+            const userId = parseInt(req.params.id);
+
+            // Check permission (users can view their own modules)
+            if (req.user.id !== userId && !req.user.is_system_admin) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'You do not have permission to view this user\'s modules'
+                });
+            }
+
+            const modules = await db.query(`
+                SELECT
+                    uma.id,
+                    uma.module_id,
+                    uma.can_view,
+                    uma.can_create,
+                    uma.can_edit,
+                    uma.can_delete,
+                    uma.can_approve,
+                    p.name as module_name,
+                    p.description as module_description
+                FROM user_module_assignments uma
+                JOIN programs p ON uma.module_id = p.id
+                WHERE uma.user_id = ?
+                ORDER BY p.name
+            `, [userId]);
+
+            res.json({
+                success: true,
+                data: modules
+            });
+        } catch (error) {
+            console.error('Error fetching user modules:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch user modules'
+            });
+        }
+    });
+
+    /**
      * POST /api/users
      * Create a new user
      */
@@ -143,7 +189,7 @@ module.exports = (db, authService, authMiddleware) => {
                 });
             }
 
-            const { username, email, password, full_name, is_system_admin, role_ids, is_active } = req.body;
+            const { username, email, password, full_name, is_system_admin, role_ids, is_active, module_permissions } = req.body;
 
             // Validation
             if (!username || !email || !password || !full_name) {
@@ -195,6 +241,26 @@ module.exports = (db, authService, authMiddleware) => {
                 }
             }
 
+            // Assign module permissions
+            if (module_permissions && Array.isArray(module_permissions) && module_permissions.length > 0) {
+                for (let perm of module_permissions) {
+                    await db.query(`
+                        INSERT INTO user_module_assignments
+                        (user_id, module_id, can_view, can_create, can_edit, can_delete, can_approve, assigned_by, assigned_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    `, [
+                        userId,
+                        perm.module_id,
+                        perm.can_view || false,
+                        perm.can_create || false,
+                        perm.can_edit || false,
+                        perm.can_delete || false,
+                        perm.can_approve || false,
+                        req.user.id
+                    ]);
+                }
+            }
+
             res.status(201).json({
                 success: true,
                 data: { id: userId },
@@ -225,7 +291,7 @@ module.exports = (db, authService, authMiddleware) => {
                 });
             }
 
-            const { username, email, password, full_name, is_system_admin, role_ids, is_active } = req.body;
+            const { username, email, password, full_name, is_system_admin, role_ids, is_active, module_permissions } = req.body;
 
             // Check if user exists
             const existingUsers = await db.query(
@@ -304,6 +370,32 @@ module.exports = (db, authService, authMiddleware) => {
                             INSERT INTO user_roles (user_id, role_id, assigned_by, assigned_at)
                             VALUES (?, ?, ?, NOW())
                         `, [userId, roleId, req.user.id]);
+                    }
+                }
+            }
+
+            // Update module permissions (only for admins)
+            if (req.user.is_system_admin && module_permissions !== undefined) {
+                // Remove existing module assignments
+                await db.query('DELETE FROM user_module_assignments WHERE user_id = ?', [userId]);
+
+                // Add new module permissions
+                if (Array.isArray(module_permissions) && module_permissions.length > 0) {
+                    for (let perm of module_permissions) {
+                        await db.query(`
+                            INSERT INTO user_module_assignments
+                            (user_id, module_id, can_view, can_create, can_edit, can_delete, can_approve, assigned_by, assigned_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                        `, [
+                            userId,
+                            perm.module_id,
+                            perm.can_view || false,
+                            perm.can_create || false,
+                            perm.can_edit || false,
+                            perm.can_delete || false,
+                            perm.can_approve || false,
+                            req.user.id
+                        ]);
                     }
                 }
             }

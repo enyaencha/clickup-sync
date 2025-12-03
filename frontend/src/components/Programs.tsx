@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Program {
   id: number;
@@ -25,11 +26,14 @@ const Programs: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
-    fetchPrograms();
-    fetchStatistics();
-  }, []);
+    if (user) {
+      fetchPrograms();
+      fetchStatistics();
+    }
+  }, [user]);
 
   const fetchPrograms = async () => {
     try {
@@ -38,7 +42,15 @@ const Programs: React.FC = () => {
         throw new Error('Failed to fetch programs');
       }
       const data = await response.json();
-      setPrograms(data.data);
+
+      // Filter programs based on user module assignments
+      let filteredPrograms = data.data;
+      if (user && !user.is_system_admin && user.module_assignments && user.module_assignments.length > 0) {
+        const assignedModuleIds = user.module_assignments.map(m => m.module_id);
+        filteredPrograms = data.data.filter((p: Program) => assignedModuleIds.includes(p.id));
+      }
+
+      setPrograms(filteredPrograms);
       setLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -48,7 +60,14 @@ const Programs: React.FC = () => {
 
   const fetchStatistics = async () => {
     try {
-      const response = await fetch('/api/dashboard/overall');
+      // Build query params for module-specific statistics
+      let url = '/api/dashboard/overall';
+      if (user && !user.is_system_admin && user.module_assignments && user.module_assignments.length > 0) {
+        const moduleIds = user.module_assignments.map(m => m.module_id).join(',');
+        url = `/api/dashboard/overall?modules=${moduleIds}`;
+      }
+
+      const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch statistics');
       const data = await response.json();
       setStatistics(data.data);

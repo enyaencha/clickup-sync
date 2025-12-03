@@ -41,6 +41,7 @@ interface AuthContextType {
   hasPermission: (resource: string, action: string) => boolean;
   hasRole: (roleName: string) => boolean;
   canAccessModule: (moduleId: number) => boolean;
+  getDefaultLandingPage: () => string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -164,6 +165,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     ) || false;
   };
 
+  const getDefaultLandingPage = (): string => {
+    if (!user) return '/';
+
+    // System admin goes to dashboard
+    if (user.is_system_admin) return '/';
+
+    // If user has module assignments, redirect to their first assigned module
+    if (user.module_assignments && user.module_assignments.length > 0) {
+      const firstModule = user.module_assignments[0];
+      return `/programs/${firstModule.module_id}`;
+    }
+
+    // Check for specific role-based landing pages
+    const roleHierarchy = [
+      { role: 'me_director', path: '/' },
+      { role: 'me_manager', path: '/' },
+      { role: 'module_manager', path: '/programs' },
+      { role: 'module_coordinator', path: '/programs' },
+      { role: 'field_officer', path: '/programs' },
+      { role: 'finance_officer', path: '/' },
+      { role: 'report_viewer', path: '/' },
+      { role: 'verification_officer', path: '/' },
+      { role: 'data_entry_clerk', path: '/programs' },
+    ];
+
+    for (const { role, path } of roleHierarchy) {
+      if (hasRole(role)) {
+        return path;
+      }
+    }
+
+    // Default fallback
+    return '/';
+  };
+
   const value: AuthContextType = {
     user,
     token,
@@ -174,6 +210,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     hasPermission,
     hasRole,
     canAccessModule,
+    getDefaultLandingPage,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
