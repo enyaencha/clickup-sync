@@ -274,8 +274,16 @@ class MeansOfVerificationService {
     // STATISTICS
     // ==============================================
 
-    async getVerificationStatistics(entityType, entityId) {
+    async getVerificationStatistics(entityType, entityId, user = null) {
         try {
+            let userFilter = '';
+            const params = [entityType, entityId];
+
+            if (user && !user.is_system_admin) {
+                userFilter = ' AND (created_by = ? OR owned_by = ?)';
+                params.push(user.id, user.id);
+            }
+
             const stats = await this.db.query(`
                 SELECT
                     COUNT(*) as total_verifications,
@@ -288,8 +296,8 @@ class MeansOfVerificationService {
                     COUNT(CASE WHEN evidence_type = 'survey' THEN 1 END) as surveys,
                     COUNT(CASE WHEN evidence_type = 'report' THEN 1 END) as reports
                 FROM means_of_verification
-                WHERE entity_type = ? AND entity_id = ? AND deleted_at IS NULL
-            `, [entityType, entityId]);
+                WHERE entity_type = ? AND entity_id = ?${userFilter} AND deleted_at IS NULL
+            `, params);
 
             return stats[0];
         } catch (error) {

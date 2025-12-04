@@ -130,7 +130,8 @@ module.exports = (assumptionsService) => {
         try {
             const stats = await assumptionsService.getAssumptionStatistics(
                 req.params.type,
-                req.params.id
+                req.params.id,
+                req.user
             );
             res.json({
                 success: true,

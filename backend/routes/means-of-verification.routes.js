@@ -113,7 +113,8 @@ module.exports = (movService) => {
         try {
             const stats = await movService.getVerificationStatistics(
                 req.params.type,
-                req.params.id
+                req.params.id,
+                req.user
             );
             res.json({
                 success: true,

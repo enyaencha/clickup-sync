@@ -507,8 +507,8 @@ class MEService {
         };
     }
 
-    async getProgramStatistics(moduleId) {
-        console.log('getProgramStatistics called with moduleId:', moduleId);
+    async getProgramStatistics(moduleId, user = null) {
+        console.log('getProgramStatistics called with moduleId:', moduleId, 'user:', user?.id);
 
         // Get sub-programs for this module
         const subPrograms = await this.db.query(`
@@ -561,11 +561,20 @@ class MEService {
             // Create placeholders for IN clause
             const placeholders = componentIds.map(() => '?').join(',');
 
+            // Build user filter for non-admin users
+            let userFilter = '';
+            let queryParams = [...componentIds];
+
+            if (user && !user.is_system_admin) {
+                userFilter = ' AND (created_by = ? OR owned_by = ?)';
+                queryParams.push(user.id, user.id);
+            }
+
             // Get activities for these components
             const actCount = await this.db.query(`
                 SELECT COUNT(*) as count FROM activities
-                WHERE component_id IN (${placeholders}) AND deleted_at IS NULL
-            `, componentIds);
+                WHERE component_id IN (${placeholders}) AND deleted_at IS NULL${userFilter}
+            `, queryParams);
             activityCount = actCount[0]?.count || 0;
 
             console.log('Activity count result:', actCount, 'extracted:', activityCount);
@@ -574,17 +583,17 @@ class MEService {
             activityByStatus = await this.db.query(`
                 SELECT status, COUNT(*) as count
                 FROM activities
-                WHERE component_id IN (${placeholders}) AND deleted_at IS NULL
+                WHERE component_id IN (${placeholders}) AND deleted_at IS NULL${userFilter}
                 GROUP BY status
-            `, componentIds);
+            `, queryParams);
 
             console.log('Activity by status:', activityByStatus);
 
             // Get all activities for progress calculation
             activities = await this.db.query(`
                 SELECT status FROM activities
-                WHERE component_id IN (${placeholders}) AND deleted_at IS NULL
-            `, componentIds);
+                WHERE component_id IN (${placeholders}) AND deleted_at IS NULL${userFilter}
+            `, queryParams);
 
             console.log('Activities for progress calc:', activities.length);
         }
@@ -611,7 +620,7 @@ class MEService {
         };
     }
 
-    async getSubProgramStatistics(subProgramId) {
+    async getSubProgramStatistics(subProgramId, user = null) {
         // Get components for this sub-program
         const components = await this.db.query(`
             SELECT id FROM project_components
@@ -628,31 +637,41 @@ class MEService {
         }
 
         const componentIds = components.map(c => c.id);
+        const placeholders = componentIds.map(() => '?').join(',');
 
         let activityCount = 0;
         let activities = [];
         let activityByStatus = [];
 
+        // Build user filter for non-admin users
+        let userFilter = '';
+        let queryParams = [...componentIds];
+
+        if (user && !user.is_system_admin) {
+            userFilter = ' AND (created_by = ? OR owned_by = ?)';
+            queryParams.push(user.id, user.id);
+        }
+
         // Get activities for these components
         const actCount = await this.db.query(`
             SELECT COUNT(*) as count FROM activities
-            WHERE component_id IN (?) AND deleted_at IS NULL
-        `, [componentIds]);
+            WHERE component_id IN (${placeholders}) AND deleted_at IS NULL${userFilter}
+        `, queryParams);
         activityCount = actCount[0]?.count || 0;
 
         // Get activity status breakdown
         activityByStatus = await this.db.query(`
             SELECT status, COUNT(*) as count
             FROM activities
-            WHERE component_id IN (?) AND deleted_at IS NULL
+            WHERE component_id IN (${placeholders}) AND deleted_at IS NULL${userFilter}
             GROUP BY status
-        `, [componentIds]);
+        `, queryParams);
 
         // Get all activities for progress calculation
         activities = await this.db.query(`
             SELECT status FROM activities
-            WHERE component_id IN (?) AND deleted_at IS NULL
-        `, [componentIds]);
+            WHERE component_id IN (${placeholders}) AND deleted_at IS NULL${userFilter}
+        `, queryParams);
 
         // Calculate overall progress for this sub-program
         let totalProgress = 0;
@@ -675,12 +694,21 @@ class MEService {
         };
     }
 
-    async getComponentStatistics(componentId) {
+    async getComponentStatistics(componentId, user = null) {
+        // Build user filter for non-admin users
+        let userFilter = '';
+        let queryParams = [componentId];
+
+        if (user && !user.is_system_admin) {
+            userFilter = ' AND (created_by = ? OR owned_by = ?)';
+            queryParams.push(user.id, user.id);
+        }
+
         // Get activities for this component
         const activities = await this.db.query(`
             SELECT status FROM activities
-            WHERE component_id = ? AND deleted_at IS NULL
-        `, [componentId]);
+            WHERE component_id = ? AND deleted_at IS NULL${userFilter}
+        `, queryParams);
 
         if (!activities || activities.length === 0) {
             return {
@@ -694,9 +722,9 @@ class MEService {
         const activityByStatus = await this.db.query(`
             SELECT status, COUNT(*) as count
             FROM activities
-            WHERE component_id = ? AND deleted_at IS NULL
+            WHERE component_id = ? AND deleted_at IS NULL${userFilter}
             GROUP BY status
-        `, [componentId]);
+        `, queryParams);
 
         // Calculate overall progress for this component
         let totalProgress = 0;
