@@ -15,6 +15,9 @@ import IndicatorsManagement from './components/IndicatorsManagement';
 import AssumptionsManagement from './components/AssumptionsManagement';
 import MeansOfVerificationManagement from './components/MeansOfVerificationManagement';
 import ResultsChainManagement from './components/ResultsChainManagement';
+import Beneficiaries from './components/Beneficiaries';
+import SHGManagement from './components/SHGManagement';
+import LoansManagement from './components/LoansManagement';
 
 const App: React.FC = () => {
   return (
@@ -60,6 +63,11 @@ const App: React.FC = () => {
                     <Route path="/logframe/verification/:entityType/:entityId" element={<MeansOfVerificationManagement />} />
                     <Route path="/logframe/results-chain" element={<ResultsChainManagement />} />
                     <Route path="/logframe/results-chain/module/:moduleId" element={<ResultsChainManagement />} />
+
+                    {/* SEEP Program Module Routes */}
+                    <Route path="/beneficiaries" element={<Beneficiaries />} />
+                    <Route path="/shg" element={<SHGManagement />} />
+                    <Route path="/loans" element={<LoansManagement />} />
                   </Routes>
                 </Layout>
               </ProtectedRoute>
