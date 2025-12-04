@@ -41,6 +41,8 @@ interface AuthContextType {
   hasPermission: (resource: string, action: string) => boolean;
   hasRole: (roleName: string) => boolean;
   canAccessModule: (moduleId: number) => boolean;
+  canPerformModuleAction: (moduleId: number, action: 'view' | 'create' | 'edit' | 'delete' | 'approve') => boolean;
+  canModifyResource: (resourceOwnerId: number | null, resourceCreatorId: number | null, action: 'edit' | 'delete') => boolean;
   getDefaultLandingPage: () => string;
 }
 
@@ -165,6 +167,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     ) || false;
   };
 
+  // Check if user can perform a specific action on a module
+  const canPerformModuleAction = (moduleId: number, action: 'view' | 'create' | 'edit' | 'delete' | 'approve'): boolean => {
+    if (!user) return false;
+    if (user.is_system_admin) return true;
+
+    const assignment = user.module_assignments?.find(m => m.module_id === moduleId);
+    if (!assignment) return false;
+
+    switch (action) {
+      case 'view':
+        return assignment.can_view || false;
+      case 'create':
+        return assignment.can_create || false;
+      case 'edit':
+        return assignment.can_edit || false;
+      case 'delete':
+        return assignment.can_delete || false;
+      case 'approve':
+        return assignment.can_approve || false;
+      default:
+        return false;
+    }
+  };
+
+  // Check if user can edit/delete based on ownership
+  const canModifyResource = (resourceOwnerId: number | null, resourceCreatorId: number | null, action: 'edit' | 'delete'): boolean => {
+    if (!user) return false;
+    if (user.is_system_admin) return true;
+
+    // User can modify if they own it or created it
+    if (resourceOwnerId === user.id || resourceCreatorId === user.id) return true;
+
+    // Otherwise check if they have the permission via roles
+    return hasPermission('activities', action); // Generic check for any resource
+  };
+
   const getDefaultLandingPage = useCallback((): string => {
     if (!user) return '/';
 
@@ -211,6 +249,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     hasPermission,
     hasRole,
     canAccessModule,
+    canPerformModuleAction,
+    canModifyResource,
     getDefaultLandingPage,
   };
 
