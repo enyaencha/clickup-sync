@@ -159,7 +159,7 @@ module.exports = (resultsChainService) => {
 
     router.get('/statistics/module/:moduleId', async (req, res) => {
         try {
-            const stats = await resultsChainService.getStatistics(req.params.moduleId);
+            const stats = await resultsChainService.getStatistics(req.params.moduleId, req.user);
             res.json({
                 success: true,
                 data: stats

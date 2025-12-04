@@ -363,7 +363,7 @@ module.exports = (meService) => {
 
     router.get('/dashboard/program/:moduleId', async (req, res) => {
         try {
-            const data = await meService.getProgramStatistics(req.params.moduleId);
+            const data = await meService.getProgramStatistics(req.params.moduleId, req.user);
             res.json({ success: true, data });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });
@@ -372,7 +372,7 @@ module.exports = (meService) => {
 
     router.get('/dashboard/subprogram/:subProgramId', async (req, res) => {
         try {
-            const data = await meService.getSubProgramStatistics(req.params.subProgramId);
+            const data = await meService.getSubProgramStatistics(req.params.subProgramId, req.user);
             res.json({ success: true, data });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });
@@ -381,7 +381,7 @@ module.exports = (meService) => {
 
     router.get('/dashboard/component/:componentId', async (req, res) => {
         try {
-            const data = await meService.getComponentStatistics(req.params.componentId);
+            const data = await meService.getComponentStatistics(req.params.componentId, req.user);
             res.json({ success: true, data });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });

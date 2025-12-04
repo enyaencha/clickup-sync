@@ -226,7 +226,8 @@ module.exports = (indicatorsService) => {
         try {
             const stats = await indicatorsService.getIndicatorStatistics(
                 req.params.type,
-                req.params.id
+                req.params.id,
+                req.user
             );
             res.json({
                 success: true,
