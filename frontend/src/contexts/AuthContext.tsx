@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { getApiUrl } from '../config/api';
 
 interface User {
@@ -165,7 +165,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     ) || false;
   };
 
-  const getDefaultLandingPage = (): string => {
+  const getDefaultLandingPage = useCallback((): string => {
     if (!user) return '/';
 
     // System admin goes to dashboard
@@ -191,14 +191,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     ];
 
     for (const { role, path } of roleHierarchy) {
-      if (hasRole(role)) {
+      // Check if user has this role
+      if (user.roles?.some((r) => r.name === role)) {
         return path;
       }
     }
 
     // Default fallback
     return '/';
-  };
+  }, [user]);
 
   const value: AuthContextType = {
     user,
