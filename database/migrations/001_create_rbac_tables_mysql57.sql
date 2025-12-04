@@ -264,16 +264,16 @@ CALL AddColumnIfNotExists('means_of_verification', 'last_modified_by',
 CALL CreateIndexIfNotExists('means_of_verification', 'idx_mov_created_by', '(created_by)');
 CALL CreateIndexIfNotExists('means_of_verification', 'idx_mov_owned_by', '(owned_by)');
 
--- Indicators table
-CALL AddColumnIfNotExists('indicators', 'created_by',
+-- me_indicators table
+CALL AddColumnIfNotExists('me_indicators', 'created_by',
     "INT COMMENT 'User who created this record' AFTER notes");
-CALL AddColumnIfNotExists('indicators', 'owned_by',
+CALL AddColumnIfNotExists('me_indicators', 'owned_by',
     "INT COMMENT 'User who owns this record' AFTER created_by");
-CALL AddColumnIfNotExists('indicators', 'last_modified_by',
+CALL AddColumnIfNotExists('me_indicators', 'last_modified_by',
     "INT COMMENT 'User who last modified' AFTER owned_by");
 
-CALL CreateIndexIfNotExists('indicators', 'idx_indicators_created_by', '(created_by)');
-CALL CreateIndexIfNotExists('indicators', 'idx_indicators_owned_by', '(owned_by)');
+CALL CreateIndexIfNotExists('me_indicators', 'idx_me_indicators_created_by', '(created_by)');
+CALL CreateIndexIfNotExists('me_indicators', 'idx_me_indicators_owned_by', '(owned_by)');
 
 -- ============================================
 -- CLEANUP HELPER PROCEDURES
