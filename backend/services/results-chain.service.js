@@ -331,15 +331,39 @@ class ResultsChainService {
         return true;
     }
 
-    async getStatistics(moduleId) {
+    async getStatistics(moduleId, user = null) {
         try {
+            // Build user filter for non-admin users
+            let userFilter = '';
+            const params = [];
+
+            if (user && !user.is_system_admin) {
+                userFilter = ' AND (a.created_by = ? OR a.owned_by = ?)';
+                // Need params 6 times (for each subquery involving activities)
+                for (let i = 0; i < 6; i++) {
+                    params.push(moduleId);
+                    if (i < 2) { // Only first 2 subqueries involve activities
+                        params.push(user.id, user.id);
+                    }
+                }
+            } else {
+                // Add moduleId 6 times for the 6 placeholders
+                for (let i = 0; i < 6; i++) {
+                    params.push(moduleId);
+                }
+            }
+
             // Get statistics about results chain completeness for a module
+            const queryParams = user && !user.is_system_admin
+                ? [moduleId, user.id, user.id, moduleId, user.id, user.id, moduleId, moduleId, moduleId, moduleId]
+                : [moduleId, moduleId, moduleId, moduleId, moduleId, moduleId];
+
             const stats = await this.db.query(`
                 SELECT
                     (SELECT COUNT(*) FROM activities a
                      JOIN project_components pc ON a.component_id = pc.id
                      JOIN sub_programs sp ON pc.sub_program_id = sp.id
-                     WHERE sp.module_id = ?) as total_activities,
+                     WHERE sp.module_id = ?${user && !user.is_system_admin ? ' AND (a.created_by = ? OR a.owned_by = ?)' : ''}) as total_activities,
 
                     (SELECT COUNT(DISTINCT rc.from_entity_id)
                      FROM results_chain rc
@@ -347,7 +371,7 @@ class ResultsChainService {
                      JOIN project_components pc ON a.component_id = pc.id
                      JOIN sub_programs sp ON pc.sub_program_id = sp.id
                      WHERE rc.from_entity_type = 'activity'
-                       AND sp.module_id = ?) as linked_activities,
+                       AND sp.module_id = ?${user && !user.is_system_admin ? ' AND (a.created_by = ? OR a.owned_by = ?)' : ''}) as linked_activities,
 
                     (SELECT COUNT(*) FROM project_components pc
                      JOIN sub_programs sp ON pc.sub_program_id = sp.id
@@ -367,7 +391,7 @@ class ResultsChainService {
                      JOIN sub_programs sp ON rc.from_entity_id = sp.id
                      WHERE rc.from_entity_type = 'sub_program'
                        AND sp.module_id = ?) as linked_sub_programs
-            `, [moduleId, moduleId, moduleId, moduleId, moduleId, moduleId]);
+            `, queryParams);
 
             const stat = stats[0];
             stat.activity_linkage_percentage = stat.total_activities > 0

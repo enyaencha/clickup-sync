@@ -328,8 +328,16 @@ class AssumptionsService {
         return 'critical';
     }
 
-    async getAssumptionStatistics(entityType, entityId) {
+    async getAssumptionStatistics(entityType, entityId, user = null) {
         try {
+            let userFilter = '';
+            const params = [entityType, entityId];
+
+            if (user && !user.is_system_admin) {
+                userFilter = ' AND (created_by = ? OR owned_by = ?)';
+                params.push(user.id, user.id);
+            }
+
             const stats = await this.db.query(`
                 SELECT
                     COUNT(*) as total_assumptions,
@@ -343,8 +351,8 @@ class AssumptionsService {
                     COUNT(CASE WHEN mitigation_status = 'implemented' THEN 1 END) as mitigations_implemented,
                     COUNT(CASE WHEN mitigation_status = 'in-progress' THEN 1 END) as mitigations_in_progress
                 FROM assumptions
-                WHERE entity_type = ? AND entity_id = ? AND deleted_at IS NULL
-            `, [entityType, entityId]);
+                WHERE entity_type = ? AND entity_id = ?${userFilter} AND deleted_at IS NULL
+            `, params);
 
             return stats[0];
         } catch (error) {

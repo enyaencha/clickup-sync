@@ -459,7 +459,7 @@ class IndicatorsService {
         }
     }
 
-    async getIndicatorStatistics(entityType, entityId) {
+    async getIndicatorStatistics(entityType, entityId, user = null) {
         try {
             let whereClause = '';
             const params = [];
@@ -483,6 +483,13 @@ class IndicatorsService {
 
             params.push(entityId);
 
+            // Add user filter for non-admin users
+            let userFilter = '';
+            if (user && !user.is_system_admin) {
+                userFilter = ' AND (created_by = ? OR owned_by = ?)';
+                params.push(user.id, user.id);
+            }
+
             const stats = await this.db.query(`
                 SELECT
                     COUNT(*) as total_indicators,
@@ -496,7 +503,7 @@ class IndicatorsService {
                     COUNT(CASE WHEN type = 'output' THEN 1 END) as output_indicators,
                     COUNT(CASE WHEN type = 'process' THEN 1 END) as process_indicators
                 FROM me_indicators
-                WHERE ${whereClause} AND deleted_at IS NULL
+                WHERE ${whereClause}${userFilter} AND deleted_at IS NULL
             `, params);
 
             return stats[0];
