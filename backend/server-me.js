@@ -334,12 +334,22 @@ async function initializeServices() {
         try {
             console.log('Initializing SEEP Program Module Services...');
 
+            // Get authMiddleware and authService (should be available from auth initialization above)
+            const { authMiddleware } = require('./middleware/auth.middleware');
+            const authService = app.locals.authService;
+
+            if (!authService) {
+                throw new Error('AuthService not initialized. Cannot register SEEP routes.');
+            }
+
             // Beneficiaries Service
             const BeneficiariesService = require('./services/beneficiaries.service');
             console.log('Creating BeneficiariesService instance...');
             const beneficiariesService = new BeneficiariesService(dbManager);
             console.log('Registering /api/beneficiaries routes...');
-            app.use('/api/beneficiaries', require('./routes/beneficiaries.routes')(beneficiariesService));
+            const beneficiariesRouter = require('./routes/beneficiaries.routes')(beneficiariesService);
+            beneficiariesRouter.use(authMiddleware(authService)); // Apply auth to all routes
+            app.use('/api/beneficiaries', beneficiariesRouter);
             console.log('✅ Beneficiaries routes registered at /api/beneficiaries');
             logger.info('✅ Beneficiaries routes registered');
 
@@ -348,7 +358,9 @@ async function initializeServices() {
             console.log('Creating SHGService instance...');
             const shgService = new SHGService(dbManager);
             console.log('Registering /api/shg routes...');
-            app.use('/api/shg', require('./routes/shg.routes')(shgService));
+            const shgRouter = require('./routes/shg.routes')(shgService);
+            shgRouter.use(authMiddleware(authService)); // Apply auth to all routes
+            app.use('/api/shg', shgRouter);
             console.log('✅ SHG routes registered at /api/shg');
             logger.info('✅ SHG routes registered');
 
@@ -357,7 +369,9 @@ async function initializeServices() {
             console.log('Creating LoansService instance...');
             const loansService = new LoansService(dbManager);
             console.log('Registering /api/loans routes...');
-            app.use('/api/loans', require('./routes/loans.routes')(loansService, shgService));
+            const loansRouter = require('./routes/loans.routes')(loansService, shgService);
+            loansRouter.use(authMiddleware(authService)); // Apply auth to all routes
+            app.use('/api/loans', loansRouter);
             console.log('✅ Loans routes registered at /api/loans');
             logger.info('✅ Loans routes registered');
 

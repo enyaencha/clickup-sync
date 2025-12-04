@@ -5,13 +5,9 @@
 
 const express = require('express');
 const router = express.Router();
-const { authMiddleware } = require('../middleware/auth');
 
 module.exports = (loansService, shgService) => {
     const db = loansService.db;
-
-    // Apply authentication middleware to all routes
-    router.use(authMiddleware);
 
     // ==================== LOANS ====================
 
