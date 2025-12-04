@@ -5,8 +5,10 @@
 
 const express = require('express');
 const router = express.Router();
+const { checkIndicatorPermission } = require('../middleware/permissions');
 
 module.exports = (indicatorsService) => {
+    const db = indicatorsService.db;
     // ==============================================
     // CREATE
     // ==============================================
@@ -92,7 +94,7 @@ module.exports = (indicatorsService) => {
      * Create a new indicator
      * POST /api/indicators
      */
-    router.post('/', async (req, res) => {
+    router.post('/', checkIndicatorPermission(db, 'create'), async (req, res) => {
         try {
             console.log('\n🎯 ROUTE HANDLER: POST /api/indicators');
             console.log('Route received body:', JSON.stringify(req.body, null, 2));
@@ -249,7 +251,7 @@ module.exports = (indicatorsService) => {
      * Update indicator
      * PUT /api/indicators/:id
      */
-    router.put('/:id', async (req, res) => {
+    router.put('/:id', checkIndicatorPermission(db, 'edit'), async (req, res) => {
         try {
             await indicatorsService.updateIndicator(req.params.id, req.body);
             res.json({
@@ -315,7 +317,7 @@ module.exports = (indicatorsService) => {
      * Soft delete indicator
      * DELETE /api/indicators/:id
      */
-    router.delete('/:id', async (req, res) => {
+    router.delete('/:id', checkIndicatorPermission(db, 'delete'), async (req, res) => {
         try {
             await indicatorsService.deleteIndicator(req.params.id);
             res.json({

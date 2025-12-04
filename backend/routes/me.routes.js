@@ -6,9 +6,11 @@ const express = require('express');
 const router = express.Router();
 const checklistService = require('../services/activity-checklist.service');
 const SettingsService = require('../services/settings.service');
+const { checkModulePermission } = require('../middleware/permissions');
 
 module.exports = (meService) => {
     const settingsService = new SettingsService();
+    const db = meService.db; // Get database connection from meService
     // ==============================================
     // PROGRAM MODULES
     // ==============================================
@@ -141,8 +143,12 @@ module.exports = (meService) => {
         }
     });
 
-    router.post('/activities', async (req, res) => {
+    router.post('/activities', checkModulePermission(db, 'create'), async (req, res) => {
         try {
+            // Set created_by and owned_by to current user
+            req.body.created_by = req.user.id;
+            req.body.owned_by = req.user.id;
+
             const id = await meService.createActivity(req.body);
             res.json({ success: true, id, message: 'Activity created and queued for sync to ClickUp' });
         } catch (error) {
@@ -150,7 +156,7 @@ module.exports = (meService) => {
         }
     });
 
-    router.put('/activities/:id', async (req, res) => {
+    router.put('/activities/:id', checkModulePermission(db, 'edit'), async (req, res) => {
         try {
             // Check checklist completion if status is being changed to "completed"
             if (req.body.status === 'completed') {
@@ -169,6 +175,9 @@ module.exports = (meService) => {
                 }
             }
 
+            // Record who modified it
+            req.body.last_modified_by = req.user.id;
+
             await meService.updateActivity(req.params.id, req.body);
             res.json({ success: true, message: 'Activity updated and queued for sync to ClickUp' });
         } catch (error) {
@@ -176,7 +185,7 @@ module.exports = (meService) => {
         }
     });
 
-    router.delete('/activities/:id', async (req, res) => {
+    router.delete('/activities/:id', checkModulePermission(db, 'delete'), async (req, res) => {
         try {
             await meService.deleteActivity(req.params.id);
             res.json({ success: true, message: 'Activity deleted successfully' });
