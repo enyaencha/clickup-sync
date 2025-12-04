@@ -151,60 +151,6 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
     // System admins have access to everything
     if (user?.is_system_admin) return true;
 
-    // For users with module assignments, they can access module-related items
-    if (user?.module_assignments && user.module_assignments.length > 0) {
-      // Users with module assignments can access these by default
-      const moduleUserAccess = ['programs', 'activities', 'logframe', 'indicators',
-                                'results_chain', 'means_of_verification', 'assumptions',
-                                'reports', 'approvals'];
-      if (moduleUserAccess.includes(item.resource)) {
-        return true;
-      }
-    }
-
-    // Role-based access for common operations
-    if (user?.roles && user.roles.length > 0) {
-      // Directors and managers can access most items
-      const managerialRoles = ['me_director', 'me_manager', 'module_manager', 'module_coordinator'];
-      const hasManagerialRole = user.roles.some(r => managerialRoles.includes(r.name));
-
-      if (hasManagerialRole) {
-        const managerAccess = ['programs', 'activities', 'logframe', 'indicators',
-                              'results_chain', 'means_of_verification', 'assumptions',
-                              'reports', 'approvals', 'beneficiaries', 'locations'];
-        if (managerAccess.includes(item.resource)) {
-          return true;
-        }
-      }
-
-      // Field officers can access field-related items
-      const fieldRoles = ['field_officer', 'data_entry_clerk'];
-      const hasFieldRole = user.roles.some(r => fieldRoles.includes(r.name));
-
-      if (hasFieldRole) {
-        const fieldAccess = ['programs', 'activities', 'beneficiaries', 'locations'];
-        if (fieldAccess.includes(item.resource)) {
-          return true;
-        }
-      }
-
-      // Finance officers can access budget and reports
-      if (user.roles.some(r => r.name === 'finance_officer')) {
-        const financeAccess = ['programs', 'reports', 'approvals'];
-        if (financeAccess.includes(item.resource)) {
-          return true;
-        }
-      }
-
-      // Report viewers can access reports and dashboards
-      if (user.roles.some(r => r.name === 'report_viewer')) {
-        const reportAccess = ['programs', 'reports', 'logframe', 'indicators'];
-        if (reportAccess.includes(item.resource)) {
-          return true;
-        }
-      }
-    }
-
     // Check specific permission
     return hasPermission(item.resource, item.action);
   };
