@@ -348,8 +348,7 @@ async function initializeServices() {
             const beneficiariesService = new BeneficiariesService(dbManager);
             console.log('Registering /api/beneficiaries routes...');
             const beneficiariesRouter = require('./routes/beneficiaries.routes')(beneficiariesService);
-            beneficiariesRouter.use(authMiddleware(authService)); // Apply auth to all routes
-            app.use('/api/beneficiaries', beneficiariesRouter);
+            app.use('/api/beneficiaries', authMiddleware(authService), beneficiariesRouter);
             console.log('✅ Beneficiaries routes registered at /api/beneficiaries');
             logger.info('✅ Beneficiaries routes registered');
 
@@ -359,8 +358,7 @@ async function initializeServices() {
             const shgService = new SHGService(dbManager);
             console.log('Registering /api/shg routes...');
             const shgRouter = require('./routes/shg.routes')(shgService);
-            shgRouter.use(authMiddleware(authService)); // Apply auth to all routes
-            app.use('/api/shg', shgRouter);
+            app.use('/api/shg', authMiddleware(authService), shgRouter);
             console.log('✅ SHG routes registered at /api/shg');
             logger.info('✅ SHG routes registered');
 
@@ -370,8 +368,7 @@ async function initializeServices() {
             const loansService = new LoansService(dbManager);
             console.log('Registering /api/loans routes...');
             const loansRouter = require('./routes/loans.routes')(loansService, shgService);
-            loansRouter.use(authMiddleware(authService)); // Apply auth to all routes
-            app.use('/api/loans', loansRouter);
+            app.use('/api/loans', authMiddleware(authService), loansRouter);
             console.log('✅ Loans routes registered at /api/loans');
             logger.info('✅ Loans routes registered');
 
@@ -394,8 +391,7 @@ async function initializeServices() {
             const gbvService = new GBVService(dbManager);
             console.log('Registering /api/gbv routes...');
             const gbvRouter = require('./routes/gbv.routes')(gbvService);
-            gbvRouter.use(authMW(authSvc)); // Apply auth to all routes
-            app.use('/api/gbv', gbvRouter);
+            app.use('/api/gbv', authMW(authSvc), gbvRouter);
             console.log('✅ GBV routes registered at /api/gbv');
             logger.info('✅ GBV routes registered');
 
@@ -405,8 +401,7 @@ async function initializeServices() {
             const reliefService = new ReliefService(dbManager);
             console.log('Registering /api/relief routes...');
             const reliefRouter = require('./routes/relief.routes')(reliefService);
-            reliefRouter.use(authMW(authSvc)); // Apply auth to all routes
-            app.use('/api/relief', reliefRouter);
+            app.use('/api/relief', authMW(authSvc), reliefRouter);
             console.log('✅ Relief routes registered at /api/relief');
             logger.info('✅ Relief routes registered');
 
@@ -416,8 +411,7 @@ async function initializeServices() {
             const nutritionService = new NutritionService(dbManager);
             console.log('Registering /api/nutrition routes...');
             const nutritionRouter = require('./routes/nutrition.routes')(nutritionService);
-            nutritionRouter.use(authMW(authSvc)); // Apply auth to all routes
-            app.use('/api/nutrition', nutritionRouter);
+            app.use('/api/nutrition', authMW(authSvc), nutritionRouter);
             console.log('✅ Nutrition routes registered at /api/nutrition');
             logger.info('✅ Nutrition routes registered');
 
@@ -427,8 +421,7 @@ async function initializeServices() {
             const agricultureService = new AgricultureService(dbManager);
             console.log('Registering /api/agriculture routes...');
             const agricultureRouter = require('./routes/agriculture.routes')(agricultureService);
-            agricultureRouter.use(authMW(authSvc)); // Apply auth to all routes
-            app.use('/api/agriculture', agricultureRouter);
+            app.use('/api/agriculture', authMW(authSvc), agricultureRouter);
             console.log('✅ Agriculture routes registered at /api/agriculture');
             logger.info('✅ Agriculture routes registered');
 
