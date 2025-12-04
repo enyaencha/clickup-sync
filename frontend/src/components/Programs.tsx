@@ -29,11 +29,12 @@ const Programs: React.FC = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    if (user) {
-      fetchPrograms();
-      fetchStatistics();
-    }
-  }, [user]);
+    // Only fetch once on mount, not when user changes
+    // The fetch functions will use the latest user value via closure
+    fetchPrograms();
+    fetchStatistics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchPrograms = async () => {
     try {
