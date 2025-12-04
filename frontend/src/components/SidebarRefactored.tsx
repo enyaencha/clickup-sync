@@ -184,17 +184,17 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
     if (user.roles && Array.isArray(user.roles)) {
       // Role-based menu access mapping
       const roleResourceMap: Record<string, string[]> = {
-        'me_director': ['programs', 'activities', 'logframe', 'indicators', 'results_chain',
-                       'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations'],
-        'me_manager': ['programs', 'activities', 'logframe', 'indicators', 'results_chain',
-                      'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations'],
+        'me_director': ['dashboard', 'programs', 'activities', 'logframe', 'indicators', 'results_chain',
+                       'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations', 'settings'],
+        'me_manager': ['dashboard', 'programs', 'activities', 'logframe', 'indicators', 'results_chain',
+                      'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations', 'settings'],
         'module_manager': ['programs', 'activities', 'logframe', 'indicators', 'results_chain',
                           'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations'],
         'module_coordinator': ['programs', 'activities', 'indicators', 'beneficiaries', 'locations', 'reports'],
         'field_officer': ['programs', 'activities', 'beneficiaries', 'locations'],
         'finance_officer': ['programs', 'activities', 'reports'],
-        'report_viewer': ['programs', 'logframe', 'indicators', 'reports'],
-        'verification_officer': ['programs', 'activities', 'logframe', 'means_of_verification'],
+        'report_viewer': ['reports'], // Report viewers ONLY see reports
+        'verification_officer': ['approvals'], // Verification officers ONLY see approvals
         'data_entry_clerk': ['programs', 'activities', 'beneficiaries', 'locations'],
       };
 
@@ -219,6 +219,8 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Dashboard',
           path: '/dashboard',
           description: 'Overview & Analytics',
+          resource: 'dashboard',
+          action: 'view',
         },
         {
           icon: ProgramIcon,
@@ -307,8 +309,8 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Approvals',
           path: '/approvals',
           description: 'Review Activities',
-          resource: 'activities',
-          action: 'approve',
+          resource: 'approvals',
+          action: 'view',
         }
       ]
     },
