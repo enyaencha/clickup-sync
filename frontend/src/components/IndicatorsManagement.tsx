@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Indicator {
   id: number;
@@ -36,6 +37,7 @@ type EntityType = 'module' | 'sub_program' | 'component' | 'activity';
 
 const IndicatorsManagement: React.FC = () => {
   const { entityType: urlEntityType, entityId: urlEntityId } = useParams<{ entityType: string; entityId: string }>();
+  const { user } = useAuth();
 
   // Tab state
   const [activeTab, setActiveTab] = useState<EntityType>(urlEntityType as EntityType || 'module');
@@ -110,11 +112,19 @@ const IndicatorsManagement: React.FC = () => {
       if (!response.ok) throw new Error('Failed to fetch entities');
 
       const data = await response.json();
-      setEntities(data.data || data || []);
+      let filteredData = data.data || data || [];
+
+      // Filter modules based on user's module assignments
+      if (type === 'module' && user && !user.is_system_admin && user.module_assignments && user.module_assignments.length > 0) {
+        const assignedModuleIds = user.module_assignments.map(m => m.module_id);
+        filteredData = filteredData.filter((entity: Entity) => assignedModuleIds.includes(entity.id));
+      }
+
+      setEntities(filteredData);
 
       // Auto-select first entity if none selected
-      if (data.data && data.data.length > 0 && selectedEntity === 0) {
-        setSelectedEntity(data.data[0].id);
+      if (filteredData.length > 0 && selectedEntity === 0) {
+        setSelectedEntity(filteredData[0].id);
       }
     } catch (err) {
       console.error('Error fetching entities:', err);

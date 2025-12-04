@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ResultsChainLink {
   id: number;
@@ -23,6 +24,7 @@ type EntityType = 'module' | 'sub_program' | 'component' | 'activity';
 
 const ResultsChainManagement: React.FC = () => {
   const { moduleId } = useParams<{ moduleId: string }>();
+  const { user } = useAuth();
 
   const [links, setLinks] = useState<ResultsChainLink[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,7 +140,14 @@ const ResultsChainManagement: React.FC = () => {
         activitiesRes.json()
       ]);
 
-      setModules(modulesData.data || []);
+      // Filter modules based on user's module assignments
+      let filteredModules = modulesData.data || [];
+      if (user && !user.is_system_admin && user.module_assignments && user.module_assignments.length > 0) {
+        const assignedModuleIds = user.module_assignments.map(m => m.module_id);
+        filteredModules = (modulesData.data || []).filter((m: Entity) => assignedModuleIds.includes(m.id));
+      }
+
+      setModules(filteredModules);
       setSubPrograms(subProgramsData.data || []);
       setComponents(componentsData.data || []);
       setActivities(activitiesData.data || []);

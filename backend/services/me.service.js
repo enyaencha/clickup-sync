@@ -459,32 +459,64 @@ class MEService {
         return subPrograms;
     }
 
-    async getOverallStatistics() {
+    async getOverallStatistics(user = null, modules = null) {
+        // Build module filter
+        let moduleFilter = '';
+        let moduleParams = [];
+
+        if (modules && modules.length > 0) {
+            const placeholders = modules.map(() => '?').join(',');
+            moduleFilter = ` AND program_module_id IN (${placeholders})`;
+            moduleParams = modules;
+        }
+
+        // Build user filter for activities
+        let userFilter = '';
+        let userParams = [];
+        if (user && !user.is_system_admin) {
+            userFilter = ' AND (a.created_by = ? OR a.owned_by = ?)';
+            userParams = [user.id, user.id];
+        }
+
         // Get counts for all entities
         const subProgramCount = await this.db.query(`
-            SELECT COUNT(*) as count FROM sub_programs WHERE deleted_at IS NULL
-        `);
+            SELECT COUNT(*) as count FROM sub_programs
+            WHERE deleted_at IS NULL${moduleFilter}
+        `, moduleParams);
 
         const componentCount = await this.db.query(`
-            SELECT COUNT(*) as count FROM project_components WHERE deleted_at IS NULL
-        `);
+            SELECT COUNT(*) as count
+            FROM project_components pc
+            JOIN sub_programs sp ON pc.sub_program_id = sp.id
+            WHERE pc.deleted_at IS NULL${moduleFilter}
+        `, moduleParams);
 
         const activityCount = await this.db.query(`
-            SELECT COUNT(*) as count FROM activities WHERE deleted_at IS NULL
-        `);
+            SELECT COUNT(*) as count
+            FROM activities a
+            JOIN project_components pc ON a.component_id = pc.id
+            JOIN sub_programs sp ON pc.sub_program_id = sp.id
+            WHERE a.deleted_at IS NULL${moduleFilter}${userFilter}
+        `, [...moduleParams, ...userParams]);
 
         // Get activity status breakdown
         const activityByStatus = await this.db.query(`
-            SELECT status, COUNT(*) as count
-            FROM activities
-            WHERE deleted_at IS NULL
-            GROUP BY status
-        `);
+            SELECT a.status, COUNT(*) as count
+            FROM activities a
+            JOIN project_components pc ON a.component_id = pc.id
+            JOIN sub_programs sp ON pc.sub_program_id = sp.id
+            WHERE a.deleted_at IS NULL${moduleFilter}${userFilter}
+            GROUP BY a.status
+        `, [...moduleParams, ...userParams]);
 
         // Calculate overall progress across all activities
         const activities = await this.db.query(`
-            SELECT status FROM activities WHERE deleted_at IS NULL
-        `);
+            SELECT a.status
+            FROM activities a
+            JOIN project_components pc ON a.component_id = pc.id
+            JOIN sub_programs sp ON pc.sub_program_id = sp.id
+            WHERE a.deleted_at IS NULL${moduleFilter}${userFilter}
+        `, [...moduleParams, ...userParams]);
 
         let totalProgress = 0;
         if (activities && activities.length > 0) {
