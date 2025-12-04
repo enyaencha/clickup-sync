@@ -217,14 +217,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Check for specific role-based landing pages
     const roleHierarchy = [
-      { role: 'me_director', path: '/' },
-      { role: 'me_manager', path: '/' },
+      { role: 'verification_officer', path: '/approvals' }, // Verification officers go to approvals ONLY
+      { role: 'report_viewer', path: '/reports' }, // Report viewers go to reports ONLY
+      { role: 'me_director', path: '/dashboard' },
+      { role: 'me_manager', path: '/dashboard' },
       { role: 'module_manager', path: '/programs' },
       { role: 'module_coordinator', path: '/programs' },
       { role: 'field_officer', path: '/programs' },
-      { role: 'finance_officer', path: '/' },
-      { role: 'report_viewer', path: '/' },
-      { role: 'verification_officer', path: '/' },
+      { role: 'finance_officer', path: '/programs' },
       { role: 'data_entry_clerk', path: '/programs' },
     ];
 
