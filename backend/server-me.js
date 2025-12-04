@@ -380,6 +380,63 @@ async function initializeServices() {
             throw error;
         }
 
+        // Register Additional Program Module Routes (GBV, Relief, Nutrition, Agriculture)
+        try {
+            console.log('Initializing Additional Program Module Services...');
+
+            // Get authMiddleware and authService
+            const { authMiddleware: authMW } = require('./middleware/auth.middleware');
+            const authSvc = app.locals.authService;
+
+            // GBV Service
+            const GBVService = require('./services/gbv.service');
+            console.log('Creating GBVService instance...');
+            const gbvService = new GBVService(dbManager);
+            console.log('Registering /api/gbv routes...');
+            const gbvRouter = require('./routes/gbv.routes')(gbvService);
+            gbvRouter.use(authMW(authSvc)); // Apply auth to all routes
+            app.use('/api/gbv', gbvRouter);
+            console.log('✅ GBV routes registered at /api/gbv');
+            logger.info('✅ GBV routes registered');
+
+            // Relief Service
+            const ReliefService = require('./services/relief.service');
+            console.log('Creating ReliefService instance...');
+            const reliefService = new ReliefService(dbManager);
+            console.log('Registering /api/relief routes...');
+            const reliefRouter = require('./routes/relief.routes')(reliefService);
+            reliefRouter.use(authMW(authSvc)); // Apply auth to all routes
+            app.use('/api/relief', reliefRouter);
+            console.log('✅ Relief routes registered at /api/relief');
+            logger.info('✅ Relief routes registered');
+
+            // Nutrition Service
+            const NutritionService = require('./services/nutrition.service');
+            console.log('Creating NutritionService instance...');
+            const nutritionService = new NutritionService(dbManager);
+            console.log('Registering /api/nutrition routes...');
+            const nutritionRouter = require('./routes/nutrition.routes')(nutritionService);
+            nutritionRouter.use(authMW(authSvc)); // Apply auth to all routes
+            app.use('/api/nutrition', nutritionRouter);
+            console.log('✅ Nutrition routes registered at /api/nutrition');
+            logger.info('✅ Nutrition routes registered');
+
+            // Agriculture Service
+            const AgricultureService = require('./services/agriculture.service');
+            console.log('Creating AgricultureService instance...');
+            const agricultureService = new AgricultureService(dbManager);
+            console.log('Registering /api/agriculture routes...');
+            const agricultureRouter = require('./routes/agriculture.routes')(agricultureService);
+            agricultureRouter.use(authMW(authSvc)); // Apply auth to all routes
+            app.use('/api/agriculture', agricultureRouter);
+            console.log('✅ Agriculture routes registered at /api/agriculture');
+            logger.info('✅ Agriculture routes registered');
+
+        } catch (error) {
+            console.error('❌ Failed to register Additional Program Module Routes:', error);
+            throw error;
+        }
+
         // Serve uploaded files
         const path = require('path');
         app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
