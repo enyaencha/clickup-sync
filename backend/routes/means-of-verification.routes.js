@@ -5,8 +5,10 @@
 
 const express = require('express');
 const router = express.Router();
+const { checkResourcePermission } = require('../middleware/permissions');
 
 module.exports = (movService) => {
+    const db = movService.db;
     // ==============================================
     // CREATE
     // ==============================================

@@ -187,10 +187,175 @@ function checkModulePermission(db, action) {
     };
 }
 
+/**
+ * Check permissions for indicators (which can be attached to various entities)
+ */
+function checkIndicatorPermission(db, action) {
+    return async (req, res, next) => {
+        try {
+            const user = req.user;
+
+            if (!user) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'Authentication required'
+                });
+            }
+
+            if (user.is_system_admin) {
+                return next();
+            }
+
+            // For create, check module_id from request body
+            if (action === 'create' && req.body.module_id) {
+                if (!canPerformModuleAction(user, req.body.module_id, 'create')) {
+                    return res.status(403).json({
+                        success: false,
+                        error: 'You do not have permission to create indicators in this module'
+                    });
+                }
+                req.body.created_by = user.id;
+                req.body.owned_by = user.id;
+                return next();
+            }
+
+            // For edit/delete, get the indicator first
+            if ((action === 'edit' || action === 'delete') && req.params.id) {
+                const indicator = await db.query(
+                    'SELECT * FROM me_indicators WHERE id = ? AND deleted_at IS NULL',
+                    [req.params.id]
+                );
+
+                if (!indicator || indicator.length === 0) {
+                    return res.status(404).json({
+                        success: false,
+                        error: 'Indicator not found'
+                    });
+                }
+
+                const indicatorData = indicator[0];
+                const moduleId = indicatorData.module_id;
+
+                // Check ownership or module permission
+                const canModify = canModifyResource(user, indicatorData, action) ||
+                                 canPerformModuleAction(user, moduleId, action);
+
+                if (!canModify) {
+                    return res.status(403).json({
+                        success: false,
+                        error: `You do not have permission to ${action} this indicator`
+                    });
+                }
+
+                req.indicator = indicatorData;
+                return next();
+            }
+
+            return res.status(400).json({
+                success: false,
+                error: 'Unable to verify permissions'
+            });
+
+        } catch (error) {
+            console.error('Indicator permission check error:', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Error checking permissions'
+            });
+        }
+    };
+}
+
+/**
+ * Generic permission check for verification, assumptions, etc.
+ */
+function checkResourcePermission(db, tableName, action) {
+    return async (req, res, next) => {
+        try {
+            const user = req.user;
+
+            if (!user) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'Authentication required'
+                });
+            }
+
+            if (user.is_system_admin) {
+                return next();
+            }
+
+            // For create
+            if (action === 'create') {
+                // Set ownership
+                req.body.created_by = user.id;
+                req.body.owned_by = user.id;
+                return next(); // Allow create if user is authenticated
+            }
+
+            // For edit/delete
+            if ((action === 'edit' || action === 'delete' || action === 'approve') && req.params.id) {
+                const resource = await db.query(
+                    `SELECT * FROM ${tableName} WHERE id = ? AND deleted_at IS NULL`,
+                    [req.params.id]
+                );
+
+                if (!resource || resource.length === 0) {
+                    return res.status(404).json({
+                        success: false,
+                        error: 'Resource not found'
+                    });
+                }
+
+                const resourceData = resource[0];
+
+                // For approve action, check if user has can_approve permission
+                if (action === 'approve') {
+                    // Try to determine module from entity_id
+                    // This is a simplified check - might need refinement based on resource type
+                    const canApprove = user.module_assignments?.some(m => m.can_approve);
+                    if (!canApprove) {
+                        return res.status(403).json({
+                            success: false,
+                            error: 'You do not have permission to approve'
+                        });
+                    }
+                    return next();
+                }
+
+                // Check ownership
+                const isOwner = resourceData.owned_by === user.id || resourceData.created_by === user.id;
+                if (!isOwner) {
+                    return res.status(403).json({
+                        success: false,
+                        error: `You do not have permission to ${action} this resource`
+                    });
+                }
+
+                return next();
+            }
+
+            return res.status(400).json({
+                success: false,
+                error: 'Unable to verify permissions'
+            });
+
+        } catch (error) {
+            console.error('Resource permission check error:', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Error checking permissions'
+            });
+        }
+    };
+}
+
 module.exports = {
     canPerformModuleAction,
     canModifyResource,
     getModuleIdForActivity,
     getModuleIdForComponent,
-    checkModulePermission
+    checkModulePermission,
+    checkIndicatorPermission,
+    checkResourcePermission
 };
