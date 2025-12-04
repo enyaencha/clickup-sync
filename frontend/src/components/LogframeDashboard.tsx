@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Statistics {
   indicators: {
@@ -39,6 +40,7 @@ interface Module {
 const LogframeDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { moduleId } = useParams<{ moduleId?: string }>();
+  const { user } = useAuth();
 
   const [modules, setModules] = useState<Module[]>([]);
   const [selectedModule, setSelectedModule] = useState<number | null>(null);
@@ -61,12 +63,20 @@ const LogframeDashboard: React.FC = () => {
       if (!response.ok) throw new Error('Failed to fetch modules');
 
       const data = await response.json();
-      setModules(data.data || []);
+
+      // Filter modules based on user's module assignments
+      let filteredModules = data.data || [];
+      if (user && !user.is_system_admin && user.module_assignments && user.module_assignments.length > 0) {
+        const assignedModuleIds = user.module_assignments.map(m => m.module_id);
+        filteredModules = (data.data || []).filter((m: Module) => assignedModuleIds.includes(m.id));
+      }
+
+      setModules(filteredModules);
 
       if (moduleId) {
         setSelectedModule(parseInt(moduleId));
-      } else if (data.data && data.data.length > 0) {
-        setSelectedModule(data.data[0].id);
+      } else if (filteredModules.length > 0) {
+        setSelectedModule(filteredModules[0].id);
       }
 
       setLoading(false);

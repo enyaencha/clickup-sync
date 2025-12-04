@@ -354,7 +354,9 @@ module.exports = (meService) => {
 
     router.get('/dashboard/overall', async (req, res) => {
         try {
-            const data = await meService.getOverallStatistics();
+            // Accept modules query param for filtering by user's assigned modules
+            const modules = req.query.modules ? req.query.modules.split(',').map(Number) : null;
+            const data = await meService.getOverallStatistics(req.user, modules);
             res.json({ success: true, data });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });
