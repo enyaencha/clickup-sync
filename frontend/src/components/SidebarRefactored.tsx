@@ -148,10 +148,65 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
     // If no permission is specified, item is accessible to all authenticated users
     if (!item.resource || !item.action) return true;
 
-    // System admins have access to everything
-    if (user?.is_system_admin) return true;
+    // Defensive check: if user is not fully loaded, don't evaluate permissions
+    // This prevents issues during login/logout transitions
+    if (!user) return false;
 
-    // Check specific permission
+    // System admins have access to everything
+    if (user.is_system_admin) return true;
+
+    // Check if user has module assignments - users with modules can access module-related features
+    const hasModuleAssignments = user.module_assignments && user.module_assignments.length > 0;
+
+    if (hasModuleAssignments) {
+      // Module-related menu items that should be accessible to users with module assignments
+      const moduleRelatedResources = ['programs', 'activities', 'logframe', 'indicators',
+                                       'results_chain', 'means_of_verification', 'assumptions',
+                                       'reports', 'beneficiaries', 'locations'];
+
+      if (moduleRelatedResources.includes(item.resource)) {
+        // Check if user has appropriate permission in their module assignments
+        const hasModulePermission = user.module_assignments.some(assignment => {
+          // Map actions to module permission flags
+          if (item.action === 'view') return assignment.can_view;
+          if (item.action === 'create') return assignment.can_create;
+          if (item.action === 'edit') return assignment.can_edit;
+          if (item.action === 'delete') return assignment.can_delete;
+          if (item.action === 'approve') return assignment.can_approve;
+          return false;
+        });
+
+        if (hasModulePermission) return true;
+      }
+    }
+
+    // Check role-based access
+    if (user.roles && Array.isArray(user.roles)) {
+      // Role-based menu access mapping
+      const roleResourceMap: Record<string, string[]> = {
+        'me_director': ['programs', 'activities', 'logframe', 'indicators', 'results_chain',
+                       'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations'],
+        'me_manager': ['programs', 'activities', 'logframe', 'indicators', 'results_chain',
+                      'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations'],
+        'module_manager': ['programs', 'activities', 'logframe', 'indicators', 'results_chain',
+                          'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations'],
+        'module_coordinator': ['programs', 'activities', 'indicators', 'beneficiaries', 'locations', 'reports'],
+        'field_officer': ['programs', 'activities', 'beneficiaries', 'locations'],
+        'finance_officer': ['programs', 'activities', 'reports'],
+        'report_viewer': ['programs', 'logframe', 'indicators', 'reports'],
+        'verification_officer': ['programs', 'activities', 'logframe', 'means_of_verification'],
+        'data_entry_clerk': ['programs', 'activities', 'beneficiaries', 'locations'],
+      };
+
+      for (const userRole of user.roles) {
+        const allowedResources = roleResourceMap[userRole.name];
+        if (allowedResources && allowedResources.includes(item.resource)) {
+          return true;
+        }
+      }
+    }
+
+    // Finally, check specific permission from role_permissions
     return hasPermission(item.resource, item.action);
   };
 
