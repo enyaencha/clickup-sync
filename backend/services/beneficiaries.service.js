@@ -24,7 +24,7 @@ class BeneficiariesService {
         let query = `
             SELECT
                 b.*,
-                u.name as registered_by_name,
+                u.full_name as registered_by_name,
                 pm.name as program_module_name,
                 COUNT(DISTINCT shg.id) as shg_memberships_count,
                 COUNT(DISTINCT l.id) as active_loans_count
@@ -95,7 +95,7 @@ class BeneficiariesService {
         const query = `
             SELECT
                 b.*,
-                u.name as registered_by_name,
+                u.full_name as registered_by_name,
                 pm.name as program_module_name,
                 COUNT(DISTINCT shg.id) as shg_memberships_count,
                 COUNT(DISTINCT l.id) as total_loans_count,

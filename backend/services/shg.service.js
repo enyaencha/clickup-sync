@@ -19,7 +19,7 @@ class SHGService {
         let query = `
             SELECT
                 sg.*,
-                u.name as facilitator_name,
+                u.full_name as facilitator_name,
                 pm.name as program_module_name,
                 b1.first_name as chairperson_first_name,
                 b1.last_name as chairperson_last_name,
@@ -79,7 +79,7 @@ class SHGService {
         const query = `
             SELECT
                 sg.*,
-                u.name as facilitator_name,
+                u.full_name as facilitator_name,
                 pm.name as program_module_name,
                 COUNT(DISTINCT sm.id) as actual_members_count,
                 COUNT(DISTINCT l.id) as total_loans_count,
@@ -458,8 +458,8 @@ class SHGService {
         let query = `
             SELECT
                 m.*,
-                u.name as facilitator_name,
-                r.name as recorded_by_name
+                u.full_name as facilitator_name,
+                r.full_name as recorded_by_name
             FROM shg_meetings m
             LEFT JOIN users u ON m.facilitator_id = u.id
             LEFT JOIN users r ON m.recorded_by = r.id

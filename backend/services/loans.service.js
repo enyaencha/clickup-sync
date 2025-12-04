@@ -28,8 +28,8 @@ class LoansService {
                 g1.last_name as guarantor1_last_name,
                 g2.first_name as guarantor2_first_name,
                 g2.last_name as guarantor2_last_name,
-                u1.name as approved_by_name,
-                u2.name as disbursed_by_name
+                u1.full_name as approved_by_name,
+                u2.full_name as disbursed_by_name
             FROM loans l
             INNER JOIN shg_groups sg ON l.shg_group_id = sg.id
             INNER JOIN beneficiaries b ON l.beneficiary_id = b.id
@@ -480,7 +480,7 @@ class LoansService {
         const query = `
             SELECT
                 lr.*,
-                u.name as recorded_by_name
+                u.full_name as recorded_by_name
             FROM loan_repayments lr
             LEFT JOIN users u ON lr.recorded_by = u.id
             WHERE lr.loan_id = ? AND lr.deleted_at IS NULL
