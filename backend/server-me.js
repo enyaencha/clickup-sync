@@ -330,6 +330,42 @@ async function initializeServices() {
             throw error;
         }
 
+        // Register SEEP Program Module Routes (Beneficiaries, SHG, Loans)
+        try {
+            console.log('Initializing SEEP Program Module Services...');
+
+            // Beneficiaries Service
+            const BeneficiariesService = require('./services/beneficiaries.service');
+            console.log('Creating BeneficiariesService instance...');
+            const beneficiariesService = new BeneficiariesService(dbManager);
+            console.log('Registering /api/beneficiaries routes...');
+            app.use('/api/beneficiaries', require('./routes/beneficiaries.routes')(beneficiariesService));
+            console.log('✅ Beneficiaries routes registered at /api/beneficiaries');
+            logger.info('✅ Beneficiaries routes registered');
+
+            // SHG Service
+            const SHGService = require('./services/shg.service');
+            console.log('Creating SHGService instance...');
+            const shgService = new SHGService(dbManager);
+            console.log('Registering /api/shg routes...');
+            app.use('/api/shg', require('./routes/shg.routes')(shgService));
+            console.log('✅ SHG routes registered at /api/shg');
+            logger.info('✅ SHG routes registered');
+
+            // Loans Service
+            const LoansService = require('./services/loans.service');
+            console.log('Creating LoansService instance...');
+            const loansService = new LoansService(dbManager);
+            console.log('Registering /api/loans routes...');
+            app.use('/api/loans', require('./routes/loans.routes')(loansService, shgService));
+            console.log('✅ Loans routes registered at /api/loans');
+            logger.info('✅ Loans routes registered');
+
+        } catch (error) {
+            console.error('❌ Failed to register SEEP Module Routes:', error);
+            throw error;
+        }
+
         // Serve uploaded files
         const path = require('path');
         app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
