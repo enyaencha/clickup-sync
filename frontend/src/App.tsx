@@ -18,6 +18,10 @@ import ResultsChainManagement from './components/ResultsChainManagement';
 import Beneficiaries from './components/Beneficiaries';
 import SHGManagement from './components/SHGManagement';
 import LoansManagement from './components/LoansManagement';
+import GBVCaseManagement from './components/GBVCaseManagement';
+import ReliefDistribution from './components/ReliefDistribution';
+import NutritionAssessment from './components/NutritionAssessment';
+import AgricultureMonitoring from './components/AgricultureMonitoring';
 
 const App: React.FC = () => {
   return (
@@ -68,6 +72,12 @@ const App: React.FC = () => {
                     <Route path="/beneficiaries" element={<Beneficiaries />} />
                     <Route path="/shg" element={<SHGManagement />} />
                     <Route path="/loans" element={<LoansManagement />} />
+
+                    {/* Additional Program Module Routes */}
+                    <Route path="/gbv" element={<GBVCaseManagement />} />
+                    <Route path="/relief" element={<ReliefDistribution />} />
+                    <Route path="/nutrition" element={<NutritionAssessment />} />
+                    <Route path="/agriculture" element={<AgricultureMonitoring />} />
                   </Routes>
                 </Layout>
               </ProtectedRoute>
