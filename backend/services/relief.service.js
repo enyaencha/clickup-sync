@@ -18,8 +18,8 @@ class ReliefService {
             SELECT
                 rd.*,
                 pm.name as program_module_name,
-                u1.name as distributed_by_name,
-                u2.name as verified_by_name
+                u1.full_name as distributed_by_name,
+                u2.full_name as verified_by_name
             FROM relief_distributions rd
             LEFT JOIN program_modules pm ON rd.program_module_id = pm.id
             LEFT JOIN users u1 ON rd.distributed_by = u1.id
@@ -70,8 +70,8 @@ class ReliefService {
             SELECT
                 rd.*,
                 pm.name as program_module_name,
-                u1.name as distributed_by_name,
-                u2.name as verified_by_name,
+                u1.full_name as distributed_by_name,
+                u2.full_name as verified_by_name,
                 COUNT(DISTINCT rb.id) as actual_beneficiaries_count
             FROM relief_distributions rd
             LEFT JOIN program_modules pm ON rd.program_module_id = pm.id
@@ -252,7 +252,7 @@ class ReliefService {
                 b.gender,
                 b.age,
                 b.phone_number,
-                u.name as recorded_by_name
+                u.full_name as recorded_by_name
             FROM relief_beneficiaries rb
             INNER JOIN beneficiaries b ON rb.beneficiary_id = b.id
             LEFT JOIN users u ON rb.recorded_by = u.id
