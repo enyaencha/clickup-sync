@@ -50,7 +50,7 @@ class GBVService {
                 gc.education_support,
                 gc.last_contact_date,
                 gc.next_followup_date,
-                u.name as case_worker_name,
+                u.full_name as case_worker_name,
                 pm.name as program_module_name
             FROM gbv_cases gc
             LEFT JOIN users u ON gc.case_worker_id = u.id
@@ -106,7 +106,7 @@ class GBVService {
         const query = `
             SELECT
                 gc.*,
-                u.name as case_worker_name,
+                u.full_name as case_worker_name,
                 pm.name as program_module_name,
                 creator.name as created_by_name
             FROM gbv_cases gc
@@ -308,7 +308,7 @@ class GBVService {
         const query = `
             SELECT
                 n.*,
-                u.name as recorded_by_name
+                u.full_name as recorded_by_name
             FROM gbv_case_notes n
             LEFT JOIN users u ON n.recorded_by = u.id
             WHERE n.case_id = ? AND n.deleted_at IS NULL

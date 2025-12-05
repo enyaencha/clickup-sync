@@ -22,7 +22,7 @@ class NutritionService {
                 b.gender,
                 b.age,
                 pm.name as program_module_name,
-                u.name as assessed_by_name
+                u.full_name as assessed_by_name
             FROM nutrition_assessments na
             INNER JOIN beneficiaries b ON na.beneficiary_id = b.id
             LEFT JOIN program_modules pm ON na.program_module_id = pm.id
@@ -88,7 +88,7 @@ class NutritionService {
                 b.age,
                 b.household_size,
                 pm.name as program_module_name,
-                u.name as assessed_by_name
+                u.full_name as assessed_by_name
             FROM nutrition_assessments na
             INNER JOIN beneficiaries b ON na.beneficiary_id = b.id
             LEFT JOIN program_modules pm ON na.program_module_id = pm.id
@@ -265,7 +265,7 @@ class NutritionService {
         const query = `
             SELECT
                 na.*,
-                u.name as assessed_by_name
+                u.full_name as assessed_by_name
             FROM nutrition_assessments na
             LEFT JOIN users u ON na.assessed_by = u.id
             WHERE na.beneficiary_id = ? AND na.deleted_at IS NULL

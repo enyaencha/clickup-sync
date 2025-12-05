@@ -23,7 +23,7 @@ class AgricultureService {
                 b.last_name,
                 b.phone_number,
                 pm.name as program_module_name,
-                u.name as facilitator_name
+                u.full_name as facilitator_name
             FROM agricultural_plots ap
             INNER JOIN beneficiaries b ON ap.beneficiary_id = b.id
             LEFT JOIN program_modules pm ON ap.program_module_id = pm.id
@@ -78,7 +78,7 @@ class AgricultureService {
                 b.phone_number,
                 b.village as beneficiary_village,
                 pm.name as program_module_name,
-                u.name as facilitator_name,
+                u.full_name as facilitator_name,
                 COUNT(DISTINCT cp.id) as production_records_count
             FROM agricultural_plots ap
             INNER JOIN beneficiaries b ON ap.beneficiary_id = b.id
@@ -248,7 +248,7 @@ class AgricultureService {
                 b.first_name,
                 b.last_name,
                 pm.name as program_module_name,
-                u.name as recorded_by_name
+                u.full_name as recorded_by_name
             FROM crop_production cp
             INNER JOIN agricultural_plots ap ON cp.plot_id = ap.id
             INNER JOIN beneficiaries b ON ap.beneficiary_id = b.id
@@ -305,7 +305,7 @@ class AgricultureService {
                 b.first_name,
                 b.last_name,
                 pm.name as program_module_name,
-                u.name as recorded_by_name
+                u.full_name as recorded_by_name
             FROM crop_production cp
             INNER JOIN agricultural_plots ap ON cp.plot_id = ap.id
             INNER JOIN beneficiaries b ON ap.beneficiary_id = b.id
