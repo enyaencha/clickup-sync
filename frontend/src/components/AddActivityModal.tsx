@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { authFetch } from '../config/api';
 
 interface AddActivityModalProps {
   isOpen: boolean;
@@ -77,7 +78,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
         created_by: null, // TODO: Get user ID from auth context
       };
 
-      const response = await fetch('/api/activities', {
+      const response = await authFetch('/api/activities', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { authFetch } from '../config/api';
 
 interface ChecklistItem {
   id: number;
@@ -48,14 +49,14 @@ const ActivityChecklist: React.FC<ActivityChecklistProps> = ({
       setLoading(true);
 
       // Fetch items
-      const itemsRes = await fetch(`/api/checklists/activity/${activityId}`);
+      const itemsRes = await authFetch(`/api/checklists/activity/${activityId}`);
       if (itemsRes.ok) {
         const itemsData = await itemsRes.json();
         setItems(itemsData.data || []);
       }
 
       // Fetch status
-      const statusRes = await fetch(`/api/checklists/activity/${activityId}/status`);
+      const statusRes = await authFetch(`/api/checklists/activity/${activityId}/status`);
       if (statusRes.ok) {
         const statusData = await statusRes.json();
         setStatus(statusData.data);
@@ -70,7 +71,7 @@ const ActivityChecklist: React.FC<ActivityChecklistProps> = ({
 
   const checkIfCanEdit = async () => {
     try {
-      const response = await fetch('/api/settings');
+      const response = await authFetch('/api/settings');
       if (response.ok) {
         const settingsData = await response.json();
         const settings = settingsData.data;
@@ -89,7 +90,7 @@ const ActivityChecklist: React.FC<ActivityChecklistProps> = ({
     if (!newItemName.trim()) return;
 
     try {
-      const response = await fetch('/api/checklists', {
+      const response = await authFetch('/api/checklists', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -112,7 +113,7 @@ const ActivityChecklist: React.FC<ActivityChecklistProps> = ({
 
   const handleToggleComplete = async (itemId: number) => {
     try {
-      const response = await fetch(`/api/checklists/${itemId}/toggle`, {
+      const response = await authFetch(`/api/checklists/${itemId}/toggle`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: 1 }) // TODO: Get actual user ID
@@ -137,7 +138,7 @@ const ActivityChecklist: React.FC<ActivityChecklistProps> = ({
     if (!editingName.trim()) return;
 
     try {
-      const response = await fetch(`/api/checklists/${itemId}`, {
+      const response = await authFetch(`/api/checklists/${itemId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ item_name: editingName.trim() })
@@ -164,7 +165,7 @@ const ActivityChecklist: React.FC<ActivityChecklistProps> = ({
     if (!confirm('Delete this checklist item?')) return;
 
     try {
-      const response = await fetch(`/api/checklists/${itemId}`, {
+      const response = await authFetch(`/api/checklists/${itemId}`, {
         method: 'DELETE'
       });
 

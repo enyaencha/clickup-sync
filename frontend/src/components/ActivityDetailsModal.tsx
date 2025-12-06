@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { authFetch } from '../config/api';
 import ActivityChecklist from './ActivityChecklist';
 
 interface Activity {
@@ -54,7 +55,7 @@ const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
   const fetchActivity = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/activities/${activityId}`);
+      const response = await authFetch(`/api/activities/${activityId}`);
       if (!response.ok) throw new Error('Failed to fetch activity');
 
       const data = await response.json();
@@ -77,7 +78,7 @@ const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
   const handleSave = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/activities/${activityId}`, {
+      const response = await authFetch(`/api/activities/${activityId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -116,7 +117,7 @@ const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
 
     // Validate if editing is allowed
     try {
-      const validationRes = await fetch('/api/settings/validate/can-edit', {
+      const validationRes = await authFetch('/api/settings/validate/can-edit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ activity })
@@ -156,7 +157,7 @@ const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
 
     try {
       setLoading(true);
-      const response = await fetch(`/api/activities/${activityId}`, {
+      const response = await authFetch(`/api/activities/${activityId}`, {
         method: 'DELETE',
       });
 

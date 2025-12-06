@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { authFetch } from '../config/api';
 import {
   Box,
   Button,
@@ -88,7 +89,7 @@ const GBVCaseManagement: React.FC = () => {
   const fetchCases = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:4000/api/gbv/cases', {
+      const response = await authFetch('http://localhost:4000/api/gbv/cases', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -161,7 +162,7 @@ const GBVCaseManagement: React.FC = () => {
 
       const method = selectedCase ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { authFetch } from '../config/api';
 
 interface Assumption {
   id: number;
@@ -61,7 +62,7 @@ const AssumptionsManagement: React.FC = () => {
         url = `/api/assumptions/risk-level/${filterRisk}`;
       }
 
-      const response = await fetch(url);
+      const response = await authFetch(url);
       if (!response.ok) throw new Error('Failed to fetch assumptions');
 
       const data = await response.json();
@@ -88,7 +89,7 @@ const AssumptionsManagement: React.FC = () => {
 
       const method = editingAssumption ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -106,7 +107,7 @@ const AssumptionsManagement: React.FC = () => {
 
   const handleValidate = async (id: number, status: string) => {
     try {
-      const response = await fetch(`/api/assumptions/${id}/validate`, {
+      const response = await authFetch(`/api/assumptions/${id}/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status, validation_notes: '' })
@@ -123,7 +124,7 @@ const AssumptionsManagement: React.FC = () => {
 
   const handleUpdateMitigation = async (id: number, mitigationStatus: string) => {
     try {
-      const response = await fetch(`/api/assumptions/${id}/mitigation`, {
+      const response = await authFetch(`/api/assumptions/${id}/mitigation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mitigation_status: mitigationStatus })
@@ -142,7 +143,7 @@ const AssumptionsManagement: React.FC = () => {
     if (!confirm('Are you sure you want to delete this assumption?')) return;
 
     try {
-      const response = await fetch(`/api/assumptions/${id}`, {
+      const response = await authFetch(`/api/assumptions/${id}`, {
         method: 'DELETE'
       });
 

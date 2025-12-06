@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { authFetch } from '../config/api';
 import {
   Box,
   Button,
@@ -89,7 +90,7 @@ const ReliefDistribution: React.FC = () => {
   const fetchDistributions = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:4000/api/relief/distributions', {
+      const response = await authFetch('http://localhost:4000/api/relief/distributions', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -162,7 +163,7 @@ const ReliefDistribution: React.FC = () => {
 
       const method = selectedDistribution ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',

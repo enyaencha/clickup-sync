@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { authFetch } from '../config/api';
 import {
   Box,
   Button,
@@ -71,7 +72,7 @@ const LoansManagement: React.FC = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/loans', {
+      const response = await authFetch('http://localhost:4000/api/loans', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -91,7 +92,7 @@ const LoansManagement: React.FC = () => {
   const fetchStatistics = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/loans/statistics', {
+      const response = await authFetch('http://localhost:4000/api/loans/statistics', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -111,7 +112,7 @@ const LoansManagement: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/loans/${loanId}/approve`, {
+      const response = await authFetch(`http://localhost:4000/api/loans/${loanId}/approve`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -133,7 +134,7 @@ const LoansManagement: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/loans/${loanId}/disburse`, {
+      const response = await authFetch(`http://localhost:4000/api/loans/${loanId}/disburse`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

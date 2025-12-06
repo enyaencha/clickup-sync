@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { authFetch } from '../config/api';
 import {
   Box,
   Button,
@@ -232,7 +233,7 @@ const AgricultureMonitoring: React.FC = () => {
 
       const method = selectedItem ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -259,7 +260,7 @@ const AgricultureMonitoring: React.FC = () => {
 
       const method = selectedItem ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
