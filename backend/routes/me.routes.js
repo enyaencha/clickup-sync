@@ -17,7 +17,10 @@ module.exports = (meService) => {
 
     router.get('/programs', async (req, res) => {
         try {
-            const programs = await meService.getProgramModules();
+            const programs = await meService.getProgramModules(
+                req.user?.id,
+                req.user?.is_system_admin || false
+            );
             res.json({ success: true, data: programs });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });
@@ -49,9 +52,12 @@ module.exports = (meService) => {
     router.get('/sub-programs', async (req, res) => {
         try {
             const moduleId = req.query.module_id;
+            const userId = req.user?.id;
+            const isSystemAdmin = req.user?.is_system_admin || false;
+
             const subPrograms = moduleId
                 ? await meService.getSubProgramsWithProgress(moduleId)
-                : await meService.getSubPrograms(moduleId);
+                : await meService.getSubPrograms(moduleId, userId, isSystemAdmin);
             res.json({ success: true, data: subPrograms });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });
@@ -83,9 +89,12 @@ module.exports = (meService) => {
     router.get('/components', async (req, res) => {
         try {
             const subProgramId = req.query.sub_program_id;
+            const userId = req.user?.id;
+            const isSystemAdmin = req.user?.is_system_admin || false;
+
             const components = subProgramId
                 ? await meService.getComponentsWithProgress(subProgramId)
-                : await meService.getProjectComponents(subProgramId);
+                : await meService.getProjectComponents(subProgramId, userId, isSystemAdmin);
             res.json({ success: true, data: components });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });
@@ -117,12 +126,17 @@ module.exports = (meService) => {
     router.get('/activities', async (req, res) => {
         try {
             const filters = {
+                module_id: req.query.module_id,
+                sub_program_id: req.query.sub_program_id,
                 component_id: req.query.component_id,
                 status: req.query.status,
                 approval_status: req.query.approval_status,
                 from_date: req.query.from_date,
                 to_date: req.query.to_date,
-                limit: req.query.limit
+                limit: req.query.limit,
+                // Add user info for role-based filtering
+                userId: req.user?.id,
+                isSystemAdmin: req.user?.is_system_admin || false
             };
             const activities = await meService.getActivities(filters);
             res.json({ success: true, data: activities, count: activities.length });

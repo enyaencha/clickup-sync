@@ -68,12 +68,27 @@ class MEService {
         return id;
     }
 
-    async getProgramModules() {
-        const modules = await this.db.query(`
-            SELECT * FROM program_modules
-            WHERE deleted_at IS NULL
-            ORDER BY code
-        `);
+    async getProgramModules(userId = null, isSystemAdmin = false) {
+        let query = `
+            SELECT DISTINCT pm.*
+            FROM program_modules pm
+        `;
+        let params = [];
+
+        // Role-based access control: Filter by user's module assignments
+        if (userId && !isSystemAdmin) {
+            query += `
+            INNER JOIN user_module_assignments uma ON pm.id = uma.module_id
+            WHERE uma.user_id = ? AND uma.can_view = TRUE AND pm.deleted_at IS NULL
+            `;
+            params.push(userId);
+        } else {
+            query += ' WHERE pm.deleted_at IS NULL';
+        }
+
+        query += ' ORDER BY pm.code';
+
+        const modules = await this.db.query(query, params);
         return modules;
     }
 
@@ -132,16 +147,30 @@ class MEService {
         return id;
     }
 
-    async getSubPrograms(moduleId = null) {
-        let query = 'SELECT * FROM sub_programs WHERE deleted_at IS NULL';
+    async getSubPrograms(moduleId = null, userId = null, isSystemAdmin = false) {
+        let query = `
+            SELECT DISTINCT sp.*
+            FROM sub_programs sp
+        `;
         let params = [];
 
+        // Role-based access control: Filter by user's module assignments
+        if (userId && !isSystemAdmin) {
+            query += `
+            INNER JOIN user_module_assignments uma ON sp.module_id = uma.module_id
+            WHERE uma.user_id = ? AND uma.can_view = TRUE AND sp.deleted_at IS NULL
+            `;
+            params.push(userId);
+        } else {
+            query += ' WHERE sp.deleted_at IS NULL';
+        }
+
         if (moduleId) {
-            query += ' AND module_id = ?';
+            query += ' AND sp.module_id = ?';
             params.push(moduleId);
         }
 
-        query += ' ORDER BY code';
+        query += ' ORDER BY sp.code';
 
         const subPrograms = await this.db.query(query, params);
         return subPrograms;
@@ -191,16 +220,31 @@ class MEService {
         return id;
     }
 
-    async getProjectComponents(subProgramId = null) {
-        let query = 'SELECT * FROM project_components WHERE deleted_at IS NULL';
+    async getProjectComponents(subProgramId = null, userId = null, isSystemAdmin = false) {
+        let query = `
+            SELECT DISTINCT pc.*
+            FROM project_components pc
+            INNER JOIN sub_programs sp ON pc.sub_program_id = sp.id
+        `;
         let params = [];
 
+        // Role-based access control: Filter by user's module assignments
+        if (userId && !isSystemAdmin) {
+            query += `
+            INNER JOIN user_module_assignments uma ON sp.module_id = uma.module_id
+            WHERE uma.user_id = ? AND uma.can_view = TRUE AND pc.deleted_at IS NULL
+            `;
+            params.push(userId);
+        } else {
+            query += ' WHERE pc.deleted_at IS NULL';
+        }
+
         if (subProgramId) {
-            query += ' AND sub_program_id = ?';
+            query += ' AND pc.sub_program_id = ?';
             params.push(subProgramId);
         }
 
-        query += ' ORDER BY code';
+        query += ' ORDER BY pc.code';
 
         const components = await this.db.query(query, params);
         return components;
@@ -328,32 +372,62 @@ class MEService {
 
     async getActivities(filters = {}) {
         let query = `
-            SELECT a.*, pc.name AS component_name,
+            SELECT DISTINCT a.*,
+                   pc.name AS component_name,
+                   pc.id AS component_id,
                    sp.name AS sub_program_name,
-                   pm.name AS module_name
+                   sp.id AS sub_program_id,
+                   pm.name AS module_name,
+                   pm.id AS module_id
             FROM activities a
             INNER JOIN project_components pc ON a.component_id = pc.id
             INNER JOIN sub_programs sp ON pc.sub_program_id = sp.id
             INNER JOIN program_modules pm ON sp.module_id = pm.id
-            WHERE a.deleted_at IS NULL
         `;
         let params = [];
 
+        // Role-based access control: Filter by user's module assignments
+        if (filters.userId && !filters.isSystemAdmin) {
+            query += `
+            INNER JOIN user_module_assignments uma ON pm.id = uma.module_id
+            WHERE uma.user_id = ? AND uma.can_view = TRUE AND a.deleted_at IS NULL
+            `;
+            params.push(filters.userId);
+        } else {
+            query += ' WHERE a.deleted_at IS NULL';
+        }
+
+        // Module filter
+        if (filters.module_id) {
+            query += ' AND pm.id = ?';
+            params.push(filters.module_id);
+        }
+
+        // Sub-program filter
+        if (filters.sub_program_id) {
+            query += ' AND sp.id = ?';
+            params.push(filters.sub_program_id);
+        }
+
+        // Component filter
         if (filters.component_id) {
             query += ' AND a.component_id = ?';
             params.push(filters.component_id);
         }
 
+        // Status filter
         if (filters.status) {
             query += ' AND a.status = ?';
             params.push(filters.status);
         }
 
+        // Approval status filter
         if (filters.approval_status) {
             query += ' AND a.approval_status = ?';
             params.push(filters.approval_status);
         }
 
+        // Date range filters
         if (filters.from_date) {
             query += ' AND a.activity_date >= ?';
             params.push(filters.from_date);
