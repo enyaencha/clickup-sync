@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ActivityDetailsModal from './ActivityDetailsModal';
+import { authFetch } from '../config/api';
 
 interface Activity {
   id: number;
@@ -98,7 +99,7 @@ const AllActivities: React.FC = () => {
 
   const fetchModules = async () => {
     try {
-      const response = await fetch('/api/programs');
+      const response = await authFetch('/api/programs');
       if (!response.ok) throw new Error('Failed to fetch modules');
       const data = await response.json();
       setModules(data.data || []);
@@ -110,7 +111,7 @@ const AllActivities: React.FC = () => {
 
   const fetchSubPrograms = async (moduleId: string) => {
     try {
-      const response = await fetch(`/api/sub-programs?module_id=${moduleId}`);
+      const response = await authFetch(`/api/sub-programs?module_id=${moduleId}`);
       if (!response.ok) throw new Error('Failed to fetch sub-programs');
       const data = await response.json();
       setSubPrograms(data.data || []);
@@ -121,7 +122,7 @@ const AllActivities: React.FC = () => {
 
   const fetchComponents = async (subProgramId: string) => {
     try {
-      const response = await fetch(`/api/components?sub_program_id=${subProgramId}`);
+      const response = await authFetch(`/api/components?sub_program_id=${subProgramId}`);
       if (!response.ok) throw new Error('Failed to fetch components');
       const data = await response.json();
       setComponents(data.data || []);
@@ -143,7 +144,7 @@ const AllActivities: React.FC = () => {
       if (fromDate) params.append('from_date', fromDate);
       if (toDate) params.append('to_date', toDate);
 
-      const response = await fetch(`/api/activities?${params.toString()}`);
+      const response = await authFetch(`/api/activities?${params.toString()}`);
       if (!response.ok) throw new Error('Failed to fetch activities');
       const data = await response.json();
       setActivities(data.data || []);
