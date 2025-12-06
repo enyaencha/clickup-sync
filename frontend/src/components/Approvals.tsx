@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import EvidenceViewer from './EvidenceViewer';
+import { authFetch } from '../config/api';
 
 interface Activity {
   id: number;
@@ -101,7 +102,7 @@ const Approvals: React.FC = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch('/api/settings');
+      const response = await authFetch('/api/settings');
       const data = await response.json();
       if (data.success && data.data) {
         setShowChecklistProgress(data.data.show_checklist_progress_in_approvals ?? true);
@@ -118,7 +119,7 @@ const Approvals: React.FC = () => {
     await Promise.all(
       activityIds.map(async (id) => {
         try {
-          const response = await fetch(`/api/checklists/activity/${id}/status`);
+          const response = await authFetch(`/api/checklists/activity/${id}/status`);
           const data = await response.json();
           if (data.success && data.data) {
             statuses[id] = data.data;
@@ -138,7 +139,7 @@ const Approvals: React.FC = () => {
     await Promise.all(
       activityIds.map(async (id) => {
         try {
-          const response = await fetch(`/api/checklists/activity/${id}`);
+          const response = await authFetch(`/api/checklists/activity/${id}`);
           const data = await response.json();
           if (data.success && data.data) {
             items[id] = data.data;
@@ -156,7 +157,7 @@ const Approvals: React.FC = () => {
     if (!allowApproverToComplete) return;
 
     try {
-      const response = await fetch(`/api/checklists/${itemId}/toggle`, {
+      const response = await authFetch(`/api/checklists/${itemId}/toggle`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -188,7 +189,7 @@ const Approvals: React.FC = () => {
         ? '/api/approvals/pending'
         : `/api/activities?approval_status=${filter}`;
 
-      const response = await fetch(url);
+      const response = await authFetch(url);
       if (!response.ok) throw new Error('Failed to fetch activities');
 
       const data = await response.json();
@@ -215,7 +216,7 @@ const Approvals: React.FC = () => {
 
     // Validate if approval is allowed
     try {
-      const validationRes = await fetch('/api/settings/validate/can-approve', {
+      const validationRes = await authFetch('/api/settings/validate/can-approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ activity })
@@ -232,7 +233,7 @@ const Approvals: React.FC = () => {
 
     try {
       setProcessingId(activityId);
-      const response = await fetch(`/api/activities/${activityId}/approve`, {
+      const response = await authFetch(`/api/activities/${activityId}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -253,7 +254,7 @@ const Approvals: React.FC = () => {
 
     try {
       setProcessingId(activityId);
-      const response = await fetch(`/api/activities/${activityId}/reject`, {
+      const response = await authFetch(`/api/activities/${activityId}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rejection_reason: reason }),
@@ -274,7 +275,7 @@ const Approvals: React.FC = () => {
       setLoading(true);
       const url = '/api/means-of-verification';
 
-      const response = await fetch(url);
+      const response = await authFetch(url);
       if (!response.ok) throw new Error('Failed to fetch verifications');
 
       const data = await response.json();
@@ -305,7 +306,7 @@ const Approvals: React.FC = () => {
 
   const fetchAttachmentsForVerification = async (verificationId: number) => {
     try {
-      const response = await fetch(`/api/attachments?entity_type=verification&entity_id=${verificationId}`);
+      const response = await authFetch(`/api/attachments?entity_type=verification&entity_id=${verificationId}`);
       if (!response.ok) return;
 
       const data = await response.json();
@@ -329,7 +330,7 @@ const Approvals: React.FC = () => {
 
     try {
       setProcessingId(id);
-      const response = await fetch(`/api/means-of-verification/${id}/verify`, {
+      const response = await authFetch(`/api/means-of-verification/${id}/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -358,7 +359,7 @@ const Approvals: React.FC = () => {
 
     try {
       setProcessingId(id);
-      const response = await fetch(`/api/means-of-verification/${id}/reject`, {
+      const response = await authFetch(`/api/means-of-verification/${id}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
