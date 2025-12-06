@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { authFetch } from '../config/api';
 
 interface Program {
   id: number;
@@ -44,7 +45,7 @@ const Programs: React.FC = () => {
 
   const fetchPrograms = async () => {
     try {
-      const response = await fetch('/api/programs');
+      const response = await authFetch('/api/programs');
       if (!response.ok) {
         throw new Error('Failed to fetch programs');
       }
@@ -74,7 +75,7 @@ const Programs: React.FC = () => {
         url = `/api/dashboard/overall?modules=${moduleIds}`;
       }
 
-      const response = await fetch(url);
+      const response = await authFetch(url);
       if (!response.ok) throw new Error('Failed to fetch statistics');
       const data = await response.json();
       setStatistics(data.data);

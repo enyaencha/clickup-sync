@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AddComponentModal from './AddComponentModal';
+import { authFetch } from '../config/api';
 
 interface Component {
   id: number;
@@ -37,19 +38,19 @@ const ProjectComponents: React.FC = () => {
   const fetchData = async () => {
     try {
       // Fetch program info
-      const programsRes = await fetch('/api/programs');
+      const programsRes = await authFetch('/api/programs');
       const programsData = await programsRes.json();
       const foundProgram = programsData.data.find((p: any) => p.id === parseInt(programId!));
       setProgram(foundProgram);
 
       // Fetch project info
-      const projectsRes = await fetch(`/api/sub-programs?module_id=${programId}`);
+      const projectsRes = await authFetch(`/api/sub-programs?module_id=${programId}`);
       const projectsData = await projectsRes.json();
       const foundProject = projectsData.data.find((p: any) => p.id === parseInt(projectId!));
       setProject(foundProject);
 
       // Fetch components
-      const componentsRes = await fetch(`/api/components?sub_program_id=${projectId}`);
+      const componentsRes = await authFetch(`/api/components?sub_program_id=${projectId}`);
       if (!componentsRes.ok) throw new Error('Failed to fetch components');
       const componentsData = await componentsRes.json();
       setComponents(componentsData.data || []);
@@ -62,7 +63,7 @@ const ProjectComponents: React.FC = () => {
 
   const fetchStatistics = async () => {
     try {
-      const response = await fetch(`/api/dashboard/subprogram/${projectId}`);
+      const response = await authFetch(`/api/dashboard/subprogram/${projectId}`);
       if (!response.ok) throw new Error('Failed to fetch statistics');
       const data = await response.json();
       setStatistics(data.data);

@@ -20,6 +20,31 @@ export const getApiUrl = (path: string): string => {
   return fullUrl;
 };
 
+/**
+ * Authenticated fetch wrapper
+ * Automatically includes Authorization header from localStorage
+ */
+export const authFetch = async (path: string, options: RequestInit = {}): Promise<Response> => {
+  const token = localStorage.getItem('token');
+
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  // Add Authorization header if token exists
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(path, {
+    ...options,
+    headers,
+  });
+
+  return response;
+};
+
 // Log the current API URL in development
 if (import.meta.env.DEV) {
   console.log('🌐 API Base URL:', API_BASE_URL);
