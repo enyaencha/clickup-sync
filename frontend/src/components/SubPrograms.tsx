@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AddSubProgramModal from './AddSubProgramModal';
+import { authFetch } from '../config/api';
 
 interface SubProgram {
   id: number;
@@ -47,7 +48,7 @@ const SubPrograms: React.FC = () => {
 
   const fetchProgram = async () => {
     try {
-      const response = await fetch(`/api/programs`);
+      const response = await authFetch(`/api/programs`);
       if (!response.ok) throw new Error('Failed to fetch program');
       const data = await response.json();
       const foundProgram = data.data.find((p: Program) => p.id === parseInt(programId!));
@@ -59,7 +60,7 @@ const SubPrograms: React.FC = () => {
 
   const fetchSubPrograms = async () => {
     try {
-      const response = await fetch(`/api/sub-programs?module_id=${programId}`);
+      const response = await authFetch(`/api/sub-programs?module_id=${programId}`);
       if (!response.ok) throw new Error('Failed to fetch sub-programs');
       const data = await response.json();
       setSubPrograms(data.data || []);
@@ -72,7 +73,7 @@ const SubPrograms: React.FC = () => {
 
   const fetchStatistics = async () => {
     try {
-      const response = await fetch(`/api/dashboard/program/${programId}`);
+      const response = await authFetch(`/api/dashboard/program/${programId}`);
       if (!response.ok) throw new Error('Failed to fetch statistics');
       const data = await response.json();
       setStatistics(data.data);

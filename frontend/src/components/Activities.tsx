@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AddActivityModal from './AddActivityModal';
 import ActivityDetailsModal from './ActivityDetailsModal';
+import { authFetch } from '../config/api';
 
 interface Activity {
   id: number;
@@ -58,25 +59,25 @@ const Activities: React.FC = () => {
   const fetchData = async () => {
     try {
       // Fetch program info
-      const programsRes = await fetch('/api/programs');
+      const programsRes = await authFetch('/api/programs');
       const programsData = await programsRes.json();
       const foundProgram = programsData.data.find((p: any) => p.id === parseInt(programId!));
       setProgram(foundProgram);
 
       // Fetch project info
-      const projectsRes = await fetch(`/api/sub-programs?module_id=${programId}`);
+      const projectsRes = await authFetch(`/api/sub-programs?module_id=${programId}`);
       const projectsData = await projectsRes.json();
       const foundProject = projectsData.data.find((p: any) => p.id === parseInt(projectId!));
       setProject(foundProject);
 
       // Fetch component info
-      const componentsRes = await fetch(`/api/components?sub_program_id=${projectId}`);
+      const componentsRes = await authFetch(`/api/components?sub_program_id=${projectId}`);
       const componentsData = await componentsRes.json();
       const foundComponent = componentsData.data.find((c: any) => c.id === parseInt(componentId!));
       setComponent(foundComponent);
 
       // Fetch activities
-      const activitiesRes = await fetch(`/api/activities?component_id=${componentId}`);
+      const activitiesRes = await authFetch(`/api/activities?component_id=${componentId}`);
       if (!activitiesRes.ok) throw new Error('Failed to fetch activities');
       const activitiesData = await activitiesRes.json();
       setActivities(activitiesData.data || []);
@@ -89,7 +90,7 @@ const Activities: React.FC = () => {
 
   const fetchStatistics = async () => {
     try {
-      const response = await fetch(`/api/dashboard/component/${componentId}`);
+      const response = await authFetch(`/api/dashboard/component/${componentId}`);
       if (!response.ok) throw new Error('Failed to fetch statistics');
       const data = await response.json();
       setStatistics(data.data);
@@ -109,9 +110,8 @@ const Activities: React.FC = () => {
 
     // Validate if submission is allowed
     try {
-      const validationRes = await fetch('/api/settings/validate/can-submit', {
+      const validationRes = await authFetch('/api/settings/validate/can-submit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ activity })
       });
       const validationData = await validationRes.json();
@@ -128,9 +128,8 @@ const Activities: React.FC = () => {
 
     try {
       setSubmittingId(activityId);
-      const response = await fetch(`/api/activities/${activityId}/submit`, {
+      const response = await authFetch(`/api/activities/${activityId}/submit`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
       });
 
       const data = await response.json();
@@ -160,9 +159,8 @@ const Activities: React.FC = () => {
 
     // Validate if status change is allowed
     try {
-      const validationRes = await fetch('/api/settings/validate/can-change-status', {
+      const validationRes = await authFetch('/api/settings/validate/can-change-status', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ activity })
       });
       const validationData = await validationRes.json();
@@ -177,9 +175,8 @@ const Activities: React.FC = () => {
 
     try {
       setChangingStatusId(activityId);
-      const response = await fetch(`/api/activities/${activityId}/status`, {
+      const response = await authFetch(`/api/activities/${activityId}/status`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });
 
