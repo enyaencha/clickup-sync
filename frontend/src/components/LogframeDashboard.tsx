@@ -90,10 +90,10 @@ const LogframeDashboard: React.FC = () => {
   const fetchStatistics = async (modId: number) => {
     try {
       const [indicatorsRes, assumptionsRes, movRes, chainRes] = await Promise.all([
-        fetch(`/api/indicators/statistics/module/${modId}`),
-        fetch(`/api/assumptions/statistics/module/${modId}`),
-        fetch(`/api/means-of-verification/statistics/module/${modId}`),
-        fetch(`/api/results-chain/statistics/module/${modId}`)
+        authFetch(`/api/indicators/statistics/module/${modId}`),
+        authFetch(`/api/assumptions/statistics/module/${modId}`),
+        authFetch(`/api/means-of-verification/statistics/module/${modId}`),
+        authFetch(`/api/results-chain/statistics/module/${modId}`)
       ]);
 
       const [indicators, assumptions, verification, results_chain] = await Promise.all([

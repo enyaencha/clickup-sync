@@ -320,11 +320,11 @@ const MeansOfVerificationManagement: React.FC = () => {
     try {
       // Fetch all entity types for dropdowns
       const [modulesRes, subProgramsRes, componentsRes, activitiesRes, indicatorsRes] = await Promise.all([
-        fetch('/api/programs'),
-        fetch('/api/sub-programs'),
-        fetch('/api/components'),
-        fetch('/api/activities'),
-        fetch('/api/indicators')
+        authFetch('/api/programs'),
+        authFetch('/api/sub-programs'),
+        authFetch('/api/components'),
+        authFetch('/api/activities'),
+        authFetch('/api/indicators')
       ]);
 
       const [modulesData, subProgramsData, componentsData, activitiesData, indicatorsData] = await Promise.all([

@@ -122,12 +122,8 @@ const AgricultureMonitoring: React.FC = () => {
     try {
       setLoading(true);
       const [plotsRes, productionRes] = await Promise.all([
-        fetch('http://localhost:4000/api/agriculture/plots', {
-          headers: { 'Authorization': `Bearer ${token}` },
-        }),
-        fetch('http://localhost:4000/api/agriculture/production', {
-          headers: { 'Authorization': `Bearer ${token}` },
-        })
+        authFetch('/api/agriculture/plots'),
+        authFetch('/api/agriculture/production')
       ]);
 
       if (!plotsRes.ok || !productionRes.ok) throw new Error('Failed to fetch data');
