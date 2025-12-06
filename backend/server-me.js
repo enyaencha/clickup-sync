@@ -267,8 +267,9 @@ async function initializeServices() {
         // Register M&E Routes (must be after meService is initialized)
         try {
             console.log('Registering M&E Routes...');
-            app.use('/api', require('./routes/me.routes')(meService));
-            logger.info('✅ M&E Routes registered');
+            const { authMiddleware } = require('./middleware/auth.middleware');
+            app.use('/api', authMiddleware(authService), require('./routes/me.routes')(meService));
+            logger.info('✅ M&E Routes registered with auth middleware');
         } catch (error) {
             console.error('❌ Failed to register M&E Routes:', error);
             throw error;

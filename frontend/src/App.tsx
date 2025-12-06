@@ -8,6 +8,7 @@ import Programs from './components/Programs';
 import SubPrograms from './components/SubPrograms';
 import ProjectComponents from './components/ProjectComponents';
 import Activities from './components/Activities';
+import AllActivities from './components/AllActivities';
 import Approvals from './components/Approvals';
 import Settings from './components/SettingsNew';
 import LogframeDashboard from './components/LogframeDashboard';
@@ -49,6 +50,9 @@ const App: React.FC = () => {
 
                     {/* Level 4: Activities (ClickUp Task) */}
                     <Route path="/program/:programId/project/:projectId/component/:componentId" element={<Activities />} />
+
+                    {/* All Activities Page (with filters) */}
+                    <Route path="/activities" element={<AllActivities />} />
 
                     {/* Approvals Page */}
                     <Route path="/approvals" element={<Approvals />} />
