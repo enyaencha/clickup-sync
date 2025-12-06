@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { authFetch } from '../config/api';
 import {
   Box,
   Button,
@@ -88,7 +89,7 @@ const SHGManagement: React.FC = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/shg/groups', {
+      const response = await authFetch('http://localhost:4000/api/shg/groups', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -161,7 +162,7 @@ const SHGManagement: React.FC = () => {
         programModuleId = user.module_assignments[0].module_id;
       }
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { authFetch } from '../config/api';
 
 interface AddSubProgramModalProps {
   isOpen: boolean;
@@ -59,7 +60,7 @@ const AddSubProgramModal: React.FC<AddSubProgramModalProps> = ({
         priority: formData.priority,
       };
 
-      const response = await fetch('/api/sub-programs', {
+      const response = await authFetch('/api/sub-programs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

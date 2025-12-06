@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { authFetch } from '../config/api';
 import EvidenceViewer from './EvidenceViewer';
 
 interface Verification {
@@ -114,7 +115,7 @@ const MeansOfVerificationManagement: React.FC = () => {
 
   const fetchWorkflowSettings = async () => {
     try {
-      const response = await fetch('/api/settings');
+      const response = await authFetch('/api/settings');
       if (!response.ok) {
         console.error('Failed to fetch settings');
         return;
@@ -138,7 +139,7 @@ const MeansOfVerificationManagement: React.FC = () => {
         ? `/api/means-of-verification/entity/${entityType}/${entityId}`
         : '/api/means-of-verification';
 
-      const response = await fetch(url);
+      const response = await authFetch(url);
       if (!response.ok) throw new Error('Failed to fetch verifications');
 
       const data = await response.json();
@@ -188,7 +189,7 @@ const MeansOfVerificationManagement: React.FC = () => {
 
   const fetchAttachmentsForVerification = async (verificationId: number) => {
     try {
-      const response = await fetch(`/api/attachments?entity_type=verification&entity_id=${verificationId}`);
+      const response = await authFetch(`/api/attachments?entity_type=verification&entity_id=${verificationId}`);
       if (!response.ok) return;
 
       const data = await response.json();
@@ -222,7 +223,7 @@ const MeansOfVerificationManagement: React.FC = () => {
       formData.append('attachment_type', 'document');
       formData.append('description', selectedFile.name);
 
-      const response = await fetch('/api/attachments/upload', {
+      const response = await authFetch('/api/attachments/upload', {
         method: 'POST',
         body: formData
       });
@@ -249,7 +250,7 @@ const MeansOfVerificationManagement: React.FC = () => {
     if (!confirm('Are you sure you want to delete this attachment?')) return;
 
     try {
-      const response = await fetch(`/api/attachments/${attachmentId}`, {
+      const response = await authFetch(`/api/attachments/${attachmentId}`, {
         method: 'DELETE'
       });
 
@@ -371,7 +372,7 @@ const MeansOfVerificationManagement: React.FC = () => {
 
       const method = editingVerification ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -395,7 +396,7 @@ const MeansOfVerificationManagement: React.FC = () => {
     if (!confirm('Are you sure you want to delete this verification method?')) return;
 
     try {
-      const response = await fetch(`/api/means-of-verification/${id}`, {
+      const response = await authFetch(`/api/means-of-verification/${id}`, {
         method: 'DELETE'
       });
 
@@ -414,7 +415,7 @@ const MeansOfVerificationManagement: React.FC = () => {
     if (notes === null) return; // User cancelled
 
     try {
-      const response = await fetch(`/api/means-of-verification/${id}/verify`, {
+      const response = await authFetch(`/api/means-of-verification/${id}/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -441,7 +442,7 @@ const MeansOfVerificationManagement: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`/api/means-of-verification/${id}/reject`, {
+      const response = await authFetch(`/api/means-of-verification/${id}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

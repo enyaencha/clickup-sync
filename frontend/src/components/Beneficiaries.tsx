@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { authFetch } from '../config/api';
 import {
   Box,
   Button,
@@ -116,7 +117,7 @@ const Beneficiaries: React.FC = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/beneficiaries', {
+      const response = await authFetch('http://localhost:4000/api/beneficiaries', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -136,7 +137,7 @@ const Beneficiaries: React.FC = () => {
   const fetchPrograms = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/programs', {
+      const response = await authFetch('http://localhost:4000/api/programs', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -214,7 +215,7 @@ const Beneficiaries: React.FC = () => {
 
       const method = selectedBeneficiary ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -241,7 +242,7 @@ const Beneficiaries: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/beneficiaries/${id}`, {
+      const response = await authFetch(`http://localhost:4000/api/beneficiaries/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

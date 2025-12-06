@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { authFetch } from '../config/api';
 
 interface ResultsChainLink {
   id: number;
@@ -28,7 +29,7 @@ const ResultsChainVisualization: React.FC = () => {
       setLoading(true);
       const url = '/api/results-chain';
 
-      const response = await fetch(url);
+      const response = await authFetch(url);
       if (!response.ok) throw new Error('Failed to fetch results chain');
 
       const data = await response.json();

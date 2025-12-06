@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { authFetch } from '../config/api';
 
 interface Indicator {
   id: number;
@@ -108,7 +109,7 @@ const IndicatorsManagement: React.FC = () => {
           break;
       }
 
-      const response = await fetch(url);
+      const response = await authFetch(url);
       if (!response.ok) throw new Error('Failed to fetch entities');
 
       const data = await response.json();
@@ -149,7 +150,7 @@ const IndicatorsManagement: React.FC = () => {
         url += `?${params.toString()}`;
       }
 
-      const response = await fetch(url);
+      const response = await authFetch(url);
       if (!response.ok) throw new Error('Failed to fetch indicators');
 
       const data = await response.json();
@@ -205,7 +206,7 @@ const IndicatorsManagement: React.FC = () => {
 
       const method = editingIndicator ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -230,7 +231,7 @@ const IndicatorsManagement: React.FC = () => {
     if (!confirm('Are you sure you want to delete this indicator?')) return;
 
     try {
-      const response = await fetch(`/api/indicators/${id}`, {
+      const response = await authFetch(`/api/indicators/${id}`, {
         method: 'DELETE'
       });
 

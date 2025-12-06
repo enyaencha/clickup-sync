@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { authFetch } from '../config/api';
 
 interface Statistics {
   indicators: {
@@ -59,7 +60,7 @@ const LogframeDashboard: React.FC = () => {
 
   const fetchModules = async () => {
     try {
-      const response = await fetch('/api/programs');
+      const response = await authFetch('/api/programs');
       if (!response.ok) throw new Error('Failed to fetch modules');
 
       const data = await response.json();

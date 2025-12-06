@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { authFetch } from '../config/api';
 import {
   Box,
   Button,
@@ -98,7 +99,7 @@ const NutritionAssessment: React.FC = () => {
   const fetchAssessments = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:4000/api/nutrition/assessments', {
+      const response = await authFetch('http://localhost:4000/api/nutrition/assessments', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -187,7 +188,7 @@ const NutritionAssessment: React.FC = () => {
 
       const method = selectedAssessment ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',

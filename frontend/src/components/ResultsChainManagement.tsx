@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { authFetch } from '../config/api';
 
 interface ResultsChainLink {
   id: number;
@@ -82,7 +83,7 @@ const ResultsChainManagement: React.FC = () => {
         ? `/api/results-chain?module_id=${selectedModuleId}`
         : '/api/results-chain';
 
-      const response = await fetch(url);
+      const response = await authFetch(url);
       if (!response.ok) throw new Error('Failed to fetch results chain');
 
       const data = await response.json();
@@ -171,7 +172,7 @@ const ResultsChainManagement: React.FC = () => {
 
       const method = editingLink ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -195,7 +196,7 @@ const ResultsChainManagement: React.FC = () => {
     if (!confirm('Are you sure you want to delete this results chain link?')) return;
 
     try {
-      const response = await fetch(`/api/results-chain/${id}`, {
+      const response = await authFetch(`/api/results-chain/${id}`, {
         method: 'DELETE'
       });
 

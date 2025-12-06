@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { authFetch } from '../config/api';
 
 interface AddComponentModalProps {
   isOpen: boolean;
@@ -47,7 +48,7 @@ const AddComponentModal: React.FC<AddComponentModalProps> = ({
         status: formData.status,
       };
 
-      const response = await fetch('/api/components', {
+      const response = await authFetch('/api/components', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
