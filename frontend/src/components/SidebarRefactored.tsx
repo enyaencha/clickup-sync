@@ -218,20 +218,58 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
 
     // Check role-based access
     if (user.roles && Array.isArray(user.roles)) {
-      // Role-based menu access mapping
+      // Role-based menu access mapping - comprehensive for all 29 roles
       const roleResourceMap: Record<string, string[]> = {
+        // Level 1: System Administration
+        'system_admin': ['dashboard', 'programs', 'activities', 'logframe', 'indicators', 'results_chain',
+                        'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations',
+                        'settings', 'sync', 'approvals'],
+
+        // Level 2: Directors & Senior Management
         'me_director': ['dashboard', 'programs', 'activities', 'logframe', 'indicators', 'results_chain',
-                       'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations', 'settings'],
+                       'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations', 'approvals', 'settings'],
+        'program_director': ['dashboard', 'programs', 'activities', 'logframe', 'indicators', 'results_chain',
+                            'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations', 'approvals'],
+        'module_manager': ['dashboard', 'programs', 'activities', 'logframe', 'indicators', 'results_chain',
+                          'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations', 'approvals'],
+
+        // Level 3: Managers & Coordinators
         'me_manager': ['dashboard', 'programs', 'activities', 'logframe', 'indicators', 'results_chain',
-                      'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations', 'settings'],
-        'module_manager': ['programs', 'activities', 'logframe', 'indicators', 'results_chain',
-                          'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations'],
+                      'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations', 'approvals'],
+        'program_manager': ['dashboard', 'programs', 'activities', 'indicators', 'reports', 'beneficiaries', 'locations'],
+        'finance_manager': ['dashboard', 'programs', 'activities', 'reports', 'beneficiaries'],
+        'logistics_manager': ['dashboard', 'programs', 'activities', 'reports', 'beneficiaries', 'locations'],
+        'relief_coordinator': ['dashboard', 'programs', 'activities', 'reports', 'beneficiaries', 'locations'],
+        'seep_coordinator': ['dashboard', 'programs', 'activities', 'reports', 'beneficiaries', 'locations'],
+
+        // Level 4: Officers & Specialists
+        'me_officer': ['dashboard', 'programs', 'activities', 'logframe', 'indicators', 'results_chain',
+                      'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations'],
+        'data_analyst': ['dashboard', 'programs', 'activities', 'indicators', 'reports'],
+        'finance_officer': ['programs', 'activities', 'reports', 'beneficiaries'],
+        'procurement_officer': ['programs', 'activities', 'reports', 'beneficiaries'],
+        'program_officer': ['dashboard', 'programs', 'activities', 'reports', 'beneficiaries', 'locations'],
+        'technical_advisor': ['dashboard', 'programs', 'activities', 'indicators', 'reports', 'beneficiaries', 'locations'],
         'module_coordinator': ['programs', 'activities', 'indicators', 'beneficiaries', 'locations', 'reports'],
+
+        // Specialists (Program-specific)
+        'gbv_specialist': ['programs', 'activities', 'beneficiaries', 'locations', 'reports'],
+        'nutrition_specialist': ['programs', 'activities', 'beneficiaries', 'locations', 'reports'],
+        'agriculture_specialist': ['programs', 'activities', 'beneficiaries', 'locations', 'reports'],
+
+        // Level 5: Field Staff
         'field_officer': ['programs', 'activities', 'beneficiaries', 'locations'],
-        'finance_officer': ['programs', 'activities', 'reports'],
-        'report_viewer': ['reports'], // Report viewers ONLY see reports
-        'verification_officer': ['approvals'], // Verification officers ONLY see approvals
+        'community_mobilizer': ['programs', 'activities', 'beneficiaries', 'locations'],
+        'data_entry_officer': ['programs', 'activities', 'beneficiaries', 'locations'],
         'data_entry_clerk': ['programs', 'activities', 'beneficiaries', 'locations'],
+        'enumerator': ['programs', 'activities', 'beneficiaries', 'locations'],
+
+        // Level 6: Specialized & Restricted Roles
+        'approver': ['approvals', 'programs', 'activities', 'reports'], // Only approvals + limited context
+        'verification_officer': ['approvals', 'means_of_verification', 'programs', 'activities'], // Verification focus
+        'report_viewer': ['dashboard', 'reports'], // Read-only reports
+        'module_viewer': ['programs', 'reports'], // Read-only module data
+        'external_auditor': ['dashboard', 'reports', 'programs', 'activities'], // Audit view
       };
 
       for (const userRole of user.roles) {
