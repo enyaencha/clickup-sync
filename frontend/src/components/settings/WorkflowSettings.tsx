@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getApiUrl } from '../../config/api';
+import { authFetch, getApiUrl } from '../../config/api';
 
 interface WorkflowSettings {
   // Activity Workflow Settings
@@ -50,7 +50,7 @@ const WorkflowSettings: React.FC = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch(getApiUrl('/api/settings'));
+      const response = await authFetch('/api/settings');
       if (!response.ok) throw new Error('Failed to fetch settings');
       const data = await response.json();
       setSettings(data.data);
@@ -75,7 +75,7 @@ const WorkflowSettings: React.FC = () => {
     setSuccessMessage(null);
 
     try {
-      const response = await fetch(getApiUrl('/api/settings'), {
+      const response = await authFetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings)
@@ -103,7 +103,7 @@ const WorkflowSettings: React.FC = () => {
     setSuccessMessage(null);
 
     try {
-      const response = await fetch(getApiUrl('/api/settings/reset'), {
+      const response = await authFetch('/api/settings/reset', {
         method: 'POST'
       });
 
