@@ -318,60 +318,83 @@ const LogframeTemplateView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {logframeData.subPrograms.map((subProgram, spIdx) =>
-                            subProgram.components.map((component, compIdx) => {
+                        {logframeData.subPrograms.flatMap((subProgram, spIdx) =>
+                            subProgram.components.flatMap((component, compIdx) => {
                                 const activities = component.activities.length > 0
                                     ? component.activities
                                     : [null]; // Show at least one row for component
 
-                                return activities.map((activity, actIdx) => (
-                                    <tr key={`${spIdx}-${compIdx}-${actIdx}`} className="hover:bg-gray-50">
-                                        {/* Strategic Objective - show only on first row of sub-program */}
-                                        {spIdx === 0 && compIdx === 0 && actIdx === 0 && (
-                                            <td
-                                                rowSpan={logframeData.subPrograms.reduce(
-                                                    (total, sp) =>
-                                                        total +
-                                                        sp.components.reduce(
-                                                            (ctotal, c) =>
-                                                                ctotal + Math.max(c.activities.length, 1),
-                                                            0
-                                                        ),
-                                                    0
-                                                )}
-                                                className="border border-gray-300 px-4 py-2 align-top"
-                                            >
-                                                {logframeData.module.goal || ''}
-                                            </td>
-                                        )}
+                                // Calculate total activities before this component
+                                const activitiesBeforeComponent = subProgram.components
+                                    .slice(0, compIdx)
+                                    .reduce((sum, c) => sum + Math.max(c.activities.length, 1), 0);
 
-                                        {/* Intermediate Outcome - show only on first row of component */}
-                                        {compIdx === 0 && actIdx === 0 && (
-                                            <td
-                                                rowSpan={subProgram.components.reduce(
-                                                    (total, c) => total + Math.max(c.activities.length, 1),
-                                                    0
-                                                )}
-                                                className="border border-gray-300 px-4 py-2 align-top"
-                                            >
-                                                {subProgram.outcome || ''}
-                                            </td>
-                                        )}
+                                // Calculate total activities before this sub-program
+                                const activitiesBeforeSubProgram = logframeData.subPrograms
+                                    .slice(0, spIdx)
+                                    .reduce(
+                                        (sum, sp) =>
+                                            sum +
+                                            sp.components.reduce(
+                                                (csum, c) => csum + Math.max(c.activities.length, 1),
+                                                0
+                                            ),
+                                        0
+                                    );
 
-                                        {/* Output - show only on first row of this component */}
-                                        {actIdx === 0 && (
-                                            <td
-                                                rowSpan={Math.max(component.activities.length, 1)}
-                                                className="border border-gray-300 px-4 py-2 align-top"
-                                            >
-                                                {component.output || ''}
-                                            </td>
-                                        )}
+                                return activities.map((activity, actIdx) => {
+                                    const isFirstRowOfTable = spIdx === 0 && compIdx === 0 && actIdx === 0;
+                                    const isFirstRowOfSubProgram = compIdx === 0 && actIdx === 0;
+                                    const isFirstRowOfComponent = actIdx === 0;
 
-                                        {/* Activity */}
-                                        <td className="border border-gray-300 px-4 py-2">
-                                            {activity ? activity.name : ''}
-                                        </td>
+                                    return (
+                                        <tr key={`${spIdx}-${compIdx}-${actIdx}`} className="hover:bg-gray-50">
+                                            {/* Strategic Objective - show only on first row of table */}
+                                            {isFirstRowOfTable && (
+                                                <td
+                                                    rowSpan={logframeData.subPrograms.reduce(
+                                                        (total, sp) =>
+                                                            total +
+                                                            sp.components.reduce(
+                                                                (ctotal, c) =>
+                                                                    ctotal + Math.max(c.activities.length, 1),
+                                                                0
+                                                            ),
+                                                        0
+                                                    )}
+                                                    className="border border-gray-300 px-4 py-2 align-top"
+                                                >
+                                                    {logframeData.module.goal || ''}
+                                                </td>
+                                            )}
+
+                                            {/* Intermediate Outcome - show only on first row of sub-program */}
+                                            {isFirstRowOfSubProgram && (
+                                                <td
+                                                    rowSpan={subProgram.components.reduce(
+                                                        (total, c) => total + Math.max(c.activities.length, 1),
+                                                        0
+                                                    )}
+                                                    className="border border-gray-300 px-4 py-2 align-top"
+                                                >
+                                                    {subProgram.outcome || ''}
+                                                </td>
+                                            )}
+
+                                            {/* Output - show only on first row of component */}
+                                            {isFirstRowOfComponent && (
+                                                <td
+                                                    rowSpan={Math.max(component.activities.length, 1)}
+                                                    className="border border-gray-300 px-4 py-2 align-top"
+                                                >
+                                                    {component.output || ''}
+                                                </td>
+                                            )}
+
+                                            {/* Activity */}
+                                            <td className="border border-gray-300 px-4 py-2">
+                                                {activity ? activity.name : ''}
+                                            </td>
 
                                         {/* Status */}
                                         <td className="border border-gray-300 px-2 py-2">
