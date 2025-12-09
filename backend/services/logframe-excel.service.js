@@ -18,14 +18,17 @@ class LogframeExcelService {
         const worksheet = workbook.addWorksheet('RF');
 
         // Get module data
-        const [moduleRows] = await this.db.query(
+        const module = await this.db.queryOne(
             'SELECT * FROM program_modules WHERE id = ?',
             [moduleId]
         );
-        const module = moduleRows[0];
+
+        if (!module) {
+            throw new Error(`Module with id ${moduleId} not found`);
+        }
 
         // Get sub-programs
-        const [subPrograms] = await this.db.query(
+        const subPrograms = await this.db.query(
             'SELECT * FROM sub_programs WHERE module_id = ? AND deleted_at IS NULL',
             [moduleId]
         );
@@ -87,7 +90,7 @@ class LogframeExcelService {
         // Iterate through sub-programs
         for (const subProgram of subPrograms) {
             // Get components for this sub-program
-            const [components] = await this.db.query(
+            const components = await this.db.query(
                 'SELECT * FROM project_components WHERE sub_program_id = ? AND deleted_at IS NULL',
                 [subProgram.id]
             );
@@ -98,7 +101,7 @@ class LogframeExcelService {
 
             for (const component of components) {
                 // Get activities for this component
-                const [activities] = await this.db.query(
+                const activities = await this.db.query(
                     `SELECT * FROM activities
                      WHERE component_id = ? AND deleted_at IS NULL
                      ORDER BY start_date`,
@@ -106,14 +109,14 @@ class LogframeExcelService {
                 );
 
                 // Get indicators for this component
-                const [indicators] = await this.db.query(
+                const indicators = await this.db.query(
                     `SELECT * FROM me_indicators
                      WHERE component_id = ? AND deleted_at IS NULL`,
                     [component.id]
                 );
 
                 // Get means of verification
-                const [movs] = await this.db.query(
+                const movs = await this.db.query(
                     `SELECT * FROM means_of_verification
                      WHERE entity_type = 'component' AND entity_id = ? AND deleted_at IS NULL`,
                     [component.id]
@@ -138,7 +141,7 @@ class LogframeExcelService {
                     worksheet.getCell(currentRow, 5).value = activity.name;
 
                     // Get indicators for this activity
-                    const [activityIndicators] = await this.db.query(
+                    const activityIndicators = await this.db.query(
                         `SELECT * FROM me_indicators
                          WHERE activity_id = ? AND deleted_at IS NULL`,
                         [activity.id]
@@ -293,7 +296,7 @@ class LogframeExcelService {
                 currentOutcome = rowData.intermediateOutcome;
 
                 // Create or find sub-program
-                const [existing] = await this.db.query(
+                const existing = await this.db.query(
                     'SELECT id FROM sub_programs WHERE module_id = ? AND logframe_outcome = ? AND deleted_at IS NULL LIMIT 1',
                     [moduleId, currentOutcome]
                 );
@@ -304,7 +307,7 @@ class LogframeExcelService {
                     // Create new sub-program
                     const code = `SUB-${moduleId}-${Date.now()}`;
                     const name = currentOutcome.substring(0, 100);
-                    const [result] = await this.db.query(
+                    const result = await this.db.query(
                         `INSERT INTO sub_programs (module_id, name, code, logframe_outcome, start_date, end_date, status)
                          VALUES (?, ?, ?, ?, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 1 YEAR), 'planning')`,
                         [moduleId, name, code, currentOutcome]
@@ -319,7 +322,7 @@ class LogframeExcelService {
                 currentOutput = rowData.output;
 
                 // Create or find component
-                const [existing] = await this.db.query(
+                const existing = await this.db.query(
                     'SELECT id FROM project_components WHERE sub_program_id = ? AND logframe_output = ? AND deleted_at IS NULL LIMIT 1',
                     [currentSubProgramId, currentOutput]
                 );
@@ -330,7 +333,7 @@ class LogframeExcelService {
                     // Create new component
                     const code = `COMP-${currentSubProgramId}-${Date.now()}`;
                     const name = currentOutput.substring(0, 100);
-                    const [result] = await this.db.query(
+                    const result = await this.db.query(
                         `INSERT INTO project_components (sub_program_id, name, code, logframe_output, status)
                          VALUES (?, ?, ?, ?, 'not-started')`,
                         [currentSubProgramId, name, code, currentOutput]
@@ -357,7 +360,7 @@ class LogframeExcelService {
                     }
                 }
 
-                const [result] = await this.db.query(
+                const result = await this.db.query(
                     `INSERT INTO activities (project_id, component_id, name, code, responsible_person, status)
                      VALUES (?, ?, ?, ?, ?, 'not-started')`,
                     [currentSubProgramId, currentComponentId, activityName, code, rowData.responsibility || '']
@@ -374,7 +377,7 @@ class LogframeExcelService {
                     const indicatorName = rowData.indicator.toString().substring(0, 255);
                     const indicatorCode = `IND-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-                    const [indResult] = await this.db.query(
+                    const indResult = await this.db.query(
                         `INSERT INTO me_indicators (component_id, name, code, type, is_active)
                          VALUES (?, ?, ?, 'output', 1)`,
                         [currentComponentId, indicatorName, indicatorCode]
@@ -391,7 +394,7 @@ class LogframeExcelService {
                 if (rowData.mov) {
                     const movMethod = rowData.mov.toString().substring(0, 255);
 
-                    const [movResult] = await this.db.query(
+                    const movResult = await this.db.query(
                         `INSERT INTO means_of_verification (entity_type, entity_id, verification_method, evidence_type)
                          VALUES ('component', ?, ?, 'document')`,
                         [currentComponentId, movMethod]
