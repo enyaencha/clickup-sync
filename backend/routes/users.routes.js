@@ -222,12 +222,44 @@ module.exports = (db, authService, authMiddleware) => {
             // Hash password
             const passwordHash = await bcrypt.hash(password, 10);
 
+            // Determine the primary role for the legacy role field
+            let primaryRole = 'field_officer'; // Default fallback
+
+            if (is_system_admin) {
+                primaryRole = 'admin';
+            } else if (role_ids && Array.isArray(role_ids) && role_ids.length > 0) {
+                // Get the role with the highest level (lowest level number = highest authority)
+                const rolesData = await db.query(`
+                    SELECT name, level
+                    FROM roles
+                    WHERE id IN (?)
+                    ORDER BY level ASC
+                    LIMIT 1
+                `, [role_ids]);
+
+                if (rolesData.length > 0) {
+                    // Map new role names to legacy ENUM values
+                    const roleMapping = {
+                        'system_admin': 'admin',
+                        'module_manager': 'program_manager',
+                        'me_manager': 'me_officer',
+                        'field_officer': 'field_officer',
+                        'report_viewer': 'viewer',
+                        'program_manager': 'program_manager',
+                        'data_entry_officer': 'field_officer',
+                        'approver': 'me_officer'
+                    };
+
+                    primaryRole = roleMapping[rolesData[0].name] || 'field_officer';
+                }
+            }
+
             // Create user
             const result = await db.query(`
                 INSERT INTO users
                 (username, email, password_hash, full_name, is_system_admin, is_active, role, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, 'field_officer', NOW(), NOW())
-            `, [username, email, passwordHash, full_name, is_system_admin || false, is_active !== false]);
+                VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+            `, [username, email, passwordHash, full_name, is_system_admin || false, is_active !== false, primaryRole]);
 
             const userId = result.insertId;
 
@@ -371,6 +403,43 @@ module.exports = (db, authService, authMiddleware) => {
                             VALUES (?, ?, ?, NOW())
                         `, [userId, roleId, req.user.id]);
                     }
+
+                    // Update the legacy role field based on selected roles
+                    const rolesData = await db.query(`
+                        SELECT name, level
+                        FROM roles
+                        WHERE id IN (?)
+                        ORDER BY level ASC
+                        LIMIT 1
+                    `, [role_ids]);
+
+                    if (rolesData.length > 0) {
+                        const roleMapping = {
+                            'system_admin': 'admin',
+                            'module_manager': 'program_manager',
+                            'me_manager': 'me_officer',
+                            'field_officer': 'field_officer',
+                            'report_viewer': 'viewer',
+                            'program_manager': 'program_manager',
+                            'data_entry_officer': 'field_officer',
+                            'approver': 'me_officer'
+                        };
+
+                        const primaryRole = roleMapping[rolesData[0].name] || 'field_officer';
+
+                        await db.query(`
+                            UPDATE users
+                            SET role = ?
+                            WHERE id = ?
+                        `, [primaryRole, userId]);
+                    }
+                } else {
+                    // No roles selected, set to default
+                    await db.query(`
+                        UPDATE users
+                        SET role = 'field_officer'
+                        WHERE id = ?
+                    `, [userId]);
                 }
             }
 
