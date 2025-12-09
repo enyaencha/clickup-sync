@@ -172,10 +172,10 @@ class StatusCalculatorService {
                  last_status_update = CURRENT_TIMESTAMP
              WHERE id = ?`,
             [
-                calculated.status,
-                calculated.status,
-                calculated.progress,
-                calculated.statusReason,
+                calculated.status || null,
+                calculated.status || null,
+                calculated.progress || 0,
+                calculated.statusReason || null,
                 activityId
             ]
         );
@@ -189,11 +189,11 @@ class StatusCalculatorService {
                  VALUES ('activity', ?, ?, ?, ?, ?, 'auto', ?, 0)`,
                 [
                     activityId,
-                    current.status,
-                    calculated.status,
-                    current.progress_percentage,
-                    calculated.progress,
-                    calculated.statusReason
+                    current.status || null,
+                    calculated.status || null,
+                    current.progress_percentage || 0,
+                    calculated.progress || 0,
+                    calculated.statusReason || null
                 ]
             );
         }
@@ -321,9 +321,9 @@ class StatusCalculatorService {
                  last_status_update = CURRENT_TIMESTAMP
              WHERE id = ?`,
             [
-                calculated.status,
-                calculated.status,
-                calculated.progress,
+                calculated.status || null,
+                calculated.status || null,
+                calculated.progress || 0,
                 componentId
             ]
         );
@@ -337,11 +337,11 @@ class StatusCalculatorService {
                  VALUES ('component', ?, ?, ?, ?, ?, 'auto', ?)`,
                 [
                     componentId,
-                    current.overall_status,
-                    calculated.status,
-                    current.progress_percentage,
-                    calculated.progress,
-                    calculated.statusReason
+                    current.overall_status || null,
+                    calculated.status || null,
+                    current.progress_percentage || 0,
+                    calculated.progress || 0,
+                    calculated.statusReason || null
                 ]
             );
         }
@@ -432,7 +432,12 @@ class StatusCalculatorService {
                  progress_percentage = ?,
                  last_status_update = CURRENT_TIMESTAMP
              WHERE id = ?`,
-            [calculated.status, calculated.status, calculated.progress, subProgramId]
+            [
+                calculated.status || null,
+                calculated.status || null,
+                calculated.progress || 0,
+                subProgramId
+            ]
         );
 
         return calculated;
