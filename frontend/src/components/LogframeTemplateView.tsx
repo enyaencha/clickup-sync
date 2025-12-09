@@ -465,8 +465,8 @@ const LogframeTemplateView: React.FC = () => {
                                                 : component.responsible_person || ''}
                                         </td>
                                     </tr>
-                                ));
-                            })
+                                );
+                            });
                         )}
                     </tbody>
                 </table>
