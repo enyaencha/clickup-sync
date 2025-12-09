@@ -623,7 +623,7 @@ class MEService {
         // Get sub-programs for this module
         const subPrograms = await this.db.query(`
             SELECT id FROM sub_programs
-            WHERE program_module_id = ? AND deleted_at IS NULL
+            WHERE module_id = ? AND deleted_at IS NULL
         `, [moduleId]);
 
         console.log('Found sub-programs:', subPrograms.length);
