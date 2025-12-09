@@ -20,10 +20,10 @@
  *   0 2 * * * cd /path/to/backend && node scripts/recalculate-statuses.js >> logs/status-calc.log 2>&1
  */
 
-// Load environment variables
-require('dotenv').config();
-
+// Load environment variables from config folder
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../../config/.env') });
+
 const db = require('../core/database/connection');
 const StatusCalculatorService = require('../services/status-calculator.service');
 
