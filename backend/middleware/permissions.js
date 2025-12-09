@@ -60,7 +60,7 @@ function canModifyResource(user, resource, action) {
  */
 async function getModuleIdForActivity(db, activityId) {
     const result = await db.query(`
-        SELECT sp.program_module_id as module_id
+        SELECT sp.module_id
         FROM activities a
         JOIN project_components pc ON a.component_id = pc.id
         JOIN sub_programs sp ON pc.sub_program_id = sp.id
@@ -78,7 +78,7 @@ async function getModuleIdForActivity(db, activityId) {
  */
 async function getModuleIdForComponent(db, componentId) {
     const result = await db.query(`
-        SELECT sp.program_module_id as module_id
+        SELECT sp.module_id
         FROM project_components pc
         JOIN sub_programs sp ON pc.sub_program_id = sp.id
         WHERE pc.id = ?
