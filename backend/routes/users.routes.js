@@ -241,13 +241,35 @@ module.exports = (db, authService, authMiddleware) => {
                     // Map new role names to legacy ENUM values
                     const roleMapping = {
                         'system_admin': 'admin',
+                        'me_director': 'admin',
+                        'program_director': 'program_manager',
                         'module_manager': 'program_manager',
-                        'me_manager': 'me_officer',
-                        'field_officer': 'field_officer',
-                        'report_viewer': 'viewer',
                         'program_manager': 'program_manager',
+                        'me_manager': 'me_officer',
+                        'me_officer': 'me_officer',
+                        'finance_manager': 'program_manager',
+                        'logistics_manager': 'program_manager',
+                        'data_analyst': 'me_officer',
+                        'finance_officer': 'field_officer',
+                        'procurement_officer': 'field_officer',
+                        'program_officer': 'field_officer',
+                        'technical_advisor': 'me_officer',
+                        'field_officer': 'field_officer',
+                        'community_mobilizer': 'field_officer',
                         'data_entry_officer': 'field_officer',
-                        'approver': 'me_officer'
+                        'data_entry_clerk': 'field_officer',
+                        'enumerator': 'field_officer',
+                        'module_coordinator': 'field_officer',
+                        'verification_officer': 'field_officer',
+                        'approver': 'me_officer',
+                        'report_viewer': 'viewer',
+                        'module_viewer': 'viewer',
+                        'external_auditor': 'viewer',
+                        'gbv_specialist': 'field_officer',
+                        'nutrition_specialist': 'field_officer',
+                        'agriculture_specialist': 'field_officer',
+                        'relief_coordinator': 'program_manager',
+                        'seep_coordinator': 'program_manager'
                     };
 
                     primaryRole = roleMapping[rolesData[0].name] || 'field_officer';
@@ -416,13 +438,35 @@ module.exports = (db, authService, authMiddleware) => {
                     if (rolesData.length > 0) {
                         const roleMapping = {
                             'system_admin': 'admin',
+                            'me_director': 'admin',
+                            'program_director': 'program_manager',
                             'module_manager': 'program_manager',
-                            'me_manager': 'me_officer',
-                            'field_officer': 'field_officer',
-                            'report_viewer': 'viewer',
                             'program_manager': 'program_manager',
+                            'me_manager': 'me_officer',
+                            'me_officer': 'me_officer',
+                            'finance_manager': 'program_manager',
+                            'logistics_manager': 'program_manager',
+                            'data_analyst': 'me_officer',
+                            'finance_officer': 'field_officer',
+                            'procurement_officer': 'field_officer',
+                            'program_officer': 'field_officer',
+                            'technical_advisor': 'me_officer',
+                            'field_officer': 'field_officer',
+                            'community_mobilizer': 'field_officer',
                             'data_entry_officer': 'field_officer',
-                            'approver': 'me_officer'
+                            'data_entry_clerk': 'field_officer',
+                            'enumerator': 'field_officer',
+                            'module_coordinator': 'field_officer',
+                            'verification_officer': 'field_officer',
+                            'approver': 'me_officer',
+                            'report_viewer': 'viewer',
+                            'module_viewer': 'viewer',
+                            'external_auditor': 'viewer',
+                            'gbv_specialist': 'field_officer',
+                            'nutrition_specialist': 'field_officer',
+                            'agriculture_specialist': 'field_officer',
+                            'relief_coordinator': 'program_manager',
+                            'seep_coordinator': 'program_manager'
                         };
 
                         const primaryRole = roleMapping[rolesData[0].name] || 'field_officer';
