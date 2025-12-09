@@ -1620,6 +1620,8 @@ const AssumptionsService = require('./services/assumptions.service');
 const assumptionsRoutes = require('./routes/assumptions.routes');
 const ResultsChainService = require('./services/results-chain.service');
 const resultsChainRoutes = require('./routes/results-chain.routes');
+const LogframeExcelService = require('./services/logframe-excel.service');
+const logframeExcelRoutes = require('./routes/logframe-excel.routes');
 
 // Initialize sync engine
 (async () => {
@@ -1659,6 +1661,10 @@ const resultsChainRoutes = require('./routes/results-chain.routes');
         const resultsChainService = new ResultsChainService(db);
         app.use('/api/results-chain', resultsChainRoutes(resultsChainService));
         console.log('Results Chain routes registered: /api/results-chain');
+
+        const logframeExcelService = new LogframeExcelService(db);
+        app.use('/api/logframe', logframeExcelRoutes(logframeExcelService));
+        console.log('Logframe Excel routes registered: /api/logframe');
     } catch (error) {
         console.error('Failed to initialize sync engine:', error);
         process.exit(1);

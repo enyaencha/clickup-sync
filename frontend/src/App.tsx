@@ -12,6 +12,7 @@ import AllActivities from './components/AllActivities';
 import Approvals from './components/Approvals';
 import Settings from './components/SettingsNew';
 import LogframeDashboard from './components/LogframeDashboard';
+import LogframeTemplateView from './components/LogframeTemplateView';
 import IndicatorsManagement from './components/IndicatorsManagement';
 import AssumptionsManagement from './components/AssumptionsManagement';
 import MeansOfVerificationManagement from './components/MeansOfVerificationManagement';
@@ -63,6 +64,7 @@ const App: React.FC = () => {
                     {/* Logframe Routes */}
                     <Route path="/logframe" element={<LogframeDashboard />} />
                     <Route path="/logframe/dashboard" element={<LogframeDashboard />} />
+                    <Route path="/logframe/template/:moduleId" element={<LogframeTemplateView />} />
                     <Route path="/logframe/indicators" element={<IndicatorsManagement />} />
                     <Route path="/logframe/indicators/:entityType/:entityId" element={<IndicatorsManagement />} />
                     <Route path="/logframe/assumptions" element={<AssumptionsManagement />} />
