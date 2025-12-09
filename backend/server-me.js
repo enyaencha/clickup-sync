@@ -332,6 +332,11 @@ async function initializeServices() {
             app.use('/api/logframe', require('./routes/logframe-excel.routes')(logframeExcelService));
             logger.info('✅ Logframe Excel routes registered');
 
+            const StatusCalculatorService = require('./services/status-calculator.service');
+            const statusCalculatorService = new StatusCalculatorService(dbManager);
+            app.use('/api/status', require('./routes/status.routes')(statusCalculatorService));
+            logger.info('✅ Status Calculator routes registered');
+
             const AttachmentsService = require('./services/attachments.service');
             const attachmentsService = new AttachmentsService(dbManager);
             await attachmentsService.ensureUploadsDir();
