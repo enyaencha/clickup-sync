@@ -165,10 +165,10 @@ module.exports = (meService) => {
 
             const id = await meService.createActivity(req.body);
 
-            // Automatically calculate initial status
+            // Automatically calculate initial status and cascade to parents
             try {
-                await statusCalculator.updateActivityStatus(id, true);
-                console.log(`✅ Auto-calculated status for new activity ${id}`);
+                const result = await statusCalculator.cascadeActivityStatusUpdate(id);
+                console.log(`✅ Auto-calculated status for new activity ${id} (component: ${result.componentUpdated}, subprogram: ${result.subProgramUpdated})`);
             } catch (statusError) {
                 console.warn(`⚠️  Status calculation failed for new activity ${id}:`, statusError.message);
             }
@@ -203,10 +203,10 @@ module.exports = (meService) => {
 
             await meService.updateActivity(req.params.id, req.body);
 
-            // Automatically recalculate status after update
+            // Automatically recalculate status after update and cascade to parents
             try {
-                await statusCalculator.updateActivityStatus(req.params.id, true);
-                console.log(`✅ Auto-calculated status for activity ${req.params.id}`);
+                const result = await statusCalculator.cascadeActivityStatusUpdate(req.params.id);
+                console.log(`✅ Auto-calculated status for activity ${req.params.id} (component: ${result.componentUpdated}, subprogram: ${result.subProgramUpdated})`);
             } catch (statusError) {
                 // Don't fail the update if status calculation fails
                 console.warn(`⚠️  Status calculation failed for activity ${req.params.id}:`, statusError.message);
@@ -265,6 +265,15 @@ module.exports = (meService) => {
             }
 
             await meService.updateActivityStatus(req.params.id, req.body.status);
+
+            // Automatically recalculate status after status update and cascade to parents
+            try {
+                const result = await statusCalculator.cascadeActivityStatusUpdate(req.params.id);
+                console.log(`✅ Auto-calculated status for activity ${req.params.id} (component: ${result.componentUpdated}, subprogram: ${result.subProgramUpdated})`);
+            } catch (statusError) {
+                console.warn(`⚠️  Status calculation failed for activity ${req.params.id}:`, statusError.message);
+            }
+
             res.json({ success: true, message: 'Activity status updated' });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });
@@ -338,6 +347,17 @@ module.exports = (meService) => {
     router.post('/indicators', async (req, res) => {
         try {
             const id = await meService.createIndicator(req.body);
+
+            // Recalculate activity status since adding indicators changes the calculation
+            if (req.body.activity_id) {
+                try {
+                    const result = await statusCalculator.cascadeActivityStatusUpdate(req.body.activity_id);
+                    console.log(`✅ Auto-calculated status for activity ${req.body.activity_id} after indicator creation (component: ${result.componentUpdated}, subprogram: ${result.subProgramUpdated})`);
+                } catch (statusError) {
+                    console.warn(`⚠️  Status calculation failed after indicator creation:`, statusError.message);
+                }
+            }
+
             res.json({ success: true, id, message: 'Indicator created and queued for sync' });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });
@@ -347,6 +367,22 @@ module.exports = (meService) => {
     router.put('/indicators/:id/progress', async (req, res) => {
         try {
             await meService.updateIndicatorProgress(req.params.id, req.body);
+
+            // Get the activity_id for this indicator and recalculate its status
+            try {
+                const indicator = await meService.db.queryOne(
+                    'SELECT activity_id FROM me_indicators WHERE id = ?',
+                    [req.params.id]
+                );
+
+                if (indicator && indicator.activity_id) {
+                    const result = await statusCalculator.cascadeActivityStatusUpdate(indicator.activity_id);
+                    console.log(`✅ Auto-calculated status for activity ${indicator.activity_id} after indicator update (component: ${result.componentUpdated}, subprogram: ${result.subProgramUpdated})`);
+                }
+            } catch (statusError) {
+                console.warn(`⚠️  Status calculation failed after indicator update:`, statusError.message);
+            }
+
             res.json({ success: true, message: 'Indicator progress updated and queued for sync' });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });

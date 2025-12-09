@@ -496,6 +496,54 @@ class StatusCalculatorService {
     }
 
     /**
+     * Cascade status update from activity to parent component and sub-program
+     * @param {number} activityId - Activity ID
+     * @returns {Promise<object>} - Summary of what was updated
+     */
+    async cascadeActivityStatusUpdate(activityId) {
+        const summary = {
+            activityUpdated: false,
+            componentUpdated: false,
+            subProgramUpdated: false
+        };
+
+        try {
+            // Update activity status
+            await this.updateActivityStatus(activityId, true);
+            summary.activityUpdated = true;
+
+            // Get activity's component
+            const activity = await this.db.queryOne(
+                'SELECT component_id FROM activities WHERE id = ? AND deleted_at IS NULL',
+                [activityId]
+            );
+
+            if (activity && activity.component_id) {
+                // Update component status (rollup from all activities)
+                await this.updateComponentStatus(activity.component_id, true);
+                summary.componentUpdated = true;
+
+                // Get component's sub-program
+                const component = await this.db.queryOne(
+                    'SELECT sub_program_id FROM project_components WHERE id = ? AND deleted_at IS NULL',
+                    [activity.component_id]
+                );
+
+                if (component && component.sub_program_id) {
+                    // Update sub-program status (rollup from all components)
+                    await this.updateSubProgramStatus(component.sub_program_id);
+                    summary.subProgramUpdated = true;
+                }
+            }
+        } catch (error) {
+            console.error(`Error cascading status update for activity ${activityId}:`, error.message);
+            throw error;
+        }
+
+        return summary;
+    }
+
+    /**
      * Recalculate all statuses system-wide
      * @returns {Promise<object>} - Summary
      */
