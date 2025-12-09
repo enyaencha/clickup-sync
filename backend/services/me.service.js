@@ -540,7 +540,7 @@ class MEService {
 
         if (modules && modules.length > 0) {
             const placeholders = modules.map(() => '?').join(',');
-            moduleFilter = ` AND program_module_id IN (${placeholders})`;
+            moduleFilter = ` AND module_id IN (${placeholders})`;
             moduleParams = modules;
         }
 
@@ -562,7 +562,7 @@ class MEService {
             SELECT COUNT(*) as count
             FROM project_components pc
             JOIN sub_programs sp ON pc.sub_program_id = sp.id
-            WHERE pc.deleted_at IS NULL${moduleFilter}
+            WHERE pc.deleted_at IS NULL${moduleFilter.replace('module_id', 'sp.module_id')}
         `, moduleParams);
 
         const activityCount = await this.db.query(`
@@ -570,7 +570,7 @@ class MEService {
             FROM activities a
             JOIN project_components pc ON a.component_id = pc.id
             JOIN sub_programs sp ON pc.sub_program_id = sp.id
-            WHERE a.deleted_at IS NULL${moduleFilter}${userFilter}
+            WHERE a.deleted_at IS NULL${moduleFilter.replace('module_id', 'sp.module_id')}${userFilter}
         `, [...moduleParams, ...userParams]);
 
         // Get activity status breakdown
@@ -579,7 +579,7 @@ class MEService {
             FROM activities a
             JOIN project_components pc ON a.component_id = pc.id
             JOIN sub_programs sp ON pc.sub_program_id = sp.id
-            WHERE a.deleted_at IS NULL${moduleFilter}${userFilter}
+            WHERE a.deleted_at IS NULL${moduleFilter.replace('module_id', 'sp.module_id')}${userFilter}
             GROUP BY a.status
         `, [...moduleParams, ...userParams]);
 
@@ -589,7 +589,7 @@ class MEService {
             FROM activities a
             JOIN project_components pc ON a.component_id = pc.id
             JOIN sub_programs sp ON pc.sub_program_id = sp.id
-            WHERE a.deleted_at IS NULL${moduleFilter}${userFilter}
+            WHERE a.deleted_at IS NULL${moduleFilter.replace('module_id', 'sp.module_id')}${userFilter}
         `, [...moduleParams, ...userParams]);
 
         let totalProgress = 0;
