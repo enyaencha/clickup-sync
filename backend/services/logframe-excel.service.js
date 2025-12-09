@@ -412,6 +412,247 @@ class LogframeExcelService {
         return imported;
     }
 
+    /**
+     * Import logframe data from Excel file with multiple sheets
+     * Each sheet is imported into its corresponding module (matched by sheet name/code)
+     */
+    async importFromExcelMultiSheet(filePath) {
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.readFile(filePath);
+
+        const results = {
+            sheetsProcessed: 0,
+            sheetsSkipped: 0,
+            modules: []
+        };
+
+        // Process each worksheet
+        for (const worksheet of workbook.worksheets) {
+            const sheetName = worksheet.name;
+
+            // Skip sheets that don't look like module data
+            if (sheetName.toLowerCase() === 'instructions' ||
+                sheetName.toLowerCase() === 'template' ||
+                sheetName.toLowerCase() === 'readme') {
+                results.sheetsSkipped++;
+                continue;
+            }
+
+            try {
+                // Try to find module by code (sheet name)
+                const modules = await this.db.query(
+                    'SELECT id, name, code FROM program_modules WHERE code = ? AND deleted_at IS NULL LIMIT 1',
+                    [sheetName]
+                );
+
+                let moduleId;
+                if (modules.length > 0) {
+                    moduleId = modules[0].id;
+                } else {
+                    // Create new module if not found
+                    const result = await this.db.query(
+                        `INSERT INTO program_modules (name, code, status, start_date, end_date)
+                         VALUES (?, ?, 'planning', CURDATE(), DATE_ADD(CURDATE(), INTERVAL 1 YEAR))`,
+                        [sheetName, sheetName]
+                    );
+                    moduleId = result.insertId;
+                }
+
+                // Import this sheet's data into the module
+                const imported = await this.importWorksheetToModule(worksheet, moduleId);
+
+                results.modules.push({
+                    moduleId,
+                    sheetName,
+                    imported
+                });
+                results.sheetsProcessed++;
+
+            } catch (error) {
+                console.error(`Error importing sheet ${sheetName}:`, error);
+                results.modules.push({
+                    sheetName,
+                    error: error.message
+                });
+            }
+        }
+
+        return results;
+    }
+
+    /**
+     * Import a specific worksheet into a module
+     */
+    async importWorksheetToModule(worksheet, moduleId) {
+        const imported = {
+            subPrograms: [],
+            components: [],
+            activities: [],
+            indicators: [],
+            movs: []
+        };
+
+        let currentSubProgramId = null;
+        let currentComponentId = null;
+        let currentOutcome = null;
+        let currentOutput = null;
+
+        // Find header row
+        let headerRow = null;
+        worksheet.eachRow((row, rowNumber) => {
+            const firstCell = row.getCell(2).value;
+            if (firstCell && firstCell.toString().toLowerCase().includes('strategic objective')) {
+                headerRow = rowNumber;
+            }
+        });
+
+        if (!headerRow) {
+            throw new Error('Could not find header row in worksheet');
+        }
+
+        // Collect all data rows first
+        const dataRows = [];
+        worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+            if (rowNumber <= headerRow) return;
+
+            const rowData = {
+                strategicObjective: row.getCell(2).value,
+                intermediateOutcome: row.getCell(3).value,
+                output: row.getCell(4).value,
+                keyActivity: row.getCell(5).value,
+                indicator: row.getCell(6).value,
+                mov: row.getCell(7).value,
+                timeframe: row.getCell(8).value,
+                responsibility: row.getCell(9).value
+            };
+
+            // Skip empty rows and instruction rows
+            if (!rowData.keyActivity && !rowData.output && !rowData.intermediateOutcome) return;
+            if (rowData.keyActivity && rowData.keyActivity.toString().toLowerCase().includes('instruction')) return;
+
+            dataRows.push(rowData);
+        });
+
+        // Process rows with async database operations
+        for (const rowData of dataRows) {
+            // Handle Intermediate Outcome (Sub-Program level)
+            if (rowData.intermediateOutcome && rowData.intermediateOutcome !== currentOutcome) {
+                currentOutcome = rowData.intermediateOutcome;
+
+                // Create or find sub-program
+                const existing = await this.db.query(
+                    'SELECT id FROM sub_programs WHERE module_id = ? AND logframe_outcome = ? AND deleted_at IS NULL LIMIT 1',
+                    [moduleId, currentOutcome]
+                );
+
+                if (existing.length > 0) {
+                    currentSubProgramId = existing[0].id;
+                } else {
+                    // Create new sub-program
+                    const code = `SUB-${moduleId}-${Date.now()}`;
+                    const name = currentOutcome.substring(0, 100);
+                    const result = await this.db.query(
+                        `INSERT INTO sub_programs (module_id, name, code, logframe_outcome, start_date, end_date, status)
+                         VALUES (?, ?, ?, ?, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 1 YEAR), 'planning')`,
+                        [moduleId, name, code, currentOutcome]
+                    );
+                    currentSubProgramId = result.insertId;
+                    imported.subPrograms.push({ id: currentSubProgramId, name, outcome: currentOutcome });
+                }
+            }
+
+            // Handle Output (Component level)
+            if (rowData.output && rowData.output !== currentOutput) {
+                currentOutput = rowData.output;
+
+                // Create or find component
+                const existing = await this.db.query(
+                    'SELECT id FROM project_components WHERE sub_program_id = ? AND logframe_output = ? AND deleted_at IS NULL LIMIT 1',
+                    [currentSubProgramId, currentOutput]
+                );
+
+                if (existing.length > 0) {
+                    currentComponentId = existing[0].id;
+                } else {
+                    // Create new component
+                    const code = `COMP-${currentSubProgramId}-${Date.now()}`;
+                    const name = currentOutput.substring(0, 100);
+                    const result = await this.db.query(
+                        `INSERT INTO project_components (sub_program_id, name, code, logframe_output, status)
+                         VALUES (?, ?, ?, ?, 'not-started')`,
+                        [currentSubProgramId, name, code, currentOutput]
+                    );
+                    currentComponentId = result.insertId;
+                    imported.components.push({ id: currentComponentId, name, output: currentOutput });
+                }
+            }
+
+            // Handle Activity
+            if (rowData.keyActivity && currentComponentId) {
+                const activityName = rowData.keyActivity.toString().substring(0, 255);
+                const code = `ACT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+                let startDate = null;
+                if (rowData.timeframe) {
+                    const timeStr = rowData.timeframe.toString();
+                    const dateMatch = timeStr.match(/(\d{4}-\d{2}-\d{2})|Q\d\s+\d{4}/);
+                    if (dateMatch) {
+                        startDate = dateMatch[0];
+                    }
+                }
+
+                const result = await this.db.query(
+                    `INSERT INTO activities (project_id, component_id, name, code, responsible_person, status)
+                     VALUES (?, ?, ?, ?, ?, 'not-started')`,
+                    [currentSubProgramId, currentComponentId, activityName, code, rowData.responsibility || '']
+                );
+
+                imported.activities.push({
+                    id: result.insertId,
+                    name: activityName,
+                    component_id: currentComponentId
+                });
+
+                // Handle Indicator
+                if (rowData.indicator) {
+                    const indicatorName = rowData.indicator.toString().substring(0, 255);
+                    const indicatorCode = `IND-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+                    const indResult = await this.db.query(
+                        `INSERT INTO me_indicators (component_id, name, code, type, is_active)
+                         VALUES (?, ?, ?, 'output', 1)`,
+                        [currentComponentId, indicatorName, indicatorCode]
+                    );
+
+                    imported.indicators.push({
+                        id: indResult.insertId,
+                        name: indicatorName,
+                        component_id: currentComponentId
+                    });
+                }
+
+                // Handle Means of Verification
+                if (rowData.mov) {
+                    const movMethod = rowData.mov.toString().substring(0, 255);
+
+                    const movResult = await this.db.query(
+                        `INSERT INTO means_of_verification (entity_type, entity_id, verification_method, evidence_type)
+                         VALUES ('component', ?, ?, 'document')`,
+                        [currentComponentId, movMethod]
+                    );
+
+                    imported.movs.push({
+                        id: movResult.insertId,
+                        method: movMethod,
+                        component_id: currentComponentId
+                    });
+                }
+            }
+        }
+
+        return imported;
+    }
+
     formatDate(date) {
         if (!date) return '';
         const d = new Date(date);

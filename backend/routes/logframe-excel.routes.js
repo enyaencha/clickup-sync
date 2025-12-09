@@ -141,6 +141,62 @@ module.exports = (logframeExcelService) => {
     });
 
     /**
+     * Import logframe data from Excel with multiple sheets
+     * POST /api/logframe/import-all
+     * Each sheet is imported into its corresponding module (matched by sheet name)
+     */
+    router.post('/import-all', upload.single('file'), async (req, res) => {
+        try {
+            if (!req.file) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'No file uploaded'
+                });
+            }
+
+            const filePath = req.file.path;
+
+            console.log(`Importing multi-sheet logframe from ${filePath}`);
+
+            const results = await logframeExcelService.importFromExcelMultiSheet(filePath);
+
+            // Clean up uploaded file
+            try {
+                await fs.unlink(filePath);
+            } catch (err) {
+                console.warn('Could not delete uploaded file:', err);
+            }
+
+            res.json({
+                success: true,
+                data: results,
+                message: 'Multi-sheet logframe data imported successfully',
+                summary: {
+                    sheetsProcessed: results.sheetsProcessed,
+                    sheetsSkipped: results.sheetsSkipped,
+                    modulesAffected: results.modules.length
+                }
+            });
+        } catch (error) {
+            console.error('Multi-sheet import error:', error);
+
+            // Clean up uploaded file on error
+            if (req.file) {
+                try {
+                    await fs.unlink(req.file.path);
+                } catch (err) {
+                    console.warn('Could not delete uploaded file:', err);
+                }
+            }
+
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    });
+
+    /**
      * Export all modules' logframes to a single workbook
      * GET /api/logframe/export-all
      */
