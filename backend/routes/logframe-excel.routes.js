@@ -321,12 +321,28 @@ module.exports = (logframeExcelService) => {
                         [component.id]
                     );
 
-                    const indicators = await logframeExcelService.db.query(
+                    // Get activity-level indicators for each activity
+                    for (const activity of activities) {
+                        const activityIndicators = await logframeExcelService.db.query(
+                            'SELECT * FROM me_indicators WHERE activity_id = ? AND deleted_at IS NULL',
+                            [activity.id]
+                        );
+                        activity.indicators = activityIndicators;
+
+                        const activityMovs = await logframeExcelService.db.query(
+                            `SELECT * FROM means_of_verification
+                             WHERE entity_type = 'activity' AND entity_id = ? AND deleted_at IS NULL`,
+                            [activity.id]
+                        );
+                        activity.means_of_verification = activityMovs;
+                    }
+
+                    const componentIndicators = await logframeExcelService.db.query(
                         'SELECT * FROM me_indicators WHERE component_id = ? AND deleted_at IS NULL',
                         [component.id]
                     );
 
-                    const movs = await logframeExcelService.db.query(
+                    const componentMovs = await logframeExcelService.db.query(
                         `SELECT * FROM means_of_verification
                          WHERE entity_type = 'component' AND entity_id = ? AND deleted_at IS NULL`,
                         [component.id]
@@ -338,8 +354,8 @@ module.exports = (logframeExcelService) => {
                         output: component.logframe_output,
                         responsible_person: component.responsible_person,
                         activities: activities,
-                        indicators: indicators,
-                        means_of_verification: movs
+                        indicators: componentIndicators,
+                        means_of_verification: componentMovs
                     });
                 }
 

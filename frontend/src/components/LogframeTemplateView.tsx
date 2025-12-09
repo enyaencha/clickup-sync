@@ -15,6 +15,8 @@ interface Activity {
     status_override?: boolean;
     progress_percentage?: number;
     risk_level?: string;
+    indicators?: Indicator[];
+    means_of_verification?: MeansOfVerification[];
 }
 
 interface Indicator {
@@ -412,14 +414,20 @@ const LogframeTemplateView: React.FC = () => {
 
                                         {/* Indicators */}
                                         <td className="border border-gray-300 px-4 py-2">
-                                            {component.indicators.map((ind) => ind.name).join('; ')}
+                                            {activity && activity.indicators && activity.indicators.length > 0
+                                                ? activity.indicators.map((ind) => ind.name).join('; ')
+                                                : component.indicators.map((ind) => ind.name).join('; ')}
                                         </td>
 
                                         {/* Means of Verification */}
                                         <td className="border border-gray-300 px-4 py-2">
-                                            {component.means_of_verification
-                                                .map((mov) => mov.verification_method)
-                                                .join('; ')}
+                                            {activity && activity.means_of_verification && activity.means_of_verification.length > 0
+                                                ? activity.means_of_verification
+                                                      .map((mov) => mov.verification_method)
+                                                      .join('; ')
+                                                : component.means_of_verification
+                                                      .map((mov) => mov.verification_method)
+                                                      .join('; ')}
                                         </td>
 
                                         {/* Timeframe */}
