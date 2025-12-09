@@ -754,12 +754,33 @@ class MEService {
         let activityByStatus = [];
 
         // Build user filter for non-admin users
+        // Check if user has module access for this sub-program
         let userFilter = '';
         let queryParams = [...componentIds];
 
         if (user && !user.is_system_admin) {
-            userFilter = ' AND (created_by = ? OR owned_by = ?)';
-            queryParams.push(user.id, user.id);
+            // Get the module_id for this sub-program
+            const subProgram = await this.db.query(`
+                SELECT module_id FROM sub_programs WHERE id = ?
+            `, [subProgramId]);
+
+            if (subProgram && subProgram.length > 0) {
+                const moduleId = subProgram[0].module_id;
+
+                // Check if user has module assignment
+                const hasModuleAccess = await this.db.query(`
+                    SELECT 1 FROM user_module_assignments
+                    WHERE user_id = ? AND module_id = ? AND can_view = TRUE
+                    LIMIT 1
+                `, [user.id, moduleId]);
+
+                // Only apply ownership filter if user has NO module access
+                if (!hasModuleAccess || hasModuleAccess.length === 0) {
+                    userFilter = ' AND (created_by = ? OR owned_by = ?)';
+                    queryParams.push(user.id, user.id);
+                }
+                // If user has module access, show all activities in the module (no filter)
+            }
         }
 
         // Get activities for these components
@@ -806,12 +827,36 @@ class MEService {
 
     async getComponentStatistics(componentId, user = null) {
         // Build user filter for non-admin users
+        // Check if user has module access for this component
         let userFilter = '';
         let queryParams = [componentId];
 
         if (user && !user.is_system_admin) {
-            userFilter = ' AND (created_by = ? OR owned_by = ?)';
-            queryParams.push(user.id, user.id);
+            // Get the module_id for this component through sub_programs
+            const component = await this.db.query(`
+                SELECT sp.module_id
+                FROM project_components pc
+                INNER JOIN sub_programs sp ON pc.sub_program_id = sp.id
+                WHERE pc.id = ?
+            `, [componentId]);
+
+            if (component && component.length > 0) {
+                const moduleId = component[0].module_id;
+
+                // Check if user has module assignment
+                const hasModuleAccess = await this.db.query(`
+                    SELECT 1 FROM user_module_assignments
+                    WHERE user_id = ? AND module_id = ? AND can_view = TRUE
+                    LIMIT 1
+                `, [user.id, moduleId]);
+
+                // Only apply ownership filter if user has NO module access
+                if (!hasModuleAccess || hasModuleAccess.length === 0) {
+                    userFilter = ' AND (created_by = ? OR owned_by = ?)';
+                    queryParams.push(user.id, user.id);
+                }
+                // If user has module access, show all activities in the module (no filter)
+            }
         }
 
         // Get activities for this component
