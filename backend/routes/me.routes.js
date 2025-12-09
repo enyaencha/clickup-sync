@@ -6,10 +6,12 @@ const express = require('express');
 const router = express.Router();
 const checklistService = require('../services/activity-checklist.service');
 const SettingsService = require('../services/settings.service');
+const StatusCalculatorService = require('../services/status-calculator.service');
 const { checkModulePermission } = require('../middleware/permissions');
 
 module.exports = (meService) => {
     const settingsService = new SettingsService();
+    const statusCalculator = new StatusCalculatorService(meService.db);
     const db = meService.db; // Get database connection from meService
     // ==============================================
     // PROGRAM MODULES
@@ -162,6 +164,15 @@ module.exports = (meService) => {
             req.body.owned_by = req.user.id;
 
             const id = await meService.createActivity(req.body);
+
+            // Automatically calculate initial status
+            try {
+                await statusCalculator.updateActivityStatus(id, true);
+                console.log(`✅ Auto-calculated status for new activity ${id}`);
+            } catch (statusError) {
+                console.warn(`⚠️  Status calculation failed for new activity ${id}:`, statusError.message);
+            }
+
             res.json({ success: true, id, message: 'Activity created and queued for sync to ClickUp' });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });
@@ -191,6 +202,16 @@ module.exports = (meService) => {
             req.body.last_modified_by = req.user.id;
 
             await meService.updateActivity(req.params.id, req.body);
+
+            // Automatically recalculate status after update
+            try {
+                await statusCalculator.updateActivityStatus(req.params.id, true);
+                console.log(`✅ Auto-calculated status for activity ${req.params.id}`);
+            } catch (statusError) {
+                // Don't fail the update if status calculation fails
+                console.warn(`⚠️  Status calculation failed for activity ${req.params.id}:`, statusError.message);
+            }
+
             res.json({ success: true, message: 'Activity updated and queued for sync to ClickUp' });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });
