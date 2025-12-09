@@ -1,0 +1,388 @@
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { authFetch } from '../config/api';
+
+interface Activity {
+    id: number;
+    name: string;
+    responsible_person: string;
+    start_date: string;
+    end_date: string;
+    activity_date: string;
+}
+
+interface Indicator {
+    id: number;
+    name: string;
+}
+
+interface MeansOfVerification {
+    id: number;
+    verification_method: string;
+}
+
+interface Component {
+    id: number;
+    name: string;
+    output: string;
+    responsible_person: string;
+    activities: Activity[];
+    indicators: Indicator[];
+    means_of_verification: MeansOfVerification[];
+}
+
+interface SubProgram {
+    id: number;
+    name: string;
+    outcome: string;
+    components: Component[];
+}
+
+interface LogframeData {
+    module: {
+        id: number;
+        name: string;
+        code: string;
+        goal: string;
+    };
+    subPrograms: SubProgram[];
+}
+
+const LogframeTemplateView: React.FC = () => {
+    const { moduleId } = useParams<{ moduleId: string }>();
+    const navigate = useNavigate();
+
+    const [logframeData, setLogframeData] = useState<LogframeData | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [uploadFile, setUploadFile] = useState<File | null>(null);
+    const [uploading, setUploading] = useState(false);
+    const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (moduleId) {
+            fetchLogframeData();
+        }
+    }, [moduleId]);
+
+    const fetchLogframeData = async () => {
+        try {
+            setLoading(true);
+            const response = await authFetch(`/api/logframe/data/${moduleId}`);
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch logframe data');
+            }
+
+            const result = await response.json();
+            setLogframeData(result.data);
+            setLoading(false);
+        } catch (err) {
+            console.error('Error fetching logframe data:', err);
+            setError(err instanceof Error ? err.message : 'Unknown error');
+            setLoading(false);
+        }
+    };
+
+    const handleExport = async () => {
+        try {
+            const response = await authFetch(`/api/logframe/export/${moduleId}`);
+
+            if (!response.ok) {
+                throw new Error('Failed to export logframe');
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Logframe_${logframeData?.module.code}_${Date.now()}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Error exporting logframe:', err);
+            alert('Failed to export logframe: ' + (err instanceof Error ? err.message : 'Unknown error'));
+        }
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            setUploadFile(e.target.files[0]);
+            setUploadSuccess(null);
+        }
+    };
+
+    const handleImport = async () => {
+        if (!uploadFile) {
+            alert('Please select a file to upload');
+            return;
+        }
+
+        try {
+            setUploading(true);
+            setUploadSuccess(null);
+
+            const formData = new FormData();
+            formData.append('file', uploadFile);
+
+            const response = await authFetch(`/api/logframe/import/${moduleId}`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to import logframe');
+            }
+
+            const result = await response.json();
+            setUploadSuccess(
+                `Successfully imported: ${result.summary.subPrograms} sub-programs, ${result.summary.components} components, ${result.summary.activities} activities`
+            );
+            setUploadFile(null);
+            setUploading(false);
+
+            // Refresh data
+            await fetchLogframeData();
+        } catch (err) {
+            console.error('Error importing logframe:', err);
+            alert('Failed to import logframe: ' + (err instanceof Error ? err.message : 'Unknown error'));
+            setUploading(false);
+        }
+    };
+
+    const formatTimeframe = (activity: Activity): string => {
+        if (activity.start_date && activity.end_date) {
+            const start = new Date(activity.start_date);
+            const end = new Date(activity.end_date);
+            const startQ = `Q${Math.ceil((start.getMonth() + 1) / 3)} ${start.getFullYear()}`;
+            const endQ = `Q${Math.ceil((end.getMonth() + 1) / 3)} ${end.getFullYear()}`;
+            return startQ === endQ ? startQ : `${startQ} - ${endQ}`;
+        } else if (activity.activity_date) {
+            const date = new Date(activity.activity_date);
+            return `Q${Math.ceil((date.getMonth() + 1) / 3)} ${date.getFullYear()}`;
+        }
+        return '';
+    };
+
+    if (loading) {
+        return (
+            <div className="p-6">
+                <div className="animate-pulse">
+                    <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+                    <div className="h-64 bg-gray-200 rounded"></div>
+                </div>
+            </div>
+        );
+    }
+
+    if (error || !logframeData) {
+        return (
+            <div className="p-6">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <h3 className="text-red-800 font-semibold">Error</h3>
+                    <p className="text-red-600">{error || 'No logframe data available'}</p>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="p-6">
+            <div className="mb-6 flex justify-between items-center">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-800">Logical Framework Template</h1>
+                    <p className="text-gray-600">Program: {logframeData.module.name}</p>
+                </div>
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => navigate(`/logframe/${moduleId}`)}
+                        className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                    >
+                        Back to Dashboard
+                    </button>
+                    <button
+                        onClick={handleExport}
+                        className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-2"
+                    >
+                        <span>📥</span>
+                        Export to Excel
+                    </button>
+                </div>
+            </div>
+
+            {/* Import Section */}
+            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-blue-800 mb-3">Import from Excel</h3>
+                <div className="flex items-center gap-3">
+                    <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        onChange={handleFileChange}
+                        className="block w-full text-sm text-gray-500
+                            file:mr-4 file:py-2 file:px-4
+                            file:rounded file:border-0
+                            file:text-sm file:font-semibold
+                            file:bg-blue-50 file:text-blue-700
+                            hover:file:bg-blue-100"
+                    />
+                    <button
+                        onClick={handleImport}
+                        disabled={!uploadFile || uploading}
+                        className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+                    >
+                        {uploading ? 'Uploading...' : 'Upload'}
+                    </button>
+                </div>
+                {uploadSuccess && (
+                    <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded text-green-700">
+                        {uploadSuccess}
+                    </div>
+                )}
+            </div>
+
+            {/* Goal Section */}
+            <div className="mb-6 bg-white border border-gray-300 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                    <span className="font-bold text-gray-700">GOAL:</span>
+                    <span className="text-gray-900">{logframeData.module.goal || 'Not set'}</span>
+                </div>
+            </div>
+
+            {/* Logframe Table */}
+            <div className="overflow-x-auto">
+                <table className="min-w-full border-collapse border border-gray-300">
+                    <thead>
+                        <tr className="bg-blue-100">
+                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
+                                Strategic Objective
+                            </th>
+                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
+                                Intermediate Outcomes
+                            </th>
+                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
+                                Outputs
+                            </th>
+                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
+                                Key Activities
+                            </th>
+                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
+                                Indicators
+                            </th>
+                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
+                                Means of Verification
+                            </th>
+                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
+                                Timeframe
+                            </th>
+                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
+                                Responsibility
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {logframeData.subPrograms.map((subProgram, spIdx) =>
+                            subProgram.components.map((component, compIdx) => {
+                                const activities = component.activities.length > 0
+                                    ? component.activities
+                                    : [null]; // Show at least one row for component
+
+                                return activities.map((activity, actIdx) => (
+                                    <tr key={`${spIdx}-${compIdx}-${actIdx}`} className="hover:bg-gray-50">
+                                        {/* Strategic Objective - show only on first row of sub-program */}
+                                        {spIdx === 0 && compIdx === 0 && actIdx === 0 && (
+                                            <td
+                                                rowSpan={logframeData.subPrograms.reduce(
+                                                    (total, sp) =>
+                                                        total +
+                                                        sp.components.reduce(
+                                                            (ctotal, c) =>
+                                                                ctotal + Math.max(c.activities.length, 1),
+                                                            0
+                                                        ),
+                                                    0
+                                                )}
+                                                className="border border-gray-300 px-4 py-2 align-top"
+                                            >
+                                                {logframeData.module.goal || ''}
+                                            </td>
+                                        )}
+
+                                        {/* Intermediate Outcome - show only on first row of component */}
+                                        {compIdx === 0 && actIdx === 0 && (
+                                            <td
+                                                rowSpan={subProgram.components.reduce(
+                                                    (total, c) => total + Math.max(c.activities.length, 1),
+                                                    0
+                                                )}
+                                                className="border border-gray-300 px-4 py-2 align-top"
+                                            >
+                                                {subProgram.outcome || ''}
+                                            </td>
+                                        )}
+
+                                        {/* Output - show only on first row of this component */}
+                                        {actIdx === 0 && (
+                                            <td
+                                                rowSpan={Math.max(component.activities.length, 1)}
+                                                className="border border-gray-300 px-4 py-2 align-top"
+                                            >
+                                                {component.output || ''}
+                                            </td>
+                                        )}
+
+                                        {/* Activity */}
+                                        <td className="border border-gray-300 px-4 py-2">
+                                            {activity ? activity.name : ''}
+                                        </td>
+
+                                        {/* Indicators */}
+                                        <td className="border border-gray-300 px-4 py-2">
+                                            {component.indicators.map((ind) => ind.name).join('; ')}
+                                        </td>
+
+                                        {/* Means of Verification */}
+                                        <td className="border border-gray-300 px-4 py-2">
+                                            {component.means_of_verification
+                                                .map((mov) => mov.verification_method)
+                                                .join('; ')}
+                                        </td>
+
+                                        {/* Timeframe */}
+                                        <td className="border border-gray-300 px-4 py-2">
+                                            {activity ? formatTimeframe(activity) : ''}
+                                        </td>
+
+                                        {/* Responsibility */}
+                                        <td className="border border-gray-300 px-4 py-2">
+                                            {activity
+                                                ? activity.responsible_person || ''
+                                                : component.responsible_person || ''}
+                                        </td>
+                                    </tr>
+                                ));
+                            })
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Instructions */}
+            <div className="mt-6 bg-gray-50 border border-gray-300 rounded-lg p-4">
+                <h3 className="font-bold text-gray-700 mb-2">Instructions:</h3>
+                <ol className="list-decimal list-inside space-y-1 text-gray-600">
+                    <li>Use the strategic plan and operational plan to fill in the information</li>
+                    <li>
+                        Under Strategic Objective, Intermediate Outcomes, Outputs, Key indicators, MOV, Time frame
+                        and responsibility use the guide provided in each of them
+                    </li>
+                    <li>Create more rows as may be required</li>
+                </ol>
+            </div>
+        </div>
+    );
+};
+
+export default LogframeTemplateView;

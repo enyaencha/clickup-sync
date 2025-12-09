@@ -175,7 +175,18 @@ const LogframeDashboard: React.FC = () => {
         {selectedModule && statistics && (
           <>
             {/* Quick Actions */}
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-5 gap-4 mb-6">
+              <button
+                onClick={() => navigate(`/logframe/template/${selectedModule}`)}
+                className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-lg shadow-lg hover:shadow-xl transition-all text-left text-white"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-semibold">Template View</h3>
+                  <span className="text-3xl">📋</span>
+                </div>
+                <p className="text-sm opacity-90">View & Export Excel</p>
+              </button>
+
               <button
                 onClick={() => navigate(`/logframe/indicators/module/${selectedModule}`)}
                 className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow text-left"
