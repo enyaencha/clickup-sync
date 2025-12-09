@@ -753,13 +753,26 @@ class MEService {
         let activities = [];
         let activityByStatus = [];
 
-        // Build user filter for non-admin users
+        // Build user filter for activities
+        // Only apply ownership filter if user has no module assignments
+        // If user has module assignments, they should see ALL activities in those modules
         let userFilter = '';
         let queryParams = [...componentIds];
 
         if (user && !user.is_system_admin) {
-            userFilter = ' AND (created_by = ? OR owned_by = ?)';
-            queryParams.push(user.id, user.id);
+            // Check if user has any module assignments
+            const hasModuleAssignments = await this.db.query(`
+                SELECT 1 FROM user_module_assignments
+                WHERE user_id = ? AND can_view = TRUE
+                LIMIT 1
+            `, [user.id]);
+
+            // Only apply ownership filter if user has NO module assignments
+            if (!hasModuleAssignments || hasModuleAssignments.length === 0) {
+                userFilter = ' AND (created_by = ? OR owned_by = ?)';
+                queryParams.push(user.id, user.id);
+            }
+            // If user has module assignments, show all activities in those modules (no ownership filter)
         }
 
         // Get activities for these components
@@ -805,13 +818,26 @@ class MEService {
     }
 
     async getComponentStatistics(componentId, user = null) {
-        // Build user filter for non-admin users
+        // Build user filter for activities
+        // Only apply ownership filter if user has no module assignments
+        // If user has module assignments, they should see ALL activities in those modules
         let userFilter = '';
         let queryParams = [componentId];
 
         if (user && !user.is_system_admin) {
-            userFilter = ' AND (created_by = ? OR owned_by = ?)';
-            queryParams.push(user.id, user.id);
+            // Check if user has any module assignments
+            const hasModuleAssignments = await this.db.query(`
+                SELECT 1 FROM user_module_assignments
+                WHERE user_id = ? AND can_view = TRUE
+                LIMIT 1
+            `, [user.id]);
+
+            // Only apply ownership filter if user has NO module assignments
+            if (!hasModuleAssignments || hasModuleAssignments.length === 0) {
+                userFilter = ' AND (created_by = ? OR owned_by = ?)';
+                queryParams.push(user.id, user.id);
+            }
+            // If user has module assignments, show all activities in those modules (no ownership filter)
         }
 
         // Get activities for this component
