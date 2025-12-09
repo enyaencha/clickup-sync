@@ -9,11 +9,22 @@ interface Activity {
     start_date: string;
     end_date: string;
     activity_date: string;
+    status: string;
+    auto_status?: string;
+    manual_status?: string;
+    status_override?: boolean;
+    progress_percentage?: number;
+    risk_level?: string;
 }
 
 interface Indicator {
     id: number;
     name: string;
+    baseline_value?: number;
+    target_value?: number;
+    current_value?: number;
+    achievement_percentage?: number;
+    status?: string;
 }
 
 interface MeansOfVerification {
@@ -26,6 +37,9 @@ interface Component {
     name: string;
     output: string;
     responsible_person: string;
+    status?: string;
+    overall_status?: string;
+    progress_percentage?: number;
     activities: Activity[];
     indicators: Indicator[];
     means_of_verification: MeansOfVerification[];
@@ -167,6 +181,19 @@ const LogframeTemplateView: React.FC = () => {
         return '';
     };
 
+    const getStatusColor = (status: string): string => {
+        const statusLower = status?.toLowerCase() || '';
+        if (statusLower === 'completed') return 'bg-green-100 text-green-800';
+        if (statusLower === 'on-track') return 'bg-green-100 text-green-800';
+        if (statusLower === 'in-progress') return 'bg-blue-100 text-blue-800';
+        if (statusLower === 'at-risk') return 'bg-yellow-100 text-yellow-800';
+        if (statusLower === 'delayed') return 'bg-orange-100 text-orange-800';
+        if (statusLower === 'off-track') return 'bg-red-100 text-red-800';
+        if (statusLower === 'blocked') return 'bg-red-100 text-red-800';
+        if (statusLower === 'cancelled') return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 text-gray-600';
+    };
+
     if (loading) {
         return (
             <div className="p-6">
@@ -269,6 +296,12 @@ const LogframeTemplateView: React.FC = () => {
                                 Key Activities
                             </th>
                             <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
+                                Status
+                            </th>
+                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
+                                Progress %
+                            </th>
+                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
                                 Indicators
                             </th>
                             <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
@@ -336,6 +369,45 @@ const LogframeTemplateView: React.FC = () => {
                                         {/* Activity */}
                                         <td className="border border-gray-300 px-4 py-2">
                                             {activity ? activity.name : ''}
+                                        </td>
+
+                                        {/* Status */}
+                                        <td className="border border-gray-300 px-2 py-2">
+                                            {activity && activity.status ? (
+                                                <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(activity.status)}`}>
+                                                    {activity.status_override ? '⚠️ ' : ''}
+                                                    {activity.status.replace('-', ' ').toUpperCase()}
+                                                </span>
+                                            ) : (
+                                                <span className="text-gray-400 text-xs">-</span>
+                                            )}
+                                        </td>
+
+                                        {/* Progress % */}
+                                        <td className="border border-gray-300 px-4 py-2 text-center">
+                                            {activity && activity.progress_percentage !== undefined ? (
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                                        <div
+                                                            className={`h-2 rounded-full ${
+                                                                activity.progress_percentage >= 75
+                                                                    ? 'bg-green-500'
+                                                                    : activity.progress_percentage >= 50
+                                                                    ? 'bg-blue-500'
+                                                                    : activity.progress_percentage >= 25
+                                                                    ? 'bg-yellow-500'
+                                                                    : 'bg-red-500'
+                                                            }`}
+                                                            style={{ width: `${activity.progress_percentage}%` }}
+                                                        ></div>
+                                                    </div>
+                                                    <span className="text-xs font-medium text-gray-700 w-10">
+                                                        {activity.progress_percentage}%
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-gray-400 text-xs">-</span>
+                                            )}
                                         </td>
 
                                         {/* Indicators */}
