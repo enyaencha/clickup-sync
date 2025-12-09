@@ -321,6 +321,11 @@ async function initializeServices() {
             app.use('/api/results-chain', require('./routes/results-chain.routes')(resultsChainService));
             logger.info('✅ Results Chain routes registered');
 
+            const LogframeExcelService = require('./services/logframe-excel.service');
+            const logframeExcelService = new LogframeExcelService(dbManager);
+            app.use('/api/logframe', require('./routes/logframe-excel.routes')(logframeExcelService));
+            logger.info('✅ Logframe Excel routes registered');
+
             const AttachmentsService = require('./services/attachments.service');
             const attachmentsService = new AttachmentsService(dbManager);
             await attachmentsService.ensureUploadsDir();
