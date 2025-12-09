@@ -54,12 +54,12 @@ module.exports = (logframeExcelService) => {
             const workbook = await logframeExcelService.exportToExcel(moduleId);
 
             // Get module name for filename
-            const [moduleRows] = await logframeExcelService.db.query(
+            const module = await logframeExcelService.db.queryOne(
                 'SELECT name, code FROM program_modules WHERE id = ?',
                 [moduleId]
             );
 
-            const moduleName = moduleRows[0]?.code || `module-${moduleId}`;
+            const moduleName = module?.code || `module-${moduleId}`;
             const filename = `Logframe_${moduleName}_${Date.now()}.xlsx`;
 
             res.setHeader(
@@ -150,7 +150,7 @@ module.exports = (logframeExcelService) => {
             const workbook = new ExcelJS.Workbook();
 
             // Get all modules
-            const [modules] = await logframeExcelService.db.query(
+            const modules = await logframeExcelService.db.query(
                 'SELECT id, name, code FROM program_modules WHERE deleted_at IS NULL ORDER BY code'
             );
 
@@ -217,22 +217,20 @@ module.exports = (logframeExcelService) => {
             const moduleId = req.params.moduleId;
 
             // Get module data
-            const [moduleRows] = await logframeExcelService.db.query(
+            const module = await logframeExcelService.db.queryOne(
                 'SELECT * FROM program_modules WHERE id = ?',
                 [moduleId]
             );
 
-            if (moduleRows.length === 0) {
+            if (!module) {
                 return res.status(404).json({
                     success: false,
                     error: 'Module not found'
                 });
             }
 
-            const module = moduleRows[0];
-
             // Get sub-programs
-            const [subPrograms] = await logframeExcelService.db.query(
+            const subPrograms = await logframeExcelService.db.query(
                 'SELECT * FROM sub_programs WHERE module_id = ? AND deleted_at IS NULL ORDER BY name',
                 [moduleId]
             );
@@ -249,7 +247,7 @@ module.exports = (logframeExcelService) => {
             };
 
             for (const subProgram of subPrograms) {
-                const [components] = await logframeExcelService.db.query(
+                const components = await logframeExcelService.db.query(
                     'SELECT * FROM project_components WHERE sub_program_id = ? AND deleted_at IS NULL ORDER BY name',
                     [subProgram.id]
                 );
@@ -262,17 +260,17 @@ module.exports = (logframeExcelService) => {
                 };
 
                 for (const component of components) {
-                    const [activities] = await logframeExcelService.db.query(
+                    const activities = await logframeExcelService.db.query(
                         'SELECT * FROM activities WHERE component_id = ? AND deleted_at IS NULL ORDER BY start_date',
                         [component.id]
                     );
 
-                    const [indicators] = await logframeExcelService.db.query(
+                    const indicators = await logframeExcelService.db.query(
                         'SELECT * FROM me_indicators WHERE component_id = ? AND deleted_at IS NULL',
                         [component.id]
                     );
 
-                    const [movs] = await logframeExcelService.db.query(
+                    const movs = await logframeExcelService.db.query(
                         `SELECT * FROM means_of_verification
                          WHERE entity_type = 'component' AND entity_id = ? AND deleted_at IS NULL`,
                         [component.id]
