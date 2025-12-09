@@ -545,12 +545,16 @@ class MEService {
         }
 
         // Build user filter for activities
+        // Only apply ownership filter if no module filter exists
+        // If user has module assignments, they should see ALL activities in those modules
         let userFilter = '';
         let userParams = [];
-        if (user && !user.is_system_admin) {
+        if (user && !user.is_system_admin && (!modules || modules.length === 0)) {
+            // No module assignments - restrict to user's own activities
             userFilter = ' AND (a.created_by = ? OR a.owned_by = ?)';
             userParams = [user.id, user.id];
         }
+        // If modules are provided, user sees all activities in those modules (no ownership filter needed)
 
         // Get counts for all entities
         const subProgramCount = await this.db.query(`
