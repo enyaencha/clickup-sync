@@ -55,9 +55,8 @@ module.exports = (meService) => {
             const userId = req.user?.id;
             const isSystemAdmin = req.user?.is_system_admin || false;
 
-            const subPrograms = moduleId
-                ? await meService.getSubProgramsWithProgress(moduleId)
-                : await meService.getSubPrograms(moduleId, userId, isSystemAdmin);
+            // Always apply user filtering for RBAC
+            const subPrograms = await meService.getSubPrograms(moduleId, userId, isSystemAdmin);
             res.json({ success: true, data: subPrograms });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });
@@ -92,9 +91,8 @@ module.exports = (meService) => {
             const userId = req.user?.id;
             const isSystemAdmin = req.user?.is_system_admin || false;
 
-            const components = subProgramId
-                ? await meService.getComponentsWithProgress(subProgramId)
-                : await meService.getProjectComponents(subProgramId, userId, isSystemAdmin);
+            // Always apply user filtering for RBAC
+            const components = await meService.getProjectComponents(subProgramId, userId, isSystemAdmin);
             res.json({ success: true, data: components });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });
