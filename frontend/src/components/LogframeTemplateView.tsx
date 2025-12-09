@@ -467,7 +467,8 @@ const LogframeTemplateView: React.FC = () => {
                                     </tr>
                                 );
                             });
-                        )}
+                        })
+                    )}
                     </tbody>
                 </table>
             </div>
