@@ -91,6 +91,21 @@ const LogframeTemplateView: React.FC = () => {
             }
 
             const result = await response.json();
+            console.log('📊 Logframe data received:', {
+                moduleId,
+                moduleName: result.data?.module?.name,
+                subProgramCount: result.data?.subPrograms?.length,
+                structure: result.data?.subPrograms?.map(sp => ({
+                    subProgram: sp.name,
+                    outcome: sp.outcome || 'EMPTY',
+                    componentCount: sp.components?.length,
+                    components: sp.components?.map(c => ({
+                        name: c.name,
+                        output: c.output || 'EMPTY',
+                        activityCount: c.activities?.length
+                    }))
+                }))
+            });
             setLogframeData(result.data);
             setLoading(false);
         } catch (err) {
