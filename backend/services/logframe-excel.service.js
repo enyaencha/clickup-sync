@@ -124,8 +124,8 @@ class LogframeExcelService {
 
                 if (activities.length === 0) {
                     // Add component row even if no activities
-                    worksheet.getCell(currentRow, 3).value = subProgram.logframe_outcome || '';
-                    worksheet.getCell(currentRow, 4).value = component.logframe_output || '';
+                    worksheet.getCell(currentRow, 3).value = subProgram.logframe_outcome || subProgram.outcome || subProgram.name || '';
+                    worksheet.getCell(currentRow, 4).value = component.logframe_output || component.output || component.name || '';
                     worksheet.getCell(currentRow, 5).value = '';
                     worksheet.getCell(currentRow, 6).value = indicators.map(i => i.name).join('; ') || '';
                     worksheet.getCell(currentRow, 7).value = movs.map(m => m.verification_method).join('; ') || '';
@@ -136,8 +136,8 @@ class LogframeExcelService {
 
                 // Add activities
                 for (const activity of activities) {
-                    worksheet.getCell(currentRow, 3).value = subProgram.logframe_outcome || '';
-                    worksheet.getCell(currentRow, 4).value = component.logframe_output || '';
+                    worksheet.getCell(currentRow, 3).value = subProgram.logframe_outcome || subProgram.outcome || subProgram.name || '';
+                    worksheet.getCell(currentRow, 4).value = component.logframe_output || component.output || component.name || '';
                     worksheet.getCell(currentRow, 5).value = activity.name;
 
                     // Get indicators for this activity
