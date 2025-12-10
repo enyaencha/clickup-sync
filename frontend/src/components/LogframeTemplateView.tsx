@@ -313,12 +313,6 @@ const LogframeTemplateView: React.FC = () => {
                                 Key Activities
                             </th>
                             <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
-                                Status
-                            </th>
-                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
-                                Progress %
-                            </th>
-                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
                                 Indicators
                             </th>
                             <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
@@ -329,6 +323,12 @@ const LogframeTemplateView: React.FC = () => {
                             </th>
                             <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
                                 Responsibility
+                            </th>
+                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
+                                Status
+                            </th>
+                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
+                                Progress %
                             </th>
                         </tr>
                     </thead>
@@ -427,6 +427,36 @@ const LogframeTemplateView: React.FC = () => {
                                                 {activity ? activity.name : ''}
                                             </td>
 
+                                        {/* Indicators */}
+                                        <td className="border border-gray-300 px-4 py-2">
+                                            {activity && activity.indicators && activity.indicators.length > 0
+                                                ? activity.indicators.map((ind) => ind.name).join('; ')
+                                                : component.indicators.map((ind) => ind.name).join('; ')}
+                                        </td>
+
+                                        {/* Means of Verification */}
+                                        <td className="border border-gray-300 px-4 py-2">
+                                            {activity && activity.means_of_verification && activity.means_of_verification.length > 0
+                                                ? activity.means_of_verification
+                                                      .map((mov) => mov.verification_method)
+                                                      .join('; ')
+                                                : component.means_of_verification
+                                                      .map((mov) => mov.verification_method)
+                                                      .join('; ')}
+                                        </td>
+
+                                        {/* Timeframe */}
+                                        <td className="border border-gray-300 px-4 py-2">
+                                            {activity ? formatTimeframe(activity) : ''}
+                                        </td>
+
+                                        {/* Responsibility */}
+                                        <td className="border border-gray-300 px-4 py-2">
+                                            {activity
+                                                ? activity.responsible_person || ''
+                                                : component.responsible_person || ''}
+                                        </td>
+
                                         {/* Status */}
                                         <td className="border border-gray-300 px-2 py-2">
                                             {activity && activity.status ? (
@@ -464,36 +494,6 @@ const LogframeTemplateView: React.FC = () => {
                                             ) : (
                                                 <span className="text-gray-400 text-xs">-</span>
                                             )}
-                                        </td>
-
-                                        {/* Indicators */}
-                                        <td className="border border-gray-300 px-4 py-2">
-                                            {activity && activity.indicators && activity.indicators.length > 0
-                                                ? activity.indicators.map((ind) => ind.name).join('; ')
-                                                : component.indicators.map((ind) => ind.name).join('; ')}
-                                        </td>
-
-                                        {/* Means of Verification */}
-                                        <td className="border border-gray-300 px-4 py-2">
-                                            {activity && activity.means_of_verification && activity.means_of_verification.length > 0
-                                                ? activity.means_of_verification
-                                                      .map((mov) => mov.verification_method)
-                                                      .join('; ')
-                                                : component.means_of_verification
-                                                      .map((mov) => mov.verification_method)
-                                                      .join('; ')}
-                                        </td>
-
-                                        {/* Timeframe */}
-                                        <td className="border border-gray-300 px-4 py-2">
-                                            {activity ? formatTimeframe(activity) : ''}
-                                        </td>
-
-                                        {/* Responsibility */}
-                                        <td className="border border-gray-300 px-4 py-2">
-                                            {activity
-                                                ? activity.responsible_person || ''
-                                                : component.responsible_person || ''}
                                         </td>
                                     </tr>
                                 );
