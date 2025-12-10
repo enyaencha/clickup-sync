@@ -362,6 +362,22 @@ const LogframeTemplateView: React.FC = () => {
                                     const isFirstRowOfSubProgram = compIdx === 0 && actIdx === 0;
                                     const isFirstRowOfComponent = actIdx === 0;
 
+                                    // Debug: Count cells for this row
+                                    const cellCount =
+                                        (isFirstRowOfTable ? 1 : 0) +           // Strategic Objective
+                                        (isFirstRowOfSubProgram ? 1 : 0) +      // Intermediate Outcomes
+                                        (isFirstRowOfComponent ? 1 : 0) +       // Outputs
+                                        1 +                                      // Activity (always)
+                                        7;                                       // Status, Progress, Indicators, MOV, Timeframe, Responsibility
+
+                                    console.log(`Row ${spIdx}-${compIdx}-${actIdx}: ${cellCount} cells`, {
+                                        hasStrategic: isFirstRowOfTable,
+                                        hasIntermediate: isFirstRowOfSubProgram,
+                                        hasOutput: isFirstRowOfComponent,
+                                        output: component.output,
+                                        activityName: activity?.name
+                                    });
+
                                     return (
                                         <tr key={`${spIdx}-${compIdx}-${actIdx}`} className="hover:bg-gray-50">
                                             {/* Strategic Objective - show only on first row of table */}

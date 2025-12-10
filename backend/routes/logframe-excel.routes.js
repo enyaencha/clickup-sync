@@ -311,7 +311,7 @@ module.exports = (logframeExcelService) => {
                 const subProgramData = {
                     id: subProgram.id,
                     name: subProgram.name,
-                    outcome: subProgram.logframe_outcome || subProgram.outcome || subProgram.name || '',
+                    outcome: subProgram.logframe_outcome,
                     components: []
                 };
 
@@ -351,7 +351,7 @@ module.exports = (logframeExcelService) => {
                     subProgramData.components.push({
                         id: component.id,
                         name: component.name,
-                        output: component.logframe_output || component.output || component.name || '',
+                        output: component.logframe_output,
                         responsible_person: component.responsible_person,
                         activities: activities,
                         indicators: componentIndicators,
