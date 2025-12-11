@@ -3,7 +3,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import CustomThemeBuilder from './CustomThemeBuilder';
 
 const ThemeSettings: React.FC = () => {
-  const { currentTheme, setTheme, availableThemes, customThemes, addCustomTheme, updateCustomTheme, deleteCustomTheme } = useTheme();
+  const { currentTheme, setTheme, availableThemes, addCustomTheme, updateCustomTheme, deleteCustomTheme, followSystemTheme, setFollowSystemTheme } = useTheme();
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingTheme, setEditingTheme] = useState<any>(null);
 
@@ -57,6 +57,45 @@ const ThemeSettings: React.FC = () => {
             <div className="w-8 h-8 rounded-full shadow-lg" style={{ background: currentTheme.colors.sidebarBackground }}></div>
           </div>
         </div>
+      </div>
+
+      {/* System Theme Toggle */}
+      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border-2 border-indigo-200">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center text-2xl">
+              🌓
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-gray-900">Follow System Theme</h3>
+              <p className="text-sm text-gray-600">Automatically switch theme based on your device's appearance settings</p>
+            </div>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={followSystemTheme}
+              onChange={(e) => setFollowSystemTheme(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-indigo-500 peer-checked:to-purple-500"></div>
+          </label>
+        </div>
+        {followSystemTheme && (
+          <div className="mt-4 pt-4 border-t border-indigo-200">
+            <div className="flex items-start space-x-3">
+              <svg className="w-5 h-5 text-indigo-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <p className="text-sm font-medium text-indigo-900">System Theme Active</p>
+                <p className="text-sm text-indigo-700 mt-1">
+                  Your theme will automatically switch between light and dark modes when your device settings change. Manual theme selection is disabled while this is enabled.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Theme Description */}
@@ -322,6 +361,10 @@ const ThemeSettings: React.FC = () => {
           <li className="flex items-start space-x-2">
             <span className="text-blue-500 mt-0.5">•</span>
             <span>Themes are saved per device - each device can have its own preference</span>
+          </li>
+          <li className="flex items-start space-x-2">
+            <span className="text-indigo-500 mt-0.5">🌓</span>
+            <span>Enable <strong>Follow System Theme</strong> to automatically match your device's light/dark mode</span>
           </li>
           <li className="flex items-start space-x-2">
             <span className="text-blue-500 mt-0.5">•</span>
