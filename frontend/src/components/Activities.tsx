@@ -2,6 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AddActivityModal from './AddActivityModal';
 import ActivityDetailsModal from './ActivityDetailsModal';
+import ActivityObjectivesModal from './ActivityObjectivesModal';
+import ActivityVerificationModal from './ActivityVerificationModal';
+import ActivityOutcomeModal from './ActivityOutcomeModal';
+import ActivityChecklist from './ActivityChecklist';
 import { authFetch } from '../config/api';
 
 interface Activity {
@@ -25,6 +29,8 @@ interface ComponentStatistics {
   activity_by_status: Array<{ status: string; count: number }>;
 }
 
+type ViewMode = 'list' | 'card';
+
 const Activities: React.FC = () => {
   const { programId, projectId, componentId } = useParams<{
     programId: string;
@@ -40,6 +46,9 @@ const Activities: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // View Mode
+  const [viewMode, setViewMode] = useState<ViewMode>('card');
+
   // Filters
   const [statusFilter, setStatusFilter] = useState('all');
   const [approvalFilter, setApprovalFilter] = useState('all');
@@ -50,6 +59,18 @@ const Activities: React.FC = () => {
   const [selectedActivityId, setSelectedActivityId] = useState<number | null>(null);
   const [submittingId, setSubmittingId] = useState<number | null>(null);
   const [changingStatusId, setChangingStatusId] = useState<number | null>(null);
+
+  // New modals
+  const [showObjectivesModal, setShowObjectivesModal] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [showOutcomeModal, setShowOutcomeModal] = useState(false);
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+
+  // Checklist visibility
+  const [expandedChecklistId, setExpandedChecklistId] = useState<number | null>(null);
+
+  // Dropdown state
+  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -195,18 +216,61 @@ const Activities: React.FC = () => {
     }
   };
 
+  const handleOpenObjectives = (activity: Activity) => {
+    setSelectedActivity(activity);
+    setShowObjectivesModal(true);
+    setOpenDropdownId(null);
+  };
+
+  const handleOpenVerification = (activity: Activity) => {
+    setSelectedActivity(activity);
+    setShowVerificationModal(true);
+    setOpenDropdownId(null);
+  };
+
+  const handleOpenOutcome = (activity: Activity) => {
+    setSelectedActivity(activity);
+    setShowOutcomeModal(true);
+    setOpenDropdownId(null);
+  };
+
+  const toggleChecklist = (activityId: number) => {
+    setExpandedChecklistId(expandedChecklistId === activityId ? null : activityId);
+  };
+
   const filteredActivities = activities.filter((activity) => {
     if (statusFilter !== 'all' && activity.status !== statusFilter) return false;
     if (approvalFilter !== 'all' && activity.approval_status !== approvalFilter) return false;
     return true;
   });
 
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      'completed': 'bg-green-500',
+      'in-progress': 'bg-blue-500',
+      'not-started': 'bg-yellow-500',
+      'blocked': 'bg-red-500',
+      'cancelled': 'bg-gray-500',
+    };
+    return colors[status] || 'bg-gray-400';
+  };
+
+  const getApprovalBadgeClass = (approvalStatus: string) => {
+    const classes: Record<string, string> = {
+      'approved': 'bg-green-100 text-green-800',
+      'submitted': 'bg-blue-100 text-blue-800',
+      'rejected': 'bg-red-100 text-red-800',
+      'draft': 'bg-gray-100 text-gray-800',
+    };
+    return classes[approvalStatus] || 'bg-gray-100 text-gray-800';
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading activities...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 font-medium">Loading activities...</p>
         </div>
       </div>
     );
@@ -214,15 +278,15 @@ const Activities: React.FC = () => {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
-          <h2 className="text-red-800 font-semibold text-lg mb-2">Error</h2>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-8 max-w-md">
+          <h2 className="text-red-800 font-bold text-xl mb-2">Error</h2>
           <p className="text-red-600">{error}</p>
           <button
             onClick={() => navigate(`/program/${programId}/project/${projectId}`)}
-            className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-medium"
           >
-            Back to Components
+            ← Back to Components
           </button>
         </div>
       </div>
@@ -230,410 +294,539 @@ const Activities: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: 'var(--main-background)', color: 'var(--main-text)' }}>
       {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+      <header className="shadow-md" style={{ background: 'var(--card-background)' }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* Breadcrumb */}
-          <nav className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4 flex-wrap">
-            <button onClick={() => navigate('/')} className="hover:text-blue-600 active:text-blue-700">
+          <nav className="flex items-center space-x-2 text-sm mb-4 flex-wrap">
+            <button onClick={() => navigate('/')} className="hover:text-blue-600 transition-colors">
               Programs
             </button>
             <span>/</span>
-            <button onClick={() => navigate(`/program/${programId}`)} className="hover:text-blue-600 active:text-blue-700 truncate max-w-[80px] sm:max-w-none">
+            <button onClick={() => navigate(`/program/${programId}`)} className="hover:text-blue-600 transition-colors truncate max-w-[150px]">
               {program?.name}
             </button>
             <span>/</span>
-            <button onClick={() => navigate(`/program/${programId}/project/${projectId}`)} className="hover:text-blue-600 active:text-blue-700 truncate max-w-[80px] sm:max-w-none">
+            <button onClick={() => navigate(`/program/${programId}/project/${projectId}`)} className="hover:text-blue-600 transition-colors truncate max-w-[150px]">
               {project?.name}
             </button>
             <span>/</span>
-            <span className="text-gray-900 truncate max-w-[100px] sm:max-w-none">{component?.name || 'Loading...'}</span>
+            <span className="font-medium truncate max-w-[150px]">{component?.name || 'Loading...'}</span>
           </nav>
 
-          <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              {component?.name}
-            </h1>
-            <p className="mt-1 text-xs sm:text-sm text-gray-600">Field Activities (ClickUp Tasks)</p>
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold flex items-center gap-3">
+                <span className="text-4xl">✓</span>
+                {component?.name}
+              </h1>
+              <p className="mt-1 text-sm opacity-80">Field Activities Management</p>
+            </div>
+            <button
+              onClick={() => navigate('/approvals')}
+              className="ml-4 px-6 py-3 rounded-lg font-semibold whitespace-nowrap transition-all shadow-md hover:shadow-lg"
+              style={{ background: 'var(--accent-primary)', color: 'white' }}
+            >
+              📋 Approvals
+            </button>
           </div>
-          <button
-            onClick={() => navigate('/approvals')}
-            className="ml-4 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 text-sm font-medium whitespace-nowrap"
-          >
-            📋 Approvals
-          </button>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Component Statistics Dashboard */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Statistics Dashboard */}
         {statistics && (
-          <div className="mb-6 sm:mb-8">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Component Overview</h2>
-            <div className="grid grid-cols-2 md:grid-cols-2 gap-4 sm:gap-6">
-              {/* Activities Card */}
-              <div className="bg-white rounded-lg shadow p-4 sm:p-5 border-l-4 border-purple-500">
-                <p className="text-xs sm:text-sm text-gray-600 mb-1">Total Activities</p>
-                <p className="text-2xl sm:text-3xl font-bold text-purple-600">{statistics.activities}</p>
+          <div className="mb-8">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <span className="text-2xl">📊</span>
+              Component Overview
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Total Activities */}
+              <div className="rounded-xl shadow-lg p-6 border-l-4" style={{ background: 'var(--card-background)', borderLeftColor: 'var(--accent-primary)' }}>
+                <p className="text-sm opacity-70 mb-1">Total Activities</p>
+                <p className="text-4xl font-bold" style={{ color: 'var(--accent-primary)' }}>{statistics.activities}</p>
               </div>
 
-              {/* Progress Card */}
-              <div className="bg-white rounded-lg shadow p-4 sm:p-5 border-l-4 border-yellow-500">
-                <p className="text-xs sm:text-sm text-gray-600 mb-2">Completion Progress</p>
-                <div className="flex items-center gap-2">
+              {/* Progress */}
+              <div className="rounded-xl shadow-lg p-6 border-l-4 border-yellow-500" style={{ background: 'var(--card-background)' }}>
+                <p className="text-sm opacity-70 mb-2">Completion Progress</p>
+                <div className="flex items-center gap-3">
                   <div className="flex-1">
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
                       <div
-                        className={`h-2 rounded-full transition-all duration-300 ${
-                          statistics.overall_progress === 100
-                            ? 'bg-green-600'
-                            : statistics.overall_progress >= 50
-                            ? 'bg-blue-600'
-                            : 'bg-yellow-500'
+                        className={`h-2.5 rounded-full transition-all ${
+                          statistics.overall_progress === 100 ? 'bg-green-600' :
+                          statistics.overall_progress >= 50 ? 'bg-blue-600' : 'bg-yellow-500'
                         }`}
                         style={{ width: `${statistics.overall_progress}%` }}
                       ></div>
                     </div>
                   </div>
-                  <span className="text-lg sm:text-xl font-bold text-gray-900">
-                    {statistics.overall_progress}%
-                  </span>
+                  <span className="text-2xl font-bold">{statistics.overall_progress}%</span>
                 </div>
               </div>
-            </div>
 
-            {/* Activity Status Breakdown */}
-            {statistics.activity_by_status && statistics.activity_by_status.length > 0 && (
-              <div className="bg-white rounded-lg shadow p-4 sm:p-5 mt-4 sm:mt-6">
-                <h3 className="text-sm sm:text-base font-semibold text-gray-800 mb-3 sm:mb-4">Activity Status Breakdown</h3>
-                <div className="flex flex-wrap gap-3 sm:gap-4">
-                  {statistics.activity_by_status.map((item) => (
-                    <div key={item.status} className="flex items-center gap-2">
-                      <div
-                        className={`w-3 h-3 rounded-full ${
-                          item.status === 'completed'
-                            ? 'bg-green-500'
-                            : item.status === 'in-progress'
-                            ? 'bg-blue-500'
-                            : item.status === 'not-started'
-                            ? 'bg-yellow-500'
-                            : item.status === 'blocked'
-                            ? 'bg-red-500'
-                            : 'bg-gray-400'
-                        }`}
-                      ></div>
-                      <span className="text-xs sm:text-sm text-gray-700 capitalize">
-                        {item.status.replace('-', ' ')}:
-                      </span>
-                      <span className="text-xs sm:text-sm font-bold text-gray-900">{item.count}</span>
+              {/* Status Breakdown */}
+              {statistics.activity_by_status && statistics.activity_by_status.length > 0 && (
+                statistics.activity_by_status.slice(0, 2).map((item) => (
+                  <div key={item.status} className="rounded-xl shadow-lg p-6" style={{ background: 'var(--card-background)' }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={`w-3 h-3 rounded-full ${getStatusColor(item.status)}`}></div>
+                      <p className="text-sm opacity-70 capitalize">{item.status.replace('-', ' ')}</p>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                    <p className="text-4xl font-bold">{item.count}</p>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         )}
 
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-3 sm:p-4 mb-4 sm:mb-6">
-          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4">
-            <div className="flex-1 min-w-[150px]">
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-              >
-                <option value="all">All Statuses</option>
-                <option value="planned">Planned</option>
-                <option value="ongoing">Ongoing</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-
-            <div className="flex-1 min-w-[150px]">
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                Approval Status
-              </label>
-              <select
-                value={approvalFilter}
-                onChange={(e) => setApprovalFilter(e.target.value)}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-              >
-                <option value="all">All Approvals</option>
-                <option value="draft">Draft</option>
-                <option value="submitted">Submitted</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
-              </select>
-            </div>
-
-            <div className="sm:flex-1"></div>
-
-            <div className="flex items-end">
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 active:bg-blue-800 text-sm sm:text-base"
-              >
-                + New Activity
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-3 sm:mt-4 text-xs sm:text-sm text-gray-600">
-            Showing {filteredActivities.length} of {activities.length} activities
-          </div>
-        </div>
-
-        {/* Activities - Desktop Table View */}
-        <div className="hidden lg:block bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Activity Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Location
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Beneficiaries
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Approval
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredActivities.map((activity) => (
-                  <tr key={activity.id} className="hover:bg-gray-50 cursor-pointer">
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{activity.name}</div>
-                      <div className="text-sm text-gray-500 line-clamp-1">{activity.description}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {activity.activity_date ? new Date(activity.activity_date).toLocaleDateString() : 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {activity.location || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {activity.actual_beneficiaries || 0} / {activity.target_beneficiaries || 0}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <select
-                        value={activity.status}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          handleStatusChange(activity.id, e.target.value);
-                        }}
-                        disabled={changingStatusId === activity.id}
-                        className={`text-xs font-semibold rounded-lg px-3 py-1 border-0 cursor-pointer disabled:opacity-50 ${
-                          activity.status === 'completed'
-                            ? 'bg-green-100 text-green-800'
-                            : activity.status === 'in-progress'
-                            ? 'bg-blue-100 text-blue-800'
-                            : activity.status === 'not-started'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : activity.status === 'blocked'
-                            ? 'bg-red-100 text-red-800'
-                            : activity.status === 'cancelled'
-                            ? 'bg-gray-100 text-gray-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        <option value="not-started">Not Started</option>
-                        <option value="in-progress">In Progress</option>
-                        <option value="completed">Completed</option>
-                        <option value="blocked">Blocked</option>
-                        <option value="cancelled">Cancelled</option>
-                      </select>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          activity.approval_status === 'approved'
-                            ? 'bg-green-100 text-green-800'
-                            : activity.approval_status === 'submitted'
-                            ? 'bg-blue-100 text-blue-800'
-                            : activity.approval_status === 'rejected'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {activity.approval_status || 'draft'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end gap-2">
-                        {activity.approval_status === 'draft' && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSubmitForApproval(activity.id);
-                            }}
-                            disabled={submittingId === activity.id}
-                            className="text-green-600 hover:text-green-900 disabled:opacity-50 font-medium"
-                          >
-                            {submittingId === activity.id ? 'Submitting...' : '✓ Submit'}
-                          </button>
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewActivity(activity.id);
-                          }}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          View →
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {filteredActivities.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-500">No activities found matching your filters</p>
-              <button
-                onClick={() => navigate(`/program/${programId}/project/${projectId}`)}
-                className="mt-4 text-blue-600 hover:text-blue-800"
-              >
-                ← Back to Components
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Activities - Mobile Card View */}
-        <div className="lg:hidden space-y-3">
-          {filteredActivities.map((activity) => (
-            <div
-              key={activity.id}
-              className="bg-white rounded-lg shadow p-4 active:shadow-lg transition-all duration-200 active:scale-[0.99]"
-            >
-              <div className="flex items-start justify-between mb-2">
-                <h3 className="font-semibold text-gray-900 text-sm">{activity.name}</h3>
-                <button
-                  onClick={() => handleViewActivity(activity.id)}
-                  className="text-blue-600 text-xs whitespace-nowrap ml-2"
-                >
-                  View →
-                </button>
-              </div>
-
-              <p className="text-xs text-gray-600 mb-3 line-clamp-2">{activity.description}</p>
-
-              <div className="grid grid-cols-2 gap-2 text-xs mb-3">
-                <div>
-                  <span className="text-gray-500">Date:</span>
-                  <p className="font-medium text-gray-900">
-                    {activity.activity_date ? new Date(activity.activity_date).toLocaleDateString() : 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Location:</span>
-                  <p className="font-medium text-gray-900 truncate">{activity.location || 'N/A'}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Beneficiaries:</span>
-                  <p className="font-medium text-gray-900">
-                    {activity.actual_beneficiaries || 0} / {activity.target_beneficiaries || 0}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap mb-3">
+        {/* Filters & View Toggle */}
+        <div className="rounded-xl shadow-lg p-6 mb-6" style={{ background: 'var(--card-background)' }}>
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-4 flex-1">
+              <div className="flex-1 min-w-[200px]">
+                <label className="block text-sm font-medium mb-2">Status</label>
                 <select
-                  value={activity.status}
-                  onChange={(e) => handleStatusChange(activity.id, e.target.value)}
-                  disabled={changingStatusId === activity.id}
-                  className={`text-xs font-semibold rounded-lg px-2 py-1 border-0 cursor-pointer disabled:opacity-50 ${
-                    activity.status === 'completed'
-                      ? 'bg-green-100 text-green-800'
-                      : activity.status === 'in-progress'
-                      ? 'bg-blue-100 text-blue-800'
-                      : activity.status === 'not-started'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : activity.status === 'blocked'
-                      ? 'bg-red-100 text-red-800'
-                      : activity.status === 'cancelled'
-                      ? 'bg-gray-100 text-gray-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  style={{ background: 'var(--card-background)', borderColor: 'var(--card-border)' }}
                 >
+                  <option value="all">All Statuses</option>
                   <option value="not-started">Not Started</option>
                   <option value="in-progress">In Progress</option>
                   <option value="completed">Completed</option>
                   <option value="blocked">Blocked</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
-                <span
-                  className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                    activity.approval_status === 'approved'
-                      ? 'bg-green-100 text-green-800'
-                      : activity.approval_status === 'submitted'
-                      ? 'bg-blue-100 text-blue-800'
-                      : activity.approval_status === 'rejected'
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
-                  {activity.approval_status || 'draft'}
-                </span>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center gap-2 pt-3 border-t">
-                {activity.approval_status === 'draft' && (
-                  <button
-                    onClick={() => handleSubmitForApproval(activity.id)}
-                    disabled={submittingId === activity.id}
-                    className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 text-xs font-medium"
-                  >
-                    {submittingId === activity.id ? 'Submitting...' : '✓ Submit for Approval'}
-                  </button>
-                )}
-                <button className="flex-1 text-blue-600 text-xs font-medium">
-                  View Details →
+              <div className="flex-1 min-w-[200px]">
+                <label className="block text-sm font-medium mb-2">Approval</label>
+                <select
+                  value={approvalFilter}
+                  onChange={(e) => setApprovalFilter(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  style={{ background: 'var(--card-background)', borderColor: 'var(--card-border)' }}
+                >
+                  <option value="all">All Approvals</option>
+                  <option value="draft">Draft</option>
+                  <option value="submitted">Submitted</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+            </div>
+
+            {/* View Toggle & Add Button */}
+            <div className="flex gap-3 items-center">
+              {/* View Toggle */}
+              <div className="flex rounded-lg overflow-hidden border-2" style={{ borderColor: 'var(--card-border)' }}>
+                <button
+                  onClick={() => setViewMode('card')}
+                  className={`px-4 py-2 font-medium transition-all ${
+                    viewMode === 'card'
+                      ? 'text-white'
+                      : 'opacity-60 hover:opacity-100'
+                  }`}
+                  style={viewMode === 'card' ? { background: 'var(--accent-primary)' } : {}}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-4 py-2 font-medium transition-all ${
+                    viewMode === 'list'
+                      ? 'text-white'
+                      : 'opacity-60 hover:opacity-100'
+                  }`}
+                  style={viewMode === 'list' ? { background: 'var(--accent-primary)' } : {}}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
                 </button>
               </div>
-            </div>
-          ))}
 
-          {filteredActivities.length === 0 && (
-            <div className="text-center py-12 bg-white rounded-lg">
-              <p className="text-sm text-gray-500">No activities found matching your filters</p>
+              {/* Add Activity Button */}
               <button
-                onClick={() => navigate(`/program/${programId}/project/${projectId}`)}
-                className="mt-4 text-blue-600 hover:text-blue-800 text-sm"
+                onClick={() => setIsModalOpen(true)}
+                className="px-6 py-3 rounded-lg font-semibold whitespace-nowrap transition-all shadow-md hover:shadow-lg flex items-center gap-2"
+                style={{ background: 'var(--accent-primary)', color: 'white' }}
               >
-                ← Back to Components
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                New Activity
               </button>
             </div>
-          )}
+          </div>
+
+          <div className="mt-4 text-sm opacity-70">
+            Showing {filteredActivities.length} of {activities.length} activities
+          </div>
         </div>
+
+        {/* Activities Display */}
+        {filteredActivities.length === 0 ? (
+          <div className="text-center py-16 rounded-xl shadow-lg" style={{ background: 'var(--card-background)' }}>
+            <span className="text-8xl mb-6 block">🔍</span>
+            <p className="text-xl font-medium mb-2">No activities found</p>
+            <p className="opacity-70 mb-6">Try adjusting your filters or create a new activity</p>
+            <button
+              onClick={() => {
+                setStatusFilter('all');
+                setApprovalFilter('all');
+              }}
+              className="px-6 py-2 rounded-lg font-medium"
+              style={{ background: 'var(--accent-primary)', color: 'white' }}
+            >
+              Clear Filters
+            </button>
+          </div>
+        ) : viewMode === 'card' ? (
+          // Card View
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {filteredActivities.map((activity) => (
+              <div
+                key={activity.id}
+                className="rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border-2"
+                style={{ background: 'var(--card-background)', borderColor: 'var(--card-border)' }}
+              >
+                {/* Card Header */}
+                <div className="p-5">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold mb-2 line-clamp-2">{activity.name}</h3>
+                      <p className="text-sm opacity-70 line-clamp-2">{activity.description}</p>
+                    </div>
+
+                    {/* 3-Dot Menu */}
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenDropdownId(openDropdownId === activity.id ? null : activity.id);
+                        }}
+                        className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                      >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                        </svg>
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {openDropdownId === activity.id && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-10"
+                            onClick={() => setOpenDropdownId(null)}
+                          />
+                          <div className="absolute right-0 mt-2 w-56 rounded-xl shadow-2xl z-20 overflow-hidden border-2"
+                            style={{ background: 'var(--card-background)', borderColor: 'var(--card-border)' }}
+                          >
+                            <button
+                              onClick={() => handleOpenObjectives(activity)}
+                              className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors flex items-center gap-3"
+                            >
+                              <span className="text-xl">🎯</span>
+                              <span className="font-medium">Add Objectives</span>
+                            </button>
+                            <button
+                              onClick={() => handleOpenVerification(activity)}
+                              className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors flex items-center gap-3"
+                            >
+                              <span className="text-xl">✅</span>
+                              <span className="font-medium">Verify Activity</span>
+                            </button>
+                            <button
+                              onClick={() => handleOpenOutcome(activity)}
+                              className="w-full px-4 py-3 text-left hover:bg-green-50 transition-colors flex items-center gap-3"
+                            >
+                              <span className="text-xl">📊</span>
+                              <span className="font-medium">Record Outcome</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                toggleChecklist(activity.id);
+                                setOpenDropdownId(null);
+                              }}
+                              className="w-full px-4 py-3 text-left hover:bg-yellow-50 transition-colors flex items-center gap-3"
+                            >
+                              <span className="text-xl">☑️</span>
+                              <span className="font-medium">View Checklist</span>
+                            </button>
+                            <div className="border-t" style={{ borderColor: 'var(--card-border)' }} />
+                            <button
+                              onClick={() => {
+                                handleViewActivity(activity.id);
+                                setOpenDropdownId(null);
+                              }}
+                              className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center gap-3"
+                            >
+                              <span className="text-xl">👁️</span>
+                              <span className="font-medium">View Full Details</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Info Grid */}
+                  <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
+                    <div>
+                      <span className="opacity-60">Date:</span>
+                      <p className="font-medium">
+                        {activity.activity_date ? new Date(activity.activity_date).toLocaleDateString() : 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="opacity-60">Location:</span>
+                      <p className="font-medium truncate">{activity.location || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <span className="opacity-60">Beneficiaries:</span>
+                      <p className="font-medium">
+                        {activity.actual_beneficiaries || 0} / {activity.target_beneficiaries || 0}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="opacity-60">Budget:</span>
+                      <p className="font-medium">
+                        ${(activity.budget_spent || 0).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Status & Approval Badges */}
+                  <div className="flex gap-2 flex-wrap mb-4">
+                    <select
+                      value={activity.status}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        handleStatusChange(activity.id, e.target.value);
+                      }}
+                      disabled={changingStatusId === activity.id}
+                      className={`text-xs font-semibold rounded-lg px-3 py-1.5 border-0 cursor-pointer disabled:opacity-50 ${
+                        activity.status === 'completed' ? 'bg-green-100 text-green-800' :
+                        activity.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
+                        activity.status === 'not-started' ? 'bg-yellow-100 text-yellow-800' :
+                        activity.status === 'blocked' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      <option value="not-started">Not Started</option>
+                      <option value="in-progress">In Progress</option>
+                      <option value="completed">Completed</option>
+                      <option value="blocked">Blocked</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                    <span className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${getApprovalBadgeClass(activity.approval_status || 'draft')}`}>
+                      {activity.approval_status || 'draft'}
+                    </span>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2">
+                    {activity.approval_status === 'draft' && (
+                      <button
+                        onClick={() => handleSubmitForApproval(activity.id)}
+                        disabled={submittingId === activity.id}
+                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium text-sm transition-all"
+                      >
+                        {submittingId === activity.id ? 'Submitting...' : '✓ Submit'}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleViewActivity(activity.id)}
+                      className="flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all"
+                      style={{ background: 'var(--accent-primary)', color: 'white' }}
+                    >
+                      View Details →
+                    </button>
+                  </div>
+                </div>
+
+                {/* Expandable Checklist */}
+                {expandedChecklistId === activity.id && (
+                  <div className="border-t p-5" style={{ borderColor: 'var(--card-border)' }}>
+                    <ActivityChecklist
+                      activityId={activity.id}
+                      activityApprovalStatus={activity.approval_status}
+                      readOnly={false}
+                      onChecklistChange={fetchData}
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          // List View
+          <div className="rounded-xl shadow-lg overflow-hidden" style={{ background: 'var(--card-background)' }}>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Activity</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Location</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Beneficiaries</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Approval</th>
+                    <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y" style={{ borderColor: 'var(--card-border)' }}>
+                  {filteredActivities.map((activity) => (
+                    <React.Fragment key={activity.id}>
+                      <tr className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="font-semibold">{activity.name}</div>
+                          <div className="text-sm opacity-70 line-clamp-1">{activity.description}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {activity.activity_date ? new Date(activity.activity_date).toLocaleDateString() : 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          {activity.location || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {activity.actual_beneficiaries || 0} / {activity.target_beneficiaries || 0}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <select
+                            value={activity.status}
+                            onChange={(e) => handleStatusChange(activity.id, e.target.value)}
+                            disabled={changingStatusId === activity.id}
+                            className={`text-xs font-semibold rounded-lg px-3 py-1 border-0 cursor-pointer disabled:opacity-50 ${
+                              activity.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              activity.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
+                              activity.status === 'not-started' ? 'bg-yellow-100 text-yellow-800' :
+                              activity.status === 'blocked' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}
+                          >
+                            <option value="not-started">Not Started</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                            <option value="blocked">Blocked</option>
+                            <option value="cancelled">Cancelled</option>
+                          </select>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getApprovalBadgeClass(activity.approval_status || 'draft')}`}>
+                            {activity.approval_status || 'draft'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {activity.approval_status === 'draft' && (
+                              <button
+                                onClick={() => handleSubmitForApproval(activity.id)}
+                                disabled={submittingId === activity.id}
+                                className="text-green-600 hover:text-green-800 font-medium text-sm disabled:opacity-50"
+                              >
+                                {submittingId === activity.id ? 'Submitting...' : '✓ Submit'}
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleViewActivity(activity.id)}
+                              className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                            >
+                              View →
+                            </button>
+
+                            {/* 3-Dot Menu */}
+                            <div className="relative">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenDropdownId(openDropdownId === activity.id ? null : activity.id);
+                                }}
+                                className="p-1 rounded hover:bg-gray-100"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                </svg>
+                              </button>
+
+                              {openDropdownId === activity.id && (
+                                <>
+                                  <div
+                                    className="fixed inset-0 z-10"
+                                    onClick={() => setOpenDropdownId(null)}
+                                  />
+                                  <div className="absolute right-0 mt-2 w-52 rounded-xl shadow-2xl z-20 overflow-hidden border-2"
+                                    style={{ background: 'var(--card-background)', borderColor: 'var(--card-border)' }}
+                                  >
+                                    <button
+                                      onClick={() => handleOpenObjectives(activity)}
+                                      className="w-full px-4 py-2.5 text-left hover:bg-purple-50 transition-colors flex items-center gap-2 text-sm"
+                                    >
+                                      <span>🎯</span> Add Objectives
+                                    </button>
+                                    <button
+                                      onClick={() => handleOpenVerification(activity)}
+                                      className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center gap-2 text-sm"
+                                    >
+                                      <span>✅</span> Verify Activity
+                                    </button>
+                                    <button
+                                      onClick={() => handleOpenOutcome(activity)}
+                                      className="w-full px-4 py-2.5 text-left hover:bg-green-50 transition-colors flex items-center gap-2 text-sm"
+                                    >
+                                      <span>📊</span> Record Outcome
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        toggleChecklist(activity.id);
+                                        setOpenDropdownId(null);
+                                      }}
+                                      className="w-full px-4 py-2.5 text-left hover:bg-yellow-50 transition-colors flex items-center gap-2 text-sm"
+                                    >
+                                      <span>☑️</span> View Checklist
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* Expandable Checklist Row */}
+                      {expandedChecklistId === activity.id && (
+                        <tr>
+                          <td colSpan={7} className="px-6 py-4 bg-gray-50">
+                            <ActivityChecklist
+                              activityId={activity.id}
+                              activityApprovalStatus={activity.approval_status}
+                              readOnly={false}
+                              onChecklistChange={fetchData}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </main>
 
-      {/* Add Activity Modal */}
+      {/* Modals */}
       <AddActivityModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -641,7 +834,6 @@ const Activities: React.FC = () => {
         onSuccess={handleActivityCreated}
       />
 
-      {/* Activity Details Modal */}
       <ActivityDetailsModal
         isOpen={isDetailsModalOpen}
         onClose={() => {
@@ -651,6 +843,40 @@ const Activities: React.FC = () => {
         activityId={selectedActivityId}
         onSuccess={fetchData}
       />
+
+      {selectedActivity && (
+        <>
+          <ActivityObjectivesModal
+            isOpen={showObjectivesModal}
+            onClose={() => {
+              setShowObjectivesModal(false);
+              setSelectedActivity(null);
+            }}
+            activityId={selectedActivity.id}
+            activityName={selectedActivity.name}
+          />
+
+          <ActivityVerificationModal
+            isOpen={showVerificationModal}
+            onClose={() => {
+              setShowVerificationModal(false);
+              setSelectedActivity(null);
+            }}
+            activityId={selectedActivity.id}
+            activityName={selectedActivity.name}
+          />
+
+          <ActivityOutcomeModal
+            isOpen={showOutcomeModal}
+            onClose={() => {
+              setShowOutcomeModal(false);
+              setSelectedActivity(null);
+            }}
+            activityId={selectedActivity.id}
+            activityName={selectedActivity.name}
+          />
+        </>
+      )}
     </div>
   );
 };
