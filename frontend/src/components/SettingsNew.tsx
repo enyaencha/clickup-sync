@@ -3,8 +3,9 @@ import { useAuth } from '../contexts/AuthContext';
 import UserManagement from './settings/UserManagement';
 import WorkflowSettings from './settings/WorkflowSettings';
 import SystemSettings from './settings/SystemSettings';
+import ThemeSettings from './settings/ThemeSettings';
 
-type TabType = 'users' | 'workflow' | 'system';
+type TabType = 'users' | 'workflow' | 'system' | 'theme';
 
 interface Tab {
   id: TabType;
@@ -17,10 +18,17 @@ interface Tab {
 
 const Settings: React.FC = () => {
   const { user, hasPermission } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabType>('users');
+  const [activeTab, setActiveTab] = useState<TabType>('theme');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const tabs: Tab[] = [
+    {
+      id: 'theme',
+      label: 'Theme',
+      icon: '🎨',
+      component: ThemeSettings,
+      description: 'Choose your preferred color theme'
+    },
     {
       id: 'users',
       label: 'User Management',

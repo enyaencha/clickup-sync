@@ -43,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
 
   const menuItems = [
     {
-      section: 'Main',
+      section: 'MAIN',
       items: [
         {
           icon: '🏠',
@@ -52,7 +52,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           description: 'Overview & Analytics'
         },
         {
-          icon: '🌾',
+          icon: '📊',
           label: 'Programs',
           path: '/',
           description: 'Program Modules'
@@ -60,10 +60,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
       ]
     },
     {
-      section: 'Implementation',
+      section: 'IMPLEMENTATION',
       items: [
         {
-          icon: '📋',
+          icon: '✓',
           label: 'Activities',
           path: '/activities',
           description: 'Field Activities'
@@ -75,15 +75,39 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           description: 'Beneficiary Registry'
         },
         {
-          icon: '📍',
-          label: 'Locations',
-          path: '/locations',
-          description: 'Geographic Areas'
+          icon: '👪',
+          label: 'SHG Groups',
+          path: '/shg',
+          description: 'Self-Help Groups'
+        },
+        {
+          icon: '💰',
+          label: 'Loans',
+          path: '/loans',
+          description: 'Loan Management'
+        },
+        {
+          icon: '⚖️',
+          label: 'GBV Cases',
+          path: '/gbv',
+          description: 'GBV Case Management'
+        },
+        {
+          icon: '🎁',
+          label: 'Relief',
+          path: '/relief',
+          description: 'Relief Distribution'
+        },
+        {
+          icon: '🥗',
+          label: 'Nutrition',
+          path: '/nutrition',
+          description: 'Nutrition Assessment'
         }
       ]
     },
     {
-      section: 'Logframe & M&E',
+      section: 'LOGFRAME & M&E',
       items: [
         {
           icon: '📐',
@@ -124,30 +148,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
       ]
     },
     {
-      section: 'Reports',
-      items: [
-        {
-          icon: '📈',
-          label: 'Analytics',
-          path: '/reports',
-          description: 'Analytics & Reports'
-        }
-      ]
-    },
-    {
-      section: 'System',
+      section: 'SYSTEM',
       items: [
         {
           icon: '⚙️',
           label: 'Settings',
           path: '/settings',
           description: 'System Settings'
-        },
-        {
-          icon: '🔄',
-          label: 'Sync Status',
-          path: '/sync',
-          description: 'ClickUp Integration'
         }
       ]
     }
