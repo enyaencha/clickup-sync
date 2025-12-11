@@ -1,8 +1,40 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
+import CustomThemeBuilder from './CustomThemeBuilder';
 
 const ThemeSettings: React.FC = () => {
-  const { currentTheme, setTheme, availableThemes } = useTheme();
+  const { currentTheme, setTheme, availableThemes, customThemes, addCustomTheme, updateCustomTheme, deleteCustomTheme } = useTheme();
+  const [showBuilder, setShowBuilder] = useState(false);
+  const [editingTheme, setEditingTheme] = useState<any>(null);
+
+  const defaultThemes = availableThemes.filter(t => !(t as any).isCustom);
+  const userCustomThemes = availableThemes.filter(t => (t as any).isCustom);
+
+  const handleCreateTheme = () => {
+    setEditingTheme(null);
+    setShowBuilder(true);
+  };
+
+  const handleEditTheme = (theme: any) => {
+    setEditingTheme(theme);
+    setShowBuilder(true);
+  };
+
+  const handleSaveTheme = (theme: any) => {
+    if (editingTheme) {
+      updateCustomTheme(theme);
+    } else {
+      addCustomTheme(theme);
+    }
+    setShowBuilder(false);
+    setEditingTheme(null);
+  };
+
+  const handleDeleteTheme = (themeId: string, themeName: string) => {
+    if (window.confirm(`Are you sure you want to delete "${themeName}"? This cannot be undone.`)) {
+      deleteCustomTheme(themeId);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -14,6 +46,11 @@ const ThemeSettings: React.FC = () => {
             <h3 className="text-xl font-bold text-gray-900">Current Theme</h3>
             <p className="text-lg text-gray-700 font-semibold">{currentTheme.name}</p>
             <p className="text-sm text-gray-600">{currentTheme.description}</p>
+            {(currentTheme as any).isCustom && (
+              <span className="inline-flex items-center mt-2 px-2 py-1 text-xs font-semibold bg-purple-100 text-purple-800 rounded-full">
+                ✨ Custom Theme
+              </span>
+            )}
           </div>
           <div className="hidden sm:flex items-center space-x-2">
             <div className="w-8 h-8 rounded-full shadow-lg" style={{ background: currentTheme.colors.accentPrimary }}></div>
@@ -31,17 +68,162 @@ const ThemeSettings: React.FC = () => {
           <div>
             <p className="text-sm font-medium text-blue-900">Theme Preferences</p>
             <p className="text-sm text-blue-700 mt-1">
-              Your theme preference is saved per device. Each device can have its own theme setting.
+              Your theme preference is saved per device. Each device can have its own theme setting. Custom themes are also stored locally on your device.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Theme Grid */}
+      {/* Custom Theme Builder Button */}
+      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border-2 border-dashed border-purple-300">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center text-2xl">
+              🎨
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">Create Your Own Theme</h3>
+              <p className="text-sm text-gray-600">Design a custom color scheme with millions of colors</p>
+            </div>
+          </div>
+          <button
+            onClick={handleCreateTheme}
+            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+          >
+            + New Theme
+          </button>
+        </div>
+      </div>
+
+      {/* Custom Themes Section */}
+      {userCustomThemes.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+              <span className="mr-2">✨</span>
+              My Custom Themes ({userCustomThemes.length})
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {userCustomThemes.map((theme) => {
+              const isActive = currentTheme.id === theme.id;
+              return (
+                <div
+                  key={theme.id}
+                  className={`
+                    relative group rounded-xl overflow-hidden transition-all duration-300 transform
+                    ${isActive
+                      ? 'ring-4 ring-purple-500 shadow-2xl scale-105'
+                      : 'hover:scale-105 hover:shadow-xl ring-2 ring-purple-200 hover:ring-purple-400'
+                    }
+                  `}
+                >
+                  <button
+                    onClick={() => setTheme(theme.id)}
+                    className="w-full text-left"
+                  >
+                    {/* Theme Preview */}
+                    <div className="h-32 relative" style={{ background: theme.colors.sidebarBackground }}>
+                      <div className="absolute inset-0 opacity-50" style={{ background: theme.colors.mainBackground }}></div>
+                      <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 rounded-full bg-white/80"></div>
+                          <div className="w-3 h-3 rounded-full bg-white/60"></div>
+                          <div className="w-3 h-3 rounded-full bg-white/40"></div>
+                        </div>
+                        <div className="text-3xl">{theme.icon}</div>
+                      </div>
+
+                      {/* Mini Preview Cards */}
+                      <div className="absolute bottom-3 left-4 right-4 flex space-x-2">
+                        <div
+                          className="flex-1 h-8 rounded shadow-lg"
+                          style={{
+                            background: theme.colors.cardBackground,
+                            border: `1px solid ${theme.colors.cardBorder}`
+                          }}
+                        ></div>
+                        <div
+                          className="flex-1 h-8 rounded shadow-lg"
+                          style={{
+                            background: theme.colors.cardBackground,
+                            border: `1px solid ${theme.colors.cardBorder}`
+                          }}
+                        ></div>
+                      </div>
+
+                      {/* Active Badge */}
+                      {isActive && (
+                        <div className="absolute top-2 right-2 bg-purple-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg flex items-center space-x-1">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                          <span>Active</span>
+                        </div>
+                      )}
+
+                      {/* Custom Theme Badge */}
+                      <div className="absolute bottom-2 left-2 bg-purple-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                        Custom
+                      </div>
+                    </div>
+
+                    {/* Theme Info */}
+                    <div className="p-4 bg-white">
+                      <h4 className="font-bold text-gray-900 text-base mb-1 flex items-center justify-between">
+                        {theme.name}
+                        {isActive && (
+                          <span className="text-purple-500">
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          </span>
+                        )}
+                      </h4>
+                      <p className="text-sm text-gray-600 mb-3">{theme.description}</p>
+
+                      {/* Color Palette */}
+                      <div className="flex items-center space-x-1 mb-3">
+                        <div className="w-6 h-6 rounded shadow-sm border border-gray-200" style={{ background: theme.colors.accentPrimary }} title="Primary Color"></div>
+                        <div className="w-6 h-6 rounded shadow-sm border border-gray-200" style={{ background: theme.colors.accentSecondary }} title="Secondary Color"></div>
+                        <div className="flex-1"></div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center space-x-2 pt-2 border-t border-gray-200">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditTheme(theme);
+                          }}
+                          className="flex-1 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-100 rounded hover:bg-purple-200 transition-colors"
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteTheme(theme.id, theme.name);
+                          }}
+                          className="flex-1 px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-100 rounded hover:bg-red-200 transition-colors"
+                        >
+                          🗑️ Delete
+                        </button>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Default Themes */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Available Themes ({availableThemes.length})</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Built-in Themes ({defaultThemes.length})</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {availableThemes.map((theme) => {
+          {defaultThemes.map((theme) => {
             const isActive = currentTheme.id === theme.id;
             return (
               <button
@@ -147,14 +329,30 @@ const ThemeSettings: React.FC = () => {
           </li>
           <li className="flex items-start space-x-2">
             <span className="text-blue-500 mt-0.5">•</span>
-            <span>Click on any theme card to instantly apply it to your interface</span>
+            <span>Create unlimited custom themes with your favorite colors</span>
+          </li>
+          <li className="flex items-start space-x-2">
+            <span className="text-purple-500 mt-0.5">✨</span>
+            <span>Custom themes are stored locally and won't be visible on other devices</span>
           </li>
           <li className="flex items-start space-x-2">
             <span className="text-blue-500 mt-0.5">•</span>
-            <span>All themes are professionally designed for optimal readability and aesthetics</span>
+            <span>All themes are optimized for readability and aesthetics</span>
           </li>
         </ul>
       </div>
+
+      {/* Custom Theme Builder Modal */}
+      {showBuilder && (
+        <CustomThemeBuilder
+          onSave={handleSaveTheme}
+          onCancel={() => {
+            setShowBuilder(false);
+            setEditingTheme(null);
+          }}
+          editingTheme={editingTheme}
+        />
+      )}
     </div>
   );
 };
