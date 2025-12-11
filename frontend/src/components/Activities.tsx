@@ -15,7 +15,8 @@ interface Activity {
   description: string;
   activity_date: string;
   location: string;
-  status: string;
+  status: string; // User-entered: not-started, in-progress, completed, blocked, cancelled
+  health_status?: string; // Auto-calculated: on-track, at-risk, behind-schedule
   approval_status: string;
   target_beneficiaries: number;
   actual_beneficiaries: number;
@@ -263,6 +264,24 @@ const Activities: React.FC = () => {
       'draft': 'bg-gray-100 text-gray-800',
     };
     return classes[approvalStatus] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getHealthStatusBadgeClass = (healthStatus: string) => {
+    const classes: Record<string, string> = {
+      'on-track': 'bg-green-100 text-green-800 border-green-300',
+      'at-risk': 'bg-yellow-100 text-yellow-800 border-yellow-300',
+      'behind-schedule': 'bg-red-100 text-red-800 border-red-300',
+    };
+    return classes[healthStatus] || 'bg-gray-100 text-gray-800 border-gray-300';
+  };
+
+  const getHealthStatusIcon = (healthStatus: string) => {
+    const icons: Record<string, string> = {
+      'on-track': '✓',
+      'at-risk': '⚠️',
+      'behind-schedule': '🚨',
+    };
+    return icons[healthStatus] || '●';
   };
 
   if (loading) {
@@ -609,30 +628,50 @@ const Activities: React.FC = () => {
 
                   {/* Status & Approval Badges */}
                   <div className="flex gap-2 flex-wrap mb-4">
-                    <select
-                      value={activity.status}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        handleStatusChange(activity.id, e.target.value);
-                      }}
-                      disabled={changingStatusId === activity.id}
-                      className={`text-xs font-semibold rounded-lg px-3 py-1.5 border-0 cursor-pointer disabled:opacity-50 ${
-                        activity.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        activity.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
-                        activity.status === 'not-started' ? 'bg-yellow-100 text-yellow-800' :
-                        activity.status === 'blocked' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      <option value="not-started">Not Started</option>
-                      <option value="in-progress">In Progress</option>
-                      <option value="completed">Completed</option>
-                      <option value="blocked">Blocked</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                    <span className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${getApprovalBadgeClass(activity.approval_status || 'draft')}`}>
-                      {activity.approval_status || 'draft'}
-                    </span>
+                    {/* User Status (Manual) */}
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs opacity-60 font-medium">Status</label>
+                      <select
+                        value={activity.status}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          handleStatusChange(activity.id, e.target.value);
+                        }}
+                        disabled={changingStatusId === activity.id}
+                        className={`text-xs font-semibold rounded-lg px-3 py-1.5 border-0 cursor-pointer disabled:opacity-50 ${
+                          activity.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          activity.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
+                          activity.status === 'not-started' ? 'bg-yellow-100 text-yellow-800' :
+                          activity.status === 'blocked' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        <option value="not-started">Not Started</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="blocked">Blocked</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </div>
+
+                    {/* Health Status (Auto-calculated) */}
+                    {activity.health_status && (
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs opacity-60 font-medium">Health</label>
+                        <span className={`px-3 py-1.5 text-xs font-semibold rounded-lg border-2 ${getHealthStatusBadgeClass(activity.health_status)} flex items-center gap-1`}>
+                          <span>{getHealthStatusIcon(activity.health_status)}</span>
+                          <span className="capitalize">{activity.health_status.replace('-', ' ')}</span>
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Approval Status */}
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs opacity-60 font-medium">Approval</label>
+                      <span className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${getApprovalBadgeClass(activity.approval_status || 'draft')}`}>
+                        {activity.approval_status || 'draft'}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Actions */}
@@ -681,7 +720,8 @@ const Activities: React.FC = () => {
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Date</th>
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Location</th>
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Beneficiaries</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">User Status</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Health</th>
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Approval</th>
                     <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider">Actions</th>
                   </tr>
@@ -722,6 +762,16 @@ const Activities: React.FC = () => {
                             <option value="blocked">Blocked</option>
                             <option value="cancelled">Cancelled</option>
                           </select>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {activity.health_status ? (
+                            <span className={`px-3 py-1 text-xs font-semibold rounded-lg border-2 inline-flex items-center gap-1 ${getHealthStatusBadgeClass(activity.health_status)}`}>
+                              <span>{getHealthStatusIcon(activity.health_status)}</span>
+                              <span className="capitalize">{activity.health_status.replace('-', ' ')}</span>
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getApprovalBadgeClass(activity.approval_status || 'draft')}`}>
@@ -807,7 +857,7 @@ const Activities: React.FC = () => {
                       {/* Expandable Checklist Row */}
                       {expandedChecklistId === activity.id && (
                         <tr>
-                          <td colSpan={7} className="px-6 py-4 bg-gray-50">
+                          <td colSpan={8} className="px-6 py-4 bg-gray-50">
                             <ActivityChecklist
                               activityId={activity.id}
                               activityApprovalStatus={activity.approval_status}
