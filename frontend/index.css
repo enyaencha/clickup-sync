@@ -1,3 +1,180 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Theme CSS Variables - Applied by ThemeProvider */
+:root {
+  /* Default theme colors (will be overridden by ThemeProvider) */
+  --sidebar-background: linear-gradient(180deg, #0f0f1e 0%, #1a1a2e 100%);
+  --sidebar-text: #e0e0e0;
+  --sidebar-active-item: rgba(0, 255, 245, 0.1);
+  --sidebar-active-border: #00fff5;
+  --sidebar-hover: rgba(0, 255, 245, 0.05);
+  --main-background: linear-gradient(to bottom, #16213e, #0f3460);
+  --main-text: #e0e0e0;
+  --card-background: rgba(255, 255, 255, 0.05);
+  --card-border: rgba(0, 255, 245, 0.2);
+  --card-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  --accent-primary: #00fff5;
+  --accent-secondary: #00d4d4;
+  --accent-gradient: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  --stat-card-background: rgba(255, 255, 255, 0.05);
+  --stat-card-border-color: linear-gradient(to bottom, #00fff5, #00d4d4);
+  --activity-card-background: rgba(0, 255, 245, 0.1);
+  --activity-card-border: #00fff5;
+  --program-card-background: rgba(255, 255, 255, 0.05);
+  --program-card-border: #00fff5;
+  --program-icon-background: rgba(0, 255, 245, 0.2);
+  --program-icon-color: #00fff5;
+  --program-status-background: rgba(0, 255, 245, 0.2);
+  --program-status-color: #00fff5;
+}
+
+/* Global theme-aware styles */
+body {
+  background: var(--main-background);
+  color: var(--main-text);
+}
+
+/* Apply theme to common card elements */
+.bg-white {
+  background: var(--card-background) !important;
+  color: var(--main-text) !important;
+}
+
+/* Apply theme to card-like containers */
+.rounded-lg, .rounded-xl, .rounded-2xl {
+  background: var(--card-background);
+  border-color: var(--card-border);
+}
+
+/* Headers and important text should maintain readability */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--main-text);
+}
+
+/* Buttons with primary colors */
+.bg-blue-600, .bg-blue-500, .bg-primary-600, .bg-indigo-600 {
+  background: var(--accent-primary) !important;
+  color: white !important;
+}
+
+.hover\:bg-blue-700:hover, .hover\:bg-primary-700:hover {
+  background: var(--accent-secondary) !important;
+}
+
+/* Text colors */
+.text-gray-900 {
+  color: var(--main-text) !important;
+}
+
+.text-gray-700, .text-gray-800 {
+  color: var(--main-text) !important;
+  opacity: 0.9;
+}
+
+.text-gray-600 {
+  color: var(--main-text) !important;
+  opacity: 0.8;
+}
+
+.text-gray-500 {
+  color: var(--main-text) !important;
+  opacity: 0.7;
+}
+
+.text-gray-400 {
+  color: var(--main-text) !important;
+  opacity: 0.6;
+}
+
+/* Border colors */
+.border-gray-200, .border-gray-300 {
+  border-color: var(--card-border) !important;
+}
+
+/* Shadows */
+.shadow, .shadow-sm, .shadow-md, .shadow-lg {
+  box-shadow: var(--card-shadow) !important;
+}
+
+/* Background variations */
+.bg-gray-50, .bg-gray-100, .bg-neutral-50 {
+  background: var(--main-background) !important;
+}
+
+.bg-gray-200 {
+  background: var(--card-background) !important;
+}
+
+/* Specific component overrides for better theming */
+[class*="bg-gradient"] {
+  background: var(--main-background) !important;
+}
+
+/* Tables and data displays */
+table {
+  background: var(--card-background);
+  color: var(--main-text);
+}
+
+th {
+  background: var(--card-background);
+  color: var(--main-text);
+  border-color: var(--card-border);
+}
+
+td {
+  border-color: var(--card-border);
+}
+
+/* Input fields */
+input, textarea, select {
+  background: var(--card-background) !important;
+  color: var(--main-text) !important;
+  border-color: var(--card-border) !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--main-text);
+  opacity: 0.5;
+}
+
+/* Modal and overlay backgrounds */
+.fixed.inset-0 {
+  backdrop-filter: blur(4px);
+}
+
+/* Ensure contrast on badges and tags */
+.bg-green-100, .bg-blue-100, .bg-red-100, .bg-yellow-100 {
+  background: var(--activity-card-background) !important;
+  border: 1px solid var(--activity-card-border);
+}
+
+/* Link colors */
+a {
+  color: var(--accent-primary);
+}
+
+a:hover {
+  color: var(--accent-secondary);
+}
+
+/* Scrollbar theming */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--card-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--accent-primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-secondary);
+}
