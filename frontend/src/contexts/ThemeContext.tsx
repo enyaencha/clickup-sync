@@ -5,6 +5,10 @@ interface ThemeContextType {
   currentTheme: Theme;
   setTheme: (themeId: string) => void;
   availableThemes: Theme[];
+  customThemes: Theme[];
+  addCustomTheme: (theme: Theme) => void;
+  updateCustomTheme: (theme: Theme) => void;
+  deleteCustomTheme: (themeId: string) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -31,13 +35,30 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   };
 
   const THEME_STORAGE_KEY = `me_theme_${getDeviceId()}`;
+  const CUSTOM_THEMES_STORAGE_KEY = `me_custom_themes_${getDeviceId()}`;
   const DEFAULT_THEME_ID = 'theme-2'; // Theme 2: Dark Professional - Modern Cyan/Black
+
+  // Load custom themes from localStorage
+  const loadCustomThemes = (): Theme[] => {
+    try {
+      const saved = localStorage.getItem(CUSTOM_THEMES_STORAGE_KEY);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (error) {
+      console.error('Error loading custom themes:', error);
+    }
+    return [];
+  };
+
+  const [customThemes, setCustomThemes] = useState<Theme[]>(loadCustomThemes);
+  const [allThemes, setAllThemes] = useState<Theme[]>([...themes, ...loadCustomThemes()]);
 
   const [currentTheme, setCurrentTheme] = useState<Theme>(() => {
     // Try to load theme from localStorage (device-specific)
     const savedThemeId = localStorage.getItem(THEME_STORAGE_KEY);
     if (savedThemeId) {
-      const savedTheme = themes.find(t => t.id === savedThemeId);
+      const savedTheme = allThemes.find(t => t.id === savedThemeId);
       if (savedTheme) {
         return savedTheme;
       }
@@ -46,11 +67,56 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     return themes.find(t => t.id === DEFAULT_THEME_ID) || themes[1];
   });
 
+  // Save custom themes to localStorage
+  const saveCustomThemes = (themes: Theme[]) => {
+    try {
+      localStorage.setItem(CUSTOM_THEMES_STORAGE_KEY, JSON.stringify(themes));
+    } catch (error) {
+      console.error('Error saving custom themes:', error);
+    }
+  };
+
   const setTheme = (themeId: string) => {
-    const theme = themes.find(t => t.id === themeId);
+    const theme = allThemes.find(t => t.id === themeId);
     if (theme) {
       setCurrentTheme(theme);
       localStorage.setItem(THEME_STORAGE_KEY, themeId);
+    }
+  };
+
+  const addCustomTheme = (theme: Theme) => {
+    const newCustomThemes = [...customThemes, theme];
+    setCustomThemes(newCustomThemes);
+    setAllThemes([...themes, ...newCustomThemes]);
+    saveCustomThemes(newCustomThemes);
+    // Automatically apply the new theme
+    setTheme(theme.id);
+  };
+
+  const updateCustomTheme = (updatedTheme: Theme) => {
+    const newCustomThemes = customThemes.map(t =>
+      t.id === updatedTheme.id ? updatedTheme : t
+    );
+    setCustomThemes(newCustomThemes);
+    setAllThemes([...themes, ...newCustomThemes]);
+    saveCustomThemes(newCustomThemes);
+
+    // If the updated theme is currently active, update it
+    if (currentTheme.id === updatedTheme.id) {
+      setCurrentTheme(updatedTheme);
+    }
+  };
+
+  const deleteCustomTheme = (themeId: string) => {
+    const newCustomThemes = customThemes.filter(t => t.id !== themeId);
+    setCustomThemes(newCustomThemes);
+    setAllThemes([...themes, ...newCustomThemes]);
+    saveCustomThemes(newCustomThemes);
+
+    // If the deleted theme was active, switch to default
+    if (currentTheme.id === themeId) {
+      const defaultTheme = themes.find(t => t.id === DEFAULT_THEME_ID) || themes[1];
+      setTheme(defaultTheme.id);
     }
   };
 
@@ -90,7 +156,15 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   }, [currentTheme]);
 
   return (
-    <ThemeContext.Provider value={{ currentTheme, setTheme, availableThemes: themes }}>
+    <ThemeContext.Provider value={{
+      currentTheme,
+      setTheme,
+      availableThemes: allThemes,
+      customThemes,
+      addCustomTheme,
+      updateCustomTheme,
+      deleteCustomTheme
+    }}>
       {children}
     </ThemeContext.Provider>
   );
