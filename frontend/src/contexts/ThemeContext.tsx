@@ -9,6 +9,8 @@ interface ThemeContextType {
   addCustomTheme: (theme: Theme) => void;
   updateCustomTheme: (theme: Theme) => void;
   deleteCustomTheme: (themeId: string) => void;
+  followSystemTheme: boolean;
+  setFollowSystemTheme: (follow: boolean) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -36,7 +38,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 
   const THEME_STORAGE_KEY = `me_theme_${getDeviceId()}`;
   const CUSTOM_THEMES_STORAGE_KEY = `me_custom_themes_${getDeviceId()}`;
+  const FOLLOW_SYSTEM_THEME_KEY = `me_follow_system_${getDeviceId()}`;
   const DEFAULT_THEME_ID = 'theme-2'; // Theme 2: Dark Professional - Modern Cyan/Black
+  const LIGHT_THEME_ID = 'theme-1'; // Theme 1 for light mode
+  const DARK_THEME_ID = 'theme-2'; // Theme 2 for dark mode
 
   // Load custom themes from localStorage
   const loadCustomThemes = (): Theme[] => {
@@ -53,6 +58,17 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 
   const [customThemes, setCustomThemes] = useState<Theme[]>(loadCustomThemes);
   const [allThemes, setAllThemes] = useState<Theme[]>([...themes, ...loadCustomThemes()]);
+
+  // System theme following state
+  const [followSystemTheme, setFollowSystemThemeState] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(FOLLOW_SYSTEM_THEME_KEY);
+      return saved === 'true';
+    } catch (error) {
+      console.error('Error loading system theme preference:', error);
+      return false;
+    }
+  });
 
   const [currentTheme, setCurrentTheme] = useState<Theme>(() => {
     // Try to load theme from localStorage (device-specific)
@@ -76,11 +92,40 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     }
   };
 
+  // Detect system theme preference
+  const getSystemThemePreference = (): 'dark' | 'light' => {
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  };
+
+  // Map system preference to theme ID
+  const getThemeForSystemPreference = (preference: 'dark' | 'light'): string => {
+    if (preference === 'dark') {
+      return DARK_THEME_ID;
+    } else {
+      return LIGHT_THEME_ID;
+    }
+  };
+
   const setTheme = (themeId: string) => {
     const theme = allThemes.find(t => t.id === themeId);
     if (theme) {
       setCurrentTheme(theme);
       localStorage.setItem(THEME_STORAGE_KEY, themeId);
+    }
+  };
+
+  const setFollowSystemTheme = (follow: boolean) => {
+    setFollowSystemThemeState(follow);
+    localStorage.setItem(FOLLOW_SYSTEM_THEME_KEY, follow.toString());
+
+    // If enabling system theme, immediately apply the system preference
+    if (follow) {
+      const systemPreference = getSystemThemePreference();
+      const themeId = getThemeForSystemPreference(systemPreference);
+      setTheme(themeId);
     }
   };
 
@@ -119,6 +164,27 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       setTheme(defaultTheme.id);
     }
   };
+
+  // Listen for system theme changes
+  useEffect(() => {
+    if (!followSystemTheme) return;
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+    const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+      const preference = e.matches ? 'dark' : 'light';
+      const themeId = getThemeForSystemPreference(preference);
+      setTheme(themeId);
+    };
+
+    // Add listener for system theme changes
+    mediaQuery.addEventListener('change', handleSystemThemeChange);
+
+    // Cleanup
+    return () => {
+      mediaQuery.removeEventListener('change', handleSystemThemeChange);
+    };
+  }, [followSystemTheme, allThemes]);
 
   // Apply theme to document root
   useEffect(() => {
@@ -163,7 +229,9 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       customThemes,
       addCustomTheme,
       updateCustomTheme,
-      deleteCustomTheme
+      deleteCustomTheme,
+      followSystemTheme,
+      setFollowSystemTheme
     }}>
       {children}
     </ThemeContext.Provider>
