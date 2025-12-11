@@ -24,29 +24,37 @@ The backend currently has **THREE** status fields:
 ### PROBLEM IDENTIFIED:
 The frontend was sending updates to `status` field instead of `manual_status` field, causing user status changes to not persist correctly.
 
-### SOLUTION IMPLEMENTED:
-- Frontend now sends status updates to `manual_status` field
+### FRONTEND SOLUTION:
+- Frontend sends `status` in request body (backend expects this)
 - Frontend reads user status from `manual_status` field
 - Frontend reads auto status from `auto_status` field
-- The `status` field is treated as read-only legacy field
+- Frontend displays both statuses separately with clear labels
 
 ### BACKEND API FIX REQUIRED:
 
-The `POST /api/activities/:id/status` endpoint needs to be updated to handle the `manual_status` field:
+**Current Problem:**
+When user changes status to "in-progress", the backend is copying it to BOTH `status` and `auto_status` columns. The auto-calculation then runs and overwrites the user's choice!
+
+**What User Wants:**
+- User's manual status should be preserved in `manual_status` column
+- Auto-calculation should ONLY update `auto_status`, NEVER touch `manual_status`
+
+The `POST /api/activities/:id/status` endpoint needs to be fixed:
 
 #### ✅ CORRECT Implementation:
 ```javascript
 router.post('/activities/:id/status', async (req, res) => {
-  const { manual_status } = req.body;  // Accept manual_status from frontend
+  const { status } = req.body;  // Frontend sends 'status' field
 
-  // Update ONLY the manual_status field
+  // CRITICAL: Save user's choice to manual_status column ONLY
   await db.query(
     'UPDATE activities SET manual_status = ? WHERE id = ?',
-    [manual_status, req.params.id]
+    [status, req.params.id]
   );
 
-  // Optionally trigger auto-calculation job to update auto_status
-  // But auto-calc should ONLY update auto_status, NOT manual_status
+  // Do NOT update 'status' column
+  // Do NOT update 'auto_status' column
+  // Let auto-calculation handle auto_status separately
 
   res.json({ success: true });
 });
@@ -54,10 +62,25 @@ router.post('/activities/:id/status', async (req, res) => {
 
 #### ❌ WRONG Implementation (Current):
 ```javascript
-// If the endpoint is currently updating 'status' field when it receives
-// { "status": "in-progress" }, it needs to be changed to accept and update
-// 'manual_status' instead
+router.post('/activities/:id/status', async (req, res) => {
+  const { status } = req.body;
+
+  // ❌ WRONG: Copies same value to multiple fields!
+  await db.query(
+    'UPDATE activities SET status = ?, auto_status = ? WHERE id = ?',
+    [status, status, req.params.id]  // Both get same value!
+  );
+
+  // Then auto-calc runs and overwrites again!
+});
 ```
+
+**Critical Requirements:**
+1. Endpoint receives: `{ "status": "in-progress" }` from frontend
+2. Backend saves to `manual_status` column ONLY
+3. Backend does NOT touch `status` or `auto_status` columns
+4. Auto-calculation job updates ONLY `auto_status`, never `manual_status`
+5. User's choice is preserved forever in `manual_status`
 
 ---
 

@@ -211,14 +211,12 @@ const Activities: React.FC = () => {
     try {
       setChangingStatusId(activityId);
 
-      // CRITICAL: Send to 'manual_status' field (user-entered status)
-      // The backend has three fields:
-      // - manual_status: User's choice (we write HERE)
-      // - auto_status: System calculated (READ-ONLY)
-      // - status: Legacy auto-calc field (READ-ONLY)
+      // TEMPORARY FIX: Backend still expects 'status' in request body
+      // Backend should save this value to 'manual_status' column, NOT 'status' column
+      // Backend should NOT copy this value to 'auto_status' - that's for auto-calculation only
       const response = await authFetch(`/api/activities/${activityId}/status`, {
         method: 'POST',
-        body: JSON.stringify({ manual_status: newStatus }),
+        body: JSON.stringify({ status: newStatus }),
       });
 
       const data = await response.json();
