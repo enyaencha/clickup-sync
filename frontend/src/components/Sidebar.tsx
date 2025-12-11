@@ -172,14 +172,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
 
       {/* Sidebar */}
       <div
-        className={`fixed left-0 top-0 h-screen bg-gradient-to-b from-blue-900 via-blue-800 to-blue-900 text-white transition-all duration-300 shadow-2xl z-50 ${
+        className={`fixed left-0 top-0 h-screen transition-all duration-300 shadow-2xl z-50 ${
           isExpanded ? 'w-72' : 'w-20'
         } ${
           isMobileOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0`}
+        style={{
+          background: 'var(--sidebar-background)',
+          color: 'var(--sidebar-text)'
+        }}
       >
         {/* Header with Logo */}
-        <div className="p-4 lg:p-6 border-b border-blue-700/50">
+        <div className="p-4 lg:p-6 border-b" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
           <div className="flex items-center justify-between">
             {isExpanded ? (
               <div className="flex items-center space-x-3">
@@ -192,7 +196,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
                 </div>
                 <div className="min-w-0 flex-1">
                   <h1 className="font-bold text-base lg:text-lg leading-tight truncate">Caritas Nairobi</h1>
-                  <p className="text-xs text-blue-200">M&E System</p>
+                  <p className="text-xs opacity-80">M&E System</p>
                 </div>
               </div>
             ) : (
@@ -208,7 +212,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
             {/* Close button for mobile */}
             <button
               onClick={onClose}
-              className="lg:hidden p-2 hover:bg-blue-700/50 rounded-lg transition-colors"
+              className="lg:hidden p-2 rounded-lg transition-colors"
+              style={{ background: 'var(--sidebar-hover)' }}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -219,7 +224,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           {/* Toggle Button - Desktop only */}
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="hidden lg:block absolute -right-3 top-8 w-6 h-6 bg-blue-600 rounded-full items-center justify-center text-xs hover:bg-blue-500 transition-colors shadow-lg"
+            className="hidden lg:flex absolute -right-3 top-8 w-6 h-6 rounded-full items-center justify-center text-xs transition-colors shadow-lg"
+            style={{
+              background: 'var(--accent-primary)',
+              color: 'white'
+            }}
           >
             {isExpanded ? '‹' : '›'}
           </button>
@@ -230,7 +239,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           {menuItems.map((section, idx) => (
             <div key={idx} className="mb-6">
               {isExpanded && (
-                <h3 className="px-6 text-xs font-semibold text-blue-300 uppercase tracking-wider mb-2">
+                <h3 className="px-6 text-xs font-semibold uppercase tracking-wider mb-2 opacity-60">
                   {section.section}
                 </h3>
               )}
@@ -239,11 +248,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
                   <button
                     key={itemIdx}
                     onClick={() => handleNavigate(item.path)}
-                    className={`w-full flex items-center space-x-3 px-3 py-3 lg:py-3 rounded-lg transition-all duration-200 group active:scale-95 ${
-                      isActive(item.path)
-                        ? 'bg-white/10 shadow-lg border-l-4 border-yellow-400'
-                        : 'hover:bg-white/5 border-l-4 border-transparent hover:border-blue-400 active:bg-white/10'
-                    }`}
+                    className="w-full flex items-center space-x-3 px-3 py-3 lg:py-3 rounded-lg transition-all duration-200 group active:scale-95 border-l-4"
+                    style={{
+                      background: isActive(item.path) ? 'var(--sidebar-active-item)' : 'transparent',
+                      borderLeftColor: isActive(item.path) ? 'var(--sidebar-active-border)' : 'transparent'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive(item.path)) {
+                        e.currentTarget.style.background = 'var(--sidebar-hover)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive(item.path)) {
+                        e.currentTarget.style.background = 'transparent';
+                      }
+                    }}
                     title={!isExpanded ? item.label : ''}
                   >
                     <span className="text-xl lg:text-2xl flex-shrink-0 group-hover:scale-110 transition-transform">
@@ -252,13 +271,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
                     {isExpanded && (
                       <div className="flex-1 text-left min-w-0">
                         <div className="font-medium text-sm truncate">{item.label}</div>
-                        <div className="text-xs text-blue-200 opacity-75 truncate">
+                        <div className="text-xs opacity-75 truncate">
                           {item.description}
                         </div>
                       </div>
                     )}
                     {isExpanded && isActive(item.path) && (
-                      <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse flex-shrink-0"></div>
+                      <div
+                        className="w-2 h-2 rounded-full animate-pulse flex-shrink-0"
+                        style={{ background: 'var(--sidebar-active-border)' }}
+                      ></div>
                     )}
                   </button>
                 ))}
@@ -268,7 +290,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
         </nav>
 
         {/* Footer - User Info */}
-        <div className="absolute bottom-0 left-0 right-0 p-3 lg:p-4 border-t border-blue-700/50 bg-blue-900/50 backdrop-blur">
+        <div
+          className="absolute bottom-0 left-0 right-0 p-3 lg:p-4 border-t backdrop-blur"
+          style={{
+            borderColor: 'rgba(255, 255, 255, 0.1)',
+            background: 'rgba(0, 0, 0, 0.2)'
+          }}
+        >
           {isExpanded ? (
             <div className="flex items-center space-x-3">
               {user?.profile_picture ? (
@@ -278,7 +306,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
                   className="w-10 h-10 rounded-full object-cover shadow-lg flex-shrink-0"
                 />
               ) : (
-                <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center font-bold text-blue-900 shadow-lg flex-shrink-0 text-sm">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-lg flex-shrink-0 text-sm"
+                  style={{
+                    background: 'var(--accent-gradient)',
+                    color: 'white'
+                  }}
+                >
                   {getUserInitials()}
                 </div>
               )}
@@ -286,13 +320,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
                 <p className="text-sm font-medium truncate">
                   {user?.full_name || user?.username || 'User'}
                 </p>
-                <p className="text-xs text-blue-200 truncate">
+                <p className="text-xs opacity-70 truncate">
                   {user?.email || ''}
                 </p>
               </div>
               <button
                 onClick={handleLogout}
-                className="text-blue-200 hover:text-white transition-colors flex-shrink-0"
+                className="opacity-70 hover:opacity-100 transition-opacity flex-shrink-0"
                 title="Logout"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -313,7 +347,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
               ) : (
                 <button
                   onClick={handleLogout}
-                  className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center font-bold text-blue-900 shadow-lg text-sm hover:scale-105 transition-transform"
+                  className="w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-lg text-sm hover:scale-105 transition-transform"
+                  style={{
+                    background: 'var(--accent-gradient)',
+                    color: 'white'
+                  }}
                   title="Logout"
                 >
                   {getUserInitials()}

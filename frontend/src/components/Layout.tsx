@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import SidebarRefactored from './SidebarRefactored';
+import Sidebar from './Sidebar';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -9,8 +9,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-neutral-50">
-      <SidebarRefactored
+    <div className="flex min-h-screen" style={{ background: 'var(--main-background)', color: 'var(--main-text)' }}>
+      <Sidebar
         isMobileOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
       />
@@ -18,7 +18,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Mobile Menu Button - Only visible on mobile/tablet */}
       <button
         onClick={() => setIsMobileMenuOpen(true)}
-        className="fixed top-4 left-4 z-30 lg:hidden bg-primary-600 text-white p-3 rounded-xl shadow-soft hover:bg-primary-700 active:scale-95 transition-all"
+        className="fixed top-4 left-4 z-30 lg:hidden text-white p-3 rounded-xl shadow-soft hover:opacity-90 active:scale-95 transition-all"
+        style={{ background: 'var(--accent-primary)' }}
         aria-label="Open menu"
       >
         <svg
@@ -36,7 +37,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </svg>
       </button>
 
-      <main className="flex-1 lg:ml-72 transition-all duration-300 bg-gradient-to-br from-neutral-50 via-neutral-100 to-neutral-50">
+      <main className="flex-1 lg:ml-72 transition-all duration-300">
         <div className="min-h-screen">
           {children}
         </div>
