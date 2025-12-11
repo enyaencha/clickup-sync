@@ -1,6 +1,67 @@
 # Database Schema Update - Activity Status Separation
 
-## ⚠️ CRITICAL: Two Separate Fields
+## ⚠️ CRITICAL UPDATE: Actual Backend Schema Discovered
+
+### ACTUAL CURRENT SCHEMA (Discovered from logs):
+The backend currently has **THREE** status fields:
+
+1. **`status`** - Contains auto-calculated values (`on-track`, `at-risk`, `behind-schedule`)
+   - Type: VARCHAR(50)
+   - Purpose: Legacy auto-calculated health status
+   - Updated by: Auto-calculation job
+
+2. **`auto_status`** - Contains auto-calculated values (`on-track`, `at-risk`, `behind-schedule`)
+   - Type: VARCHAR(50)
+   - Purpose: New auto-calculated health status (duplicate of status?)
+   - Updated by: Auto-calculation job
+
+3. **`manual_status`** - Contains user-entered values OR NULL
+   - Type: VARCHAR(50) NULL
+   - Purpose: User's manual status choice
+   - Values: `not-started`, `in-progress`, `completed`, `blocked`, `cancelled`
+   - Updated by: User via frontend
+
+### PROBLEM IDENTIFIED:
+The frontend was sending updates to `status` field instead of `manual_status` field, causing user status changes to not persist correctly.
+
+### SOLUTION IMPLEMENTED:
+- Frontend now sends status updates to `manual_status` field
+- Frontend reads user status from `manual_status` field
+- Frontend reads auto status from `auto_status` field
+- The `status` field is treated as read-only legacy field
+
+### BACKEND API FIX REQUIRED:
+
+The `POST /api/activities/:id/status` endpoint needs to be updated to handle the `manual_status` field:
+
+#### ✅ CORRECT Implementation:
+```javascript
+router.post('/activities/:id/status', async (req, res) => {
+  const { manual_status } = req.body;  // Accept manual_status from frontend
+
+  // Update ONLY the manual_status field
+  await db.query(
+    'UPDATE activities SET manual_status = ? WHERE id = ?',
+    [manual_status, req.params.id]
+  );
+
+  // Optionally trigger auto-calculation job to update auto_status
+  // But auto-calc should ONLY update auto_status, NOT manual_status
+
+  res.json({ success: true });
+});
+```
+
+#### ❌ WRONG Implementation (Current):
+```javascript
+// If the endpoint is currently updating 'status' field when it receives
+// { "status": "in-progress" }, it needs to be changed to accept and update
+// 'manual_status' instead
+```
+
+---
+
+## Original Documentation (For Reference)
 
 ## Overview
 We need to separate the user-entered activity status from the auto-calculated health status to provide better visibility and control.
