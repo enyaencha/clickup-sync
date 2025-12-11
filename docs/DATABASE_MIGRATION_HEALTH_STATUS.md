@@ -98,44 +98,82 @@ The `auto_status` should be calculated separately based on:
 - Budget utilization
 - Completion percentage
 
-### 3. Auto-Calculation Logic (Backend)
+### 3. ⚠️ CRITICAL: Auto-Calculation Logic (Backend)
+
+**THE SECOND PROBLEM:**
+The auto-calculation job is ALSO incorrectly updating BOTH fields. After user changes status, the auto-calc runs and overwrites the user's choice!
+
+- ❌ WRONG: User sets status="in-progress" → Auto-calc updates BOTH status AND auto_status → User's choice is lost!
+- ✅ CORRECT: User sets status="in-progress" → Auto-calc updates ONLY auto_status → User's choice is preserved!
 
 Create a job/function that calculates `auto_status` based on:
 
 ```javascript
-// Pseudo-code for auto_status calculation
-function calculateAutoStatus(activity) {
+// ✅ CORRECT - Pseudo-code for auto_status calculation
+async function calculateAndUpdateAutoStatus(activityId) {
+  // Step 1: Read the activity
+  const activity = await db.query('SELECT * FROM activities WHERE id = ?', [activityId]);
+
   const today = new Date();
   const activityDate = new Date(activity.activity_date);
   const daysUntil = (activityDate - today) / (1000 * 60 * 60 * 24);
 
+  let autoStatus = null;
+
+  // Calculate auto_status based on activity.status and dates
+  // IMPORTANT: We READ from activity.status but NEVER WRITE to it!
+
   // If activity is in the past and not completed
   if (daysUntil < 0 && activity.status !== 'completed') {
-    return 'behind-schedule';
+    autoStatus = 'behind-schedule';
   }
-
   // If activity is soon (< 7 days) and not started
-  if (daysUntil < 7 && activity.status === 'not-started') {
-    return 'at-risk';
+  else if (daysUntil < 7 && activity.status === 'not-started') {
+    autoStatus = 'at-risk';
   }
-
   // If blocked or has issues
-  if (activity.status === 'blocked') {
-    return 'at-risk';
+  else if (activity.status === 'blocked') {
+    autoStatus = 'at-risk';
   }
-
   // If budget is overspent
-  if (activity.budget_spent > activity.budget_allocated * 1.1) {
-    return 'at-risk';
+  else if (activity.budget_spent > activity.budget_allocated * 1.1) {
+    autoStatus = 'at-risk';
   }
-
   // Everything looks good
-  if (activity.status === 'in-progress' || activity.status === 'not-started') {
-    return 'on-track';
+  else if (activity.status === 'in-progress' || activity.status === 'not-started') {
+    autoStatus = 'on-track';
+  }
+  // No auto_status for completed/cancelled
+  else {
+    autoStatus = null;
   }
 
-  return null; // No health status for completed/cancelled
+  // Step 2: ✅ CRITICAL - Update ONLY auto_status, NOT status!
+  await db.query(
+    'UPDATE activities SET auto_status = ? WHERE id = ?',
+    [autoStatus, activityId]
+  );
+
+  // ❌ WRONG - DO NOT DO THIS:
+  // await db.query(
+  //   'UPDATE activities SET status = ?, auto_status = ? WHERE id = ?',
+  //   [someValue, autoStatus, activityId]  // WRONG! Never update status here!
+  // );
 }
+```
+
+**Example of How Auto-Calc Should Work:**
+
+```javascript
+// Before auto-calc runs:
+// status = "in-progress" (user set this)
+// auto_status = "on-track" (old value)
+
+await calculateAndUpdateAutoStatus(123);
+
+// After auto-calc runs:
+// status = "in-progress" (UNCHANGED - user's choice preserved!)
+// auto_status = "at-risk" (UPDATED - system calculated new health)
 ```
 
 ### 4. Database Migration
