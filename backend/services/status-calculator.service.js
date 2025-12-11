@@ -163,17 +163,18 @@ class StatusCalculatorService {
         );
 
         // Update activity
-        // CRITICAL FIX: Only update auto_status, NEVER touch status or manual_status
-        // The manual_status field contains the user's choice and should never be overwritten
-        // The status field is for display/legacy purposes
+        // CRITICAL: Update both status and auto_status with calculated value
+        // BUT NEVER touch manual_status (that's the user's choice)
         await this.db.query(
             `UPDATE activities
              SET auto_status = ?,
+                 status = ?,
                  progress_percentage = ?,
                  status_reason = ?,
                  last_status_update = CURRENT_TIMESTAMP
              WHERE id = ?`,
             [
+                calculated.status || null,
                 calculated.status || null,
                 calculated.progress || 0,
                 calculated.statusReason || null,
