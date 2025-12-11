@@ -16,14 +16,19 @@ interface Activity {
   activity_date: string;
   location: string;
 
-  // USER-ENTERED STATUS (manually set by user)
+  // USER-ENTERED STATUS (manually set by user via UI)
   // Values: not-started, in-progress, completed, blocked, cancelled
-  status: string;
+  // This is the field we WRITE to when user changes status
+  manual_status: string | null;
 
   // AUTO-CALCULATED STATUS (set by backend calculation only)
   // Values: on-track, at-risk, behind-schedule
   // This field is READ-ONLY from frontend perspective
   auto_status?: string;
+
+  // LEGACY: Backend still has 'status' field (contains auto-calculated value)
+  // We read this as fallback but should not write to it
+  status?: string;
 
   approval_status: string;
   target_beneficiaries: number;
@@ -206,12 +211,14 @@ const Activities: React.FC = () => {
     try {
       setChangingStatusId(activityId);
 
-      // IMPORTANT: This should ONLY update the 'status' field (user-entered)
-      // The 'auto_status' field should NOT be touched by this API call
-      // Backend should auto-calculate 'auto_status' separately based on dates/budget
+      // CRITICAL: Send to 'manual_status' field (user-entered status)
+      // The backend has three fields:
+      // - manual_status: User's choice (we write HERE)
+      // - auto_status: System calculated (READ-ONLY)
+      // - status: Legacy auto-calc field (READ-ONLY)
       const response = await authFetch(`/api/activities/${activityId}/status`, {
         method: 'POST',
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ manual_status: newStatus }),
       });
 
       const data = await response.json();
@@ -251,8 +258,14 @@ const Activities: React.FC = () => {
     setExpandedChecklistId(expandedChecklistId === activityId ? null : activityId);
   };
 
+  // Helper to get user status (manual_status with fallback)
+  const getUserStatus = (activity: Activity): string => {
+    return activity.manual_status || 'not-started';
+  };
+
   const filteredActivities = activities.filter((activity) => {
-    if (statusFilter !== 'all' && activity.status !== statusFilter) return false;
+    const userStatus = getUserStatus(activity);
+    if (statusFilter !== 'all' && userStatus !== statusFilter) return false;
     if (approvalFilter !== 'all' && activity.approval_status !== approvalFilter) return false;
     return true;
   });
@@ -644,17 +657,17 @@ const Activities: React.FC = () => {
                     <div className="flex flex-col gap-1">
                       <label className="text-xs opacity-60 font-medium">Status</label>
                       <select
-                        value={activity.status}
+                        value={getUserStatus(activity)}
                         onChange={(e) => {
                           e.stopPropagation();
                           handleStatusChange(activity.id, e.target.value);
                         }}
                         disabled={changingStatusId === activity.id}
                         className={`text-xs font-semibold rounded-lg px-3 py-1.5 border-0 cursor-pointer disabled:opacity-50 ${
-                          activity.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          activity.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
-                          activity.status === 'not-started' ? 'bg-yellow-100 text-yellow-800' :
-                          activity.status === 'blocked' ? 'bg-red-100 text-red-800' :
+                          getUserStatus(activity) === 'completed' ? 'bg-green-100 text-green-800' :
+                          getUserStatus(activity) === 'in-progress' ? 'bg-blue-100 text-blue-800' :
+                          getUserStatus(activity) === 'not-started' ? 'bg-yellow-100 text-yellow-800' :
+                          getUserStatus(activity) === 'blocked' ? 'bg-red-100 text-red-800' :
                           'bg-gray-100 text-gray-800'
                         }`}
                       >
@@ -757,14 +770,14 @@ const Activities: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <select
-                            value={activity.status}
+                            value={getUserStatus(activity)}
                             onChange={(e) => handleStatusChange(activity.id, e.target.value)}
                             disabled={changingStatusId === activity.id}
                             className={`text-xs font-semibold rounded-lg px-3 py-1 border-0 cursor-pointer disabled:opacity-50 ${
-                              activity.status === 'completed' ? 'bg-green-100 text-green-800' :
-                              activity.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
-                              activity.status === 'not-started' ? 'bg-yellow-100 text-yellow-800' :
-                              activity.status === 'blocked' ? 'bg-red-100 text-red-800' :
+                              getUserStatus(activity) === 'completed' ? 'bg-green-100 text-green-800' :
+                              getUserStatus(activity) === 'in-progress' ? 'bg-blue-100 text-blue-800' :
+                              getUserStatus(activity) === 'not-started' ? 'bg-yellow-100 text-yellow-800' :
+                              getUserStatus(activity) === 'blocked' ? 'bg-red-100 text-red-800' :
                               'bg-gray-100 text-gray-800'
                             }`}
                           >
