@@ -15,8 +15,16 @@ interface Activity {
   description: string;
   activity_date: string;
   location: string;
-  status: string; // User-entered: not-started, in-progress, completed, blocked, cancelled
-  health_status?: string; // Auto-calculated: on-track, at-risk, behind-schedule
+
+  // USER-ENTERED STATUS (manually set by user)
+  // Values: not-started, in-progress, completed, blocked, cancelled
+  status: string;
+
+  // AUTO-CALCULATED STATUS (set by backend calculation only)
+  // Values: on-track, at-risk, behind-schedule
+  // This field is READ-ONLY from frontend perspective
+  auto_status?: string;
+
   approval_status: string;
   target_beneficiaries: number;
   actual_beneficiaries: number;
@@ -197,6 +205,10 @@ const Activities: React.FC = () => {
 
     try {
       setChangingStatusId(activityId);
+
+      // IMPORTANT: This should ONLY update the 'status' field (user-entered)
+      // The 'auto_status' field should NOT be touched by this API call
+      // Backend should auto-calculate 'auto_status' separately based on dates/budget
       const response = await authFetch(`/api/activities/${activityId}/status`, {
         method: 'POST',
         body: JSON.stringify({ status: newStatus }),
@@ -266,22 +278,22 @@ const Activities: React.FC = () => {
     return classes[approvalStatus] || 'bg-gray-100 text-gray-800';
   };
 
-  const getHealthStatusBadgeClass = (healthStatus: string) => {
+  const getAutoStatusBadgeClass = (autoStatus: string) => {
     const classes: Record<string, string> = {
       'on-track': 'bg-green-100 text-green-800 border-green-300',
       'at-risk': 'bg-yellow-100 text-yellow-800 border-yellow-300',
       'behind-schedule': 'bg-red-100 text-red-800 border-red-300',
     };
-    return classes[healthStatus] || 'bg-gray-100 text-gray-800 border-gray-300';
+    return classes[autoStatus] || 'bg-gray-100 text-gray-800 border-gray-300';
   };
 
-  const getHealthStatusIcon = (healthStatus: string) => {
+  const getAutoStatusIcon = (autoStatus: string) => {
     const icons: Record<string, string> = {
       'on-track': '✓',
       'at-risk': '⚠️',
       'behind-schedule': '🚨',
     };
-    return icons[healthStatus] || '●';
+    return icons[autoStatus] || '●';
   };
 
   if (loading) {
@@ -654,13 +666,13 @@ const Activities: React.FC = () => {
                       </select>
                     </div>
 
-                    {/* Health Status (Auto-calculated) */}
-                    {activity.health_status && (
+                    {/* Auto Status (Auto-calculated) */}
+                    {activity.auto_status && (
                       <div className="flex flex-col gap-1">
                         <label className="text-xs opacity-60 font-medium">Health</label>
-                        <span className={`px-3 py-1.5 text-xs font-semibold rounded-lg border-2 ${getHealthStatusBadgeClass(activity.health_status)} flex items-center gap-1`}>
-                          <span>{getHealthStatusIcon(activity.health_status)}</span>
-                          <span className="capitalize">{activity.health_status.replace('-', ' ')}</span>
+                        <span className={`px-3 py-1.5 text-xs font-semibold rounded-lg border-2 ${getAutoStatusBadgeClass(activity.auto_status)} flex items-center gap-1`}>
+                          <span>{getAutoStatusIcon(activity.auto_status)}</span>
+                          <span className="capitalize">{activity.auto_status.replace('-', ' ')}</span>
                         </span>
                       </div>
                     )}
@@ -764,10 +776,10 @@ const Activities: React.FC = () => {
                           </select>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {activity.health_status ? (
-                            <span className={`px-3 py-1 text-xs font-semibold rounded-lg border-2 inline-flex items-center gap-1 ${getHealthStatusBadgeClass(activity.health_status)}`}>
-                              <span>{getHealthStatusIcon(activity.health_status)}</span>
-                              <span className="capitalize">{activity.health_status.replace('-', ' ')}</span>
+                          {activity.auto_status ? (
+                            <span className={`px-3 py-1 text-xs font-semibold rounded-lg border-2 inline-flex items-center gap-1 ${getAutoStatusBadgeClass(activity.auto_status)}`}>
+                              <span>{getAutoStatusIcon(activity.auto_status)}</span>
+                              <span className="capitalize">{activity.auto_status.replace('-', ' ')}</span>
                             </span>
                           ) : (
                             <span className="text-xs text-gray-400">—</span>

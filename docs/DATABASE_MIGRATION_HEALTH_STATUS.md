@@ -1,46 +1,61 @@
 # Database Schema Update - Activity Status Separation
 
+## ⚠️ CRITICAL: Two Separate Fields
+
 ## Overview
 We need to separate the user-entered activity status from the auto-calculated health status to provide better visibility and control.
+
+**IMPORTANT:** These are TWO COMPLETELY SEPARATE fields that should NEVER contain the same values!
 
 ## Changes Required
 
 ### 1. Activities Table
 
-#### Add New Column
+#### Column 1: `status` (Existing - User Entered)
+This column stores what the USER manually sets:
+- **Values:** `not-started`, `in-progress`, `completed`, `blocked`, `cancelled`
+- **Updated by:** User via UI
+- **Never contains:** Auto-calculated values like "on-track" or "at-risk"
+
+#### Column 2: `auto_status` (New - Auto Calculated)
+This column stores what the SYSTEM calculates based on dates, budget, etc:
+- **Values:** `on-track`, `at-risk`, `behind-schedule`
+- **Updated by:** Backend auto-calculation job ONLY
+- **Never contains:** User status values like "in-progress" or "blocked"
+
 ```sql
-ALTER TABLE activities ADD COLUMN health_status VARCHAR(50);
+ALTER TABLE activities ADD COLUMN auto_status VARCHAR(50);
 ```
 
 **Column Details:**
-- **Name:** `health_status`
+- **Name:** `auto_status` (NOT health_status)
 - **Type:** VARCHAR(50) or ENUM
 - **Nullable:** YES (optional, only set when auto-calculation runs)
-- **Values:**
+- **Values (ONLY these three):**
   - `on-track` - Activity is progressing as planned
   - `at-risk` - Activity may face issues or delays
   - `behind-schedule` - Activity is delayed
 
-#### Keep Existing Status Column
-The existing `status` column remains for user-entered values:
-- `not-started`
-- `in-progress`
-- `completed`
-- `blocked`
-- `cancelled`
+### 2. ⚠️ CRITICAL API BEHAVIOR - DO NOT COPY VALUES BETWEEN FIELDS
 
-### 2. API Updates Needed
+## THE PROBLEM WE ARE FIXING:
+Currently, when a user changes status to "in-progress", the backend is incorrectly saving "in-progress" to BOTH `status` AND `auto_status` columns. This is WRONG!
+
+- ✅ CORRECT: `status` = "in-progress", `auto_status` = "on-track"
+- ❌ WRONG: `status` = "in-progress", `auto_status` = "in-progress" (INVALID!)
+
+### API Updates Needed
 
 #### GET /api/activities
-Response should include both fields:
+Response should include both fields with DIFFERENT values:
 ```json
 {
   "data": [
     {
       "id": 1,
       "name": "Training Session",
-      "status": "in-progress",        // User-entered
-      "health_status": "at-risk",     // Auto-calculated
+      "status": "in-progress",     // ✅ User-entered (what user set)
+      "auto_status": "at-risk",    // ✅ Auto-calculated (what system thinks)
       "approval_status": "approved",
       ...
     }
@@ -48,69 +63,141 @@ Response should include both fields:
 }
 ```
 
-#### POST/PUT /api/activities/:id/status
-This endpoint should ONLY update the user `status` field.
-The `health_status` should be auto-calculated separately based on:
+**INVALID Example (What's happening now - WRONG):**
+```json
+{
+  "status": "in-progress",
+  "auto_status": "in-progress"  // ❌ WRONG! auto_status should be on-track/at-risk/behind-schedule
+}
+```
+
+#### POST /api/activities/:id/status
+**CRITICAL:** This endpoint should ONLY update the `status` field!
+
+**Request:**
+```json
+{
+  "status": "in-progress"
+}
+```
+
+**Backend Logic:**
+```javascript
+// ✅ CORRECT
+activity.status = req.body.status;  // Update user status
+// Do NOT touch auto_status here!
+
+// ❌ WRONG - DO NOT DO THIS
+activity.status = req.body.status;
+activity.auto_status = req.body.status;  // WRONG! Never copy!
+```
+
+The `auto_status` should be calculated separately based on:
 - Activity dates vs current date
 - Progress indicators
 - Budget utilization
 - Completion percentage
 
-### 3. Auto-Calculation Logic (Backend)
+### 3. ⚠️ CRITICAL: Auto-Calculation Logic (Backend)
 
-Create a job/function that calculates `health_status` based on:
+**THE SECOND PROBLEM:**
+The auto-calculation job is ALSO incorrectly updating BOTH fields. After user changes status, the auto-calc runs and overwrites the user's choice!
+
+- ❌ WRONG: User sets status="in-progress" → Auto-calc updates BOTH status AND auto_status → User's choice is lost!
+- ✅ CORRECT: User sets status="in-progress" → Auto-calc updates ONLY auto_status → User's choice is preserved!
+
+Create a job/function that calculates `auto_status` based on:
 
 ```javascript
-// Pseudo-code for health_status calculation
-function calculateHealthStatus(activity) {
+// ✅ CORRECT - Pseudo-code for auto_status calculation
+async function calculateAndUpdateAutoStatus(activityId) {
+  // Step 1: Read the activity
+  const activity = await db.query('SELECT * FROM activities WHERE id = ?', [activityId]);
+
   const today = new Date();
   const activityDate = new Date(activity.activity_date);
   const daysUntil = (activityDate - today) / (1000 * 60 * 60 * 24);
 
+  let autoStatus = null;
+
+  // Calculate auto_status based on activity.status and dates
+  // IMPORTANT: We READ from activity.status but NEVER WRITE to it!
+
   // If activity is in the past and not completed
   if (daysUntil < 0 && activity.status !== 'completed') {
-    return 'behind-schedule';
+    autoStatus = 'behind-schedule';
   }
-
   // If activity is soon (< 7 days) and not started
-  if (daysUntil < 7 && activity.status === 'not-started') {
-    return 'at-risk';
+  else if (daysUntil < 7 && activity.status === 'not-started') {
+    autoStatus = 'at-risk';
   }
-
   // If blocked or has issues
-  if (activity.status === 'blocked') {
-    return 'at-risk';
+  else if (activity.status === 'blocked') {
+    autoStatus = 'at-risk';
   }
-
   // If budget is overspent
-  if (activity.budget_spent > activity.budget_allocated * 1.1) {
-    return 'at-risk';
+  else if (activity.budget_spent > activity.budget_allocated * 1.1) {
+    autoStatus = 'at-risk';
   }
-
   // Everything looks good
-  if (activity.status === 'in-progress' || activity.status === 'not-started') {
-    return 'on-track';
+  else if (activity.status === 'in-progress' || activity.status === 'not-started') {
+    autoStatus = 'on-track';
+  }
+  // No auto_status for completed/cancelled
+  else {
+    autoStatus = null;
   }
 
-  return null; // No health status for completed/cancelled
+  // Step 2: ✅ CRITICAL - Update ONLY auto_status, NOT status!
+  await db.query(
+    'UPDATE activities SET auto_status = ? WHERE id = ?',
+    [autoStatus, activityId]
+  );
+
+  // ❌ WRONG - DO NOT DO THIS:
+  // await db.query(
+  //   'UPDATE activities SET status = ?, auto_status = ? WHERE id = ?',
+  //   [someValue, autoStatus, activityId]  // WRONG! Never update status here!
+  // );
 }
+```
+
+**Example of How Auto-Calc Should Work:**
+
+```javascript
+// Before auto-calc runs:
+// status = "in-progress" (user set this)
+// auto_status = "on-track" (old value)
+
+await calculateAndUpdateAutoStatus(123);
+
+// After auto-calc runs:
+// status = "in-progress" (UNCHANGED - user's choice preserved!)
+// auto_status = "at-risk" (UPDATED - system calculated new health)
 ```
 
 ### 4. Database Migration
 
 ```sql
--- Migration: Add health_status column to activities table
+-- Migration: Add auto_status column to activities table
 
 -- Step 1: Add the column
 ALTER TABLE activities
-ADD COLUMN health_status VARCHAR(50) DEFAULT NULL;
+ADD COLUMN auto_status VARCHAR(50) DEFAULT NULL;
 
 -- Step 2: Add index for better query performance
-CREATE INDEX idx_activities_health_status ON activities(health_status);
+CREATE INDEX idx_activities_auto_status ON activities(auto_status);
 
--- Step 3: Initial calculation (optional - can be done via API)
+-- Step 3: Add constraint to ensure only valid values
+ALTER TABLE activities
+ADD CONSTRAINT chk_auto_status
+CHECK (auto_status IS NULL OR auto_status IN ('on-track', 'at-risk', 'behind-schedule'));
+
+-- Step 4: Initial calculation (optional - can be done via API)
+-- IMPORTANT: This uses the USER status to CALCULATE auto_status
+-- They will have DIFFERENT values!
 UPDATE activities
-SET health_status = CASE
+SET auto_status = CASE
   WHEN status = 'completed' THEN NULL
   WHEN status = 'cancelled' THEN NULL
   WHEN status = 'blocked' THEN 'at-risk'
@@ -128,19 +215,48 @@ WHERE status IS NOT NULL;
 POST /api/activities/:id/status
 Body: { "status": "in-progress" }
 ```
-- This updates ONLY the `status` field
-- Does NOT modify `health_status`
 
-#### Recalculate Health Status
+**Backend Implementation:**
+```javascript
+// ✅ CORRECT
+router.post('/activities/:id/status', async (req, res) => {
+  const { status } = req.body;
+
+  // ONLY update the status field
+  await db.query(
+    'UPDATE activities SET status = ? WHERE id = ?',
+    [status, req.params.id]
+  );
+
+  // Do NOT update auto_status here!
+  // It will be updated by the scheduled job
+});
 ```
-POST /api/activities/:id/recalculate-health
+
+**❌ WRONG Implementation (Current Problem):**
+```javascript
+// ❌ DO NOT DO THIS
+router.post('/activities/:id/status', async (req, res) => {
+  const { status } = req.body;
+
+  // WRONG! Don't copy status to auto_status
+  await db.query(
+    'UPDATE activities SET status = ?, auto_status = ? WHERE id = ?',
+    [status, status, req.params.id]  // ❌ This is the bug!
+  );
+});
+```
+
+#### Recalculate Auto Status
+```
+POST /api/activities/:id/recalculate-auto-status
 ```
 - This runs the auto-calculation logic
-- Updates ONLY the `health_status` field
+- Updates ONLY the `auto_status` field
 
 #### Bulk Recalculation (Scheduled Job)
 ```
-POST /api/activities/recalculate-all-health
+POST /api/activities/recalculate-all-auto-status
 ```
 - Runs for all activities
 - Should be scheduled to run daily/hourly
@@ -148,26 +264,60 @@ POST /api/activities/recalculate-all-health
 ### 6. Frontend Changes (Already Implemented)
 
 The frontend has been updated to:
-- Display both statuses separately
-- Allow users to change only the `status` field
-- Show `health_status` as a read-only badge with icons:
+- Use `auto_status` field (not `health_status`)
+- Display both statuses separately in card and list views
+- Allow users to change only the `status` field via dropdown
+- Show `auto_status` as a read-only badge with icons:
   - ✓ On Track (Green)
   - ⚠️ At Risk (Yellow)
   - 🚨 Behind Schedule (Red)
+
+**Frontend Interface:**
+```typescript
+interface Activity {
+  status: string;           // User-entered: not-started, in-progress, completed, blocked, cancelled
+  auto_status?: string;     // Auto-calculated: on-track, at-risk, behind-schedule
+}
+```
 
 ## Benefits
 
 1. **Clear Separation:** User control vs system calculation
 2. **Better Visibility:** See both what user set AND system assessment
 3. **No Conflicts:** User can mark as "in-progress" while system shows "at-risk"
-4. **Proactive Alerts:** Auto health status helps identify issues early
+4. **Proactive Alerts:** Auto status helps identify issues early
 5. **Audit Trail:** Both statuses are tracked independently
 
 ## Testing Checklist
 
-- [ ] Migration runs successfully
+- [ ] Migration runs successfully with `auto_status` column
+- [ ] Database constraint prevents invalid auto_status values
 - [ ] Existing activities can be fetched with new field
-- [ ] User status changes work without affecting health_status
+- [ ] ✅ **CRITICAL:** User status changes ONLY update `status` field, NOT `auto_status`
+- [ ] ✅ **CRITICAL:** `status` and `auto_status` contain DIFFERENT values
 - [ ] Auto-calculation job runs correctly
 - [ ] Frontend displays both statuses properly
 - [ ] Filters work with both status fields
+
+## Example Test Cases
+
+### Test Case 1: User Changes Status
+```
+Before: status = "not-started", auto_status = "on-track"
+User Action: Change status to "in-progress"
+After: status = "in-progress", auto_status = "on-track" (unchanged)
+```
+
+### Test Case 2: Auto Calculation Updates
+```
+Before: status = "in-progress", auto_status = "on-track"
+System Action: Activity date is tomorrow, auto-calculation runs
+After: status = "in-progress" (unchanged), auto_status = "at-risk" (updated)
+```
+
+### Test Case 3: Invalid Auto Status
+```
+Attempt: Set auto_status = "in-progress"
+Result: Database constraint violation (should fail)
+Expected: auto_status can only be on-track/at-risk/behind-schedule
+```
