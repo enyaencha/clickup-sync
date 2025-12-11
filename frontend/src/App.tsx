@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Login from './components/Login';
@@ -27,11 +28,12 @@ import AgricultureMonitoring from './components/AgricultureMonitoring';
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/login" element={<Login />} />
 
           {/* Protected Routes */}
           <Route
@@ -92,6 +94,7 @@ const App: React.FC = () => {
         </Routes>
       </Router>
     </AuthProvider>
+    </ThemeProvider>
   );
 };
 
