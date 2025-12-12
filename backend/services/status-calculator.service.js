@@ -163,18 +163,17 @@ class StatusCalculatorService {
         );
 
         // Update activity
-        // CRITICAL: Update both status and auto_status with calculated value
-        // BUT NEVER touch manual_status (that's the user's choice)
+        // CRITICAL: Only update auto_status (health status), NEVER update status (user's choice)
+        // The status column contains user's manual status (in-progress, completed, etc.)
+        // The auto_status column contains calculated health (on-track, at-risk, etc.)
         await this.db.query(
             `UPDATE activities
              SET auto_status = ?,
-                 status = ?,
                  progress_percentage = ?,
                  status_reason = ?,
                  last_status_update = CURRENT_TIMESTAMP
              WHERE id = ?`,
             [
-                calculated.status || null,
                 calculated.status || null,
                 calculated.progress || 0,
                 calculated.statusReason || null,

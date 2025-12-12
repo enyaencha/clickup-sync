@@ -348,12 +348,10 @@ class MEService {
     }
 
     async updateActivityStatus(id, status) {
-        // CRITICAL FIX: Update manual_status (user's choice) instead of status
-        // The 'status' field should only be updated by auto-calculation
-        // This preserves the user's manual status choice
+        // Update user's status choice in the status column
         await this.db.query(`
             UPDATE activities
-            SET manual_status = ?, updated_at = NOW()
+            SET status = ?, updated_at = NOW()
             WHERE id = ?
         `, [status, id]);
 
