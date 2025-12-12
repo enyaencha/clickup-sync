@@ -71,7 +71,12 @@ const ActivityObjectivesModal: React.FC<ActivityObjectivesModalProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...newIndicator,
+          name: newIndicator.name.trim(),
+          description: newIndicator.description.trim() || null,
+          baseline_value: newIndicator.baseline_value || null,
+          target_value: newIndicator.target_value || null,
+          unit_of_measure: newIndicator.unit_of_measure.trim() || null,
+          type: newIndicator.type || 'output',
           activity_id: activityId,
           code: `IND-${activityId}-${Date.now()}`,
           current_value: newIndicator.baseline_value || 0,
