@@ -90,6 +90,21 @@ const AllActivities: React.FC = () => {
   // Dropdown state
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.dropdown-container')) {
+        setOpenDropdownId(null);
+      }
+    };
+
+    if (openDropdownId !== null) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [openDropdownId]);
+
   // Fetch modules on mount
   useEffect(() => {
     fetchModules();
@@ -525,9 +540,12 @@ const AllActivities: React.FC = () => {
                     {activity.name}
                   </h3>
                   {/* 3-Dot Menu */}
-                  <div className="relative ml-2">
+                  <div className="relative ml-2 dropdown-container">
                     <button
-                      onClick={() => setOpenDropdownId(openDropdownId === activity.id ? null : activity.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenDropdownId(openDropdownId === activity.id ? null : activity.id);
+                      }}
                       className="text-white hover:bg-white/20 rounded-full p-1.5 transition-colors"
                     >
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -738,9 +756,12 @@ const AllActivities: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {/* 3-Dot Menu */}
-                      <div className="relative">
+                      <div className="relative dropdown-container">
                         <button
-                          onClick={() => setOpenDropdownId(openDropdownId === activity.id ? null : activity.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenDropdownId(openDropdownId === activity.id ? null : activity.id);
+                          }}
                           className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full p-1"
                         >
                           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -819,7 +840,9 @@ const AllActivities: React.FC = () => {
       {/* Verification Modal */}
       {showVerificationModal && selectedActivity && (
         <ActivityVerificationModal
-          activity={selectedActivity}
+          isOpen={showVerificationModal}
+          activityId={selectedActivity.id}
+          activityName={selectedActivity.name}
           onClose={() => {
             setShowVerificationModal(false);
             setSelectedActivity(null);
