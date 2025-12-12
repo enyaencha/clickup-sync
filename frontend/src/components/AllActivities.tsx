@@ -828,7 +828,9 @@ const AllActivities: React.FC = () => {
       {/* Objectives Modal */}
       {showObjectivesModal && selectedActivity && (
         <ActivityObjectivesModal
-          activity={selectedActivity}
+          isOpen={showObjectivesModal}
+          activityId={selectedActivity.id}
+          activityName={selectedActivity.name}
           onClose={() => {
             setShowObjectivesModal(false);
             setSelectedActivity(null);
@@ -854,7 +856,9 @@ const AllActivities: React.FC = () => {
       {/* Outcome Modal */}
       {showOutcomeModal && selectedActivity && (
         <ActivityOutcomeModal
-          activity={selectedActivity}
+          isOpen={showOutcomeModal}
+          activityId={selectedActivity.id}
+          activityName={selectedActivity.name}
           onClose={() => {
             setShowOutcomeModal(false);
             setSelectedActivity(null);
