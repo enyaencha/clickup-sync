@@ -16,19 +16,18 @@ interface Activity {
   activity_date: string;
   location: string;
 
-  // USER-ENTERED STATUS (manually set by user via UI)
+  // USER'S MANUAL STATUS (what user sets via dropdown)
   // Values: not-started, in-progress, completed, blocked, cancelled
-  // This is the field we WRITE to when user changes status
-  manual_status: string | null;
+  // This is what we display in status dropdown and user can edit
+  status: string;
 
-  // AUTO-CALCULATED STATUS (set by backend calculation only)
+  // AUTO-CALCULATED HEALTH STATUS (set by backend calculation)
   // Values: on-track, at-risk, behind-schedule
-  // This field is READ-ONLY from frontend perspective
+  // This is read-only, shown in health badge
   auto_status?: string;
 
-  // LEGACY: Backend still has 'status' field (contains auto-calculated value)
-  // We read this as fallback but should not write to it
-  status?: string;
+  // For manual health override (advanced feature, not used in normal flow)
+  manual_status?: string | null;
 
   approval_status: string;
   target_beneficiaries: number;
@@ -256,9 +255,9 @@ const Activities: React.FC = () => {
     setExpandedChecklistId(expandedChecklistId === activityId ? null : activityId);
   };
 
-  // Helper to get user status (manual_status with fallback)
+  // Helper to get user status from status field
   const getUserStatus = (activity: Activity): string => {
-    return activity.manual_status || 'not-started';
+    return activity.status || 'not-started';
   };
 
   const filteredActivities = activities.filter((activity) => {
