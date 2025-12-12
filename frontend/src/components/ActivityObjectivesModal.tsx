@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
 
-interface Objective {
+interface Indicator {
   id: number;
   activity_id: number;
-  objective_text: string;
-  target_value: string;
-  achieved_value: string;
+  name: string;
+  description: string;
+  baseline_value: number;
+  target_value: number;
+  current_value: number;
+  achievement_percentage: number;
+  unit_of_measure: string;
   status: string;
-  created_at: string;
+  type: string;
 }
 
 interface ActivityObjectivesModalProps {
@@ -24,87 +28,109 @@ const ActivityObjectivesModal: React.FC<ActivityObjectivesModalProps> = ({
   activityId,
   activityName,
 }) => {
-  const [objectives, setObjectives] = useState<Objective[]>([]);
+  const [indicators, setIndicators] = useState<Indicator[]>([]);
   const [loading, setLoading] = useState(false);
-  const [newObjective, setNewObjective] = useState({
-    objective_text: '',
-    target_value: '',
-    status: 'not-started',
+  const [newIndicator, setNewIndicator] = useState({
+    name: '',
+    description: '',
+    baseline_value: 0,
+    target_value: 0,
+    unit_of_measure: '',
+    type: 'output',
   });
 
   useEffect(() => {
     if (isOpen) {
-      fetchObjectives();
+      fetchIndicators();
     }
   }, [isOpen, activityId]);
 
-  const fetchObjectives = async () => {
+  const fetchIndicators = async () => {
     try {
       setLoading(true);
-      const response = await authFetch(`/api/activities/${activityId}/objectives`);
+      const response = await authFetch(`/api/indicators/entity/activity/${activityId}`);
       if (response.ok) {
         const data = await response.json();
-        setObjectives(data.data || []);
+        setIndicators(data.data || []);
       }
       setLoading(false);
     } catch (err) {
-      console.error('Failed to fetch objectives:', err);
+      console.error('Failed to fetch indicators:', err);
       setLoading(false);
     }
   };
 
-  const handleAddObjective = async () => {
-    if (!newObjective.objective_text.trim()) {
-      alert('Please enter an objective');
+  const handleAddIndicator = async () => {
+    if (!newIndicator.name.trim()) {
+      alert('Please enter indicator name');
       return;
     }
 
     try {
-      const response = await authFetch(`/api/activities/${activityId}/objectives`, {
+      const response = await authFetch(`/api/indicators`, {
         method: 'POST',
-        body: JSON.stringify(newObjective),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newIndicator,
+          activity_id: activityId,
+          code: `IND-${activityId}-${Date.now()}`,
+          current_value: newIndicator.baseline_value || 0,
+          status: 'not-started',
+        }),
       });
 
       if (response.ok) {
-        setNewObjective({ objective_text: '', target_value: '', status: 'not-started' });
-        await fetchObjectives();
+        setNewIndicator({
+          name: '',
+          description: '',
+          baseline_value: 0,
+          target_value: 0,
+          unit_of_measure: '',
+          type: 'output',
+        });
+        await fetchIndicators();
       } else {
-        alert('Failed to add objective');
+        const errorData = await response.json();
+        alert('Failed to add indicator: ' + (errorData.error || 'Unknown error'));
       }
     } catch (err) {
-      console.error('Failed to add objective:', err);
-      alert('Failed to add objective');
+      console.error('Failed to add indicator:', err);
+      alert('Failed to add indicator');
     }
   };
 
-  const handleUpdateObjective = async (objectiveId: number, updates: Partial<Objective>) => {
+  const handleUpdateCurrentValue = async (indicatorId: number, currentValue: number) => {
     try {
-      const response = await authFetch(`/api/activities/${activityId}/objectives/${objectiveId}`, {
-        method: 'PUT',
-        body: JSON.stringify(updates),
+      const response = await authFetch(`/api/indicators/${indicatorId}/value`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          value: currentValue,
+          measurement_date: new Date().toISOString().split('T')[0],
+        }),
       });
 
       if (response.ok) {
-        await fetchObjectives();
+        await fetchIndicators();
       }
     } catch (err) {
-      console.error('Failed to update objective:', err);
+      console.error('Failed to update current value:', err);
     }
   };
 
-  const handleDeleteObjective = async (objectiveId: number) => {
-    if (!confirm('Delete this objective?')) return;
+  const handleDeleteIndicator = async (indicatorId: number) => {
+    if (!confirm('Delete this indicator?')) return;
 
     try {
-      const response = await authFetch(`/api/activities/${activityId}/objectives/${objectiveId}`, {
+      const response = await authFetch(`/api/indicators/${indicatorId}`, {
         method: 'DELETE',
       });
 
       if (response.ok) {
-        await fetchObjectives();
+        await fetchIndicators();
       }
     } catch (err) {
-      console.error('Failed to delete objective:', err);
+      console.error('Failed to delete indicator:', err);
     }
   };
 
@@ -124,7 +150,7 @@ const ActivityObjectivesModal: React.FC<ActivityObjectivesModalProps> = ({
           <div>
             <h2 className="text-2xl font-bold flex items-center gap-3">
               <span className="text-3xl">🎯</span>
-              Activity Objectives
+              Activity Indicators & Objectives
             </h2>
             <p className="text-purple-100 text-sm mt-1">{activityName}</p>
           </div>
@@ -140,115 +166,130 @@ const ActivityObjectivesModal: React.FC<ActivityObjectivesModalProps> = ({
 
         {/* Content */}
         <div className="p-6">
-          {/* Add New Objective */}
+          {/* Add New Indicator */}
           <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-5 mb-6 border-2 border-purple-200">
             <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <span className="text-xl">➕</span>
-              Add New Objective
+              Add New Indicator
             </h3>
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Objective Description *
+                  Indicator Name *
+                </label>
+                <input
+                  type="text"
+                  value={newIndicator.name}
+                  onChange={(e) => setNewIndicator({ ...newIndicator, name: e.target.value })}
+                  placeholder="e.g., Number of farmers trained"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
                 </label>
                 <textarea
-                  value={newObjective.objective_text}
-                  onChange={(e) => setNewObjective({ ...newObjective, objective_text: e.target.value })}
-                  placeholder="e.g., Train 50 farmers on sustainable agriculture practices"
+                  value={newIndicator.description}
+                  onChange={(e) => setNewIndicator({ ...newIndicator, description: e.target.value })}
+                  placeholder="Describe how this indicator is measured..."
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   rows={2}
                 />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Target Value
+                    Unit of Measure
                   </label>
                   <input
                     type="text"
-                    value={newObjective.target_value}
-                    onChange={(e) => setNewObjective({ ...newObjective, target_value: e.target.value })}
-                    placeholder="e.g., 50 farmers, 100%, 10 sessions"
+                    value={newIndicator.unit_of_measure}
+                    onChange={(e) => setNewIndicator({ ...newIndicator, unit_of_measure: e.target.value })}
+                    placeholder="e.g., farmers, %, sessions"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Initial Status
+                    Baseline Value
                   </label>
-                  <select
-                    value={newObjective.status}
-                    onChange={(e) => setNewObjective({ ...newObjective, status: e.target.value })}
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={newIndicator.baseline_value}
+                    onChange={(e) => setNewIndicator({ ...newIndicator, baseline_value: parseFloat(e.target.value) || 0 })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  >
-                    <option value="not-started">Not Started</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="achieved">Achieved</option>
-                    <option value="partially-achieved">Partially Achieved</option>
-                  </select>
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Target Value *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={newIndicator.target_value}
+                    onChange={(e) => setNewIndicator({ ...newIndicator, target_value: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
                 </div>
               </div>
               <button
-                onClick={handleAddObjective}
-                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
+                onClick={handleAddIndicator}
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
               >
-                ➕ Add Objective
+                ➕ Add Indicator
               </button>
             </div>
           </div>
 
-          {/* Objectives List */}
+          {/* Indicators List */}
           {loading ? (
             <div className="flex justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
             </div>
-          ) : objectives.length === 0 ? (
+          ) : indicators.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-xl">
               <span className="text-6xl mb-4 block">🎯</span>
-              <p className="text-gray-600 text-lg font-medium">No objectives added yet</p>
-              <p className="text-gray-500 text-sm mt-2">Start by adding your first objective above</p>
+              <p className="text-gray-600 text-lg font-medium">No indicators added yet</p>
+              <p className="text-gray-500 text-sm mt-2">Start by adding your first indicator above</p>
             </div>
           ) : (
             <div className="space-y-4">
               <h3 className="font-semibold text-gray-900 text-lg mb-4">
-                Current Objectives ({objectives.length})
+                Activity Indicators ({indicators.length})
               </h3>
-              {objectives.map((objective, index) => (
+              {indicators.map((indicator, index) => (
                 <div
-                  key={objective.id}
+                  key={indicator.id}
                   className="bg-white border-2 border-gray-200 rounded-xl p-5 hover:border-purple-300 hover:shadow-md transition-all"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
+                      <div className="flex items-center gap-3 mb-2 flex-wrap">
                         <span className="bg-purple-100 text-purple-700 text-sm font-bold px-3 py-1 rounded-full">
                           #{index + 1}
                         </span>
-                        <select
-                          value={objective.status}
-                          onChange={(e) => handleUpdateObjective(objective.id, { status: e.target.value })}
-                          className={`text-sm font-semibold rounded-lg px-3 py-1 border-0 cursor-pointer ${
-                            objective.status === 'achieved'
-                              ? 'bg-green-100 text-green-800'
-                              : objective.status === 'in-progress'
-                              ? 'bg-blue-100 text-blue-800'
-                              : objective.status === 'partially-achieved'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}
-                        >
-                          <option value="not-started">Not Started</option>
-                          <option value="in-progress">In Progress</option>
-                          <option value="achieved">Achieved</option>
-                          <option value="partially-achieved">Partially Achieved</option>
-                        </select>
+                        <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-1 rounded uppercase">
+                          {indicator.type}
+                        </span>
+                        {indicator.unit_of_measure && (
+                          <span className="text-sm text-gray-600">
+                            Unit: {indicator.unit_of_measure}
+                          </span>
+                        )}
                       </div>
-                      <p className="text-gray-900 font-medium text-lg">{objective.objective_text}</p>
+                      <p className="text-gray-900 font-medium text-lg mb-2">{indicator.name}</p>
+                      {indicator.description && (
+                        <p className="text-sm text-gray-600 mb-3">{indicator.description}</p>
+                      )}
                     </div>
                     <button
-                      onClick={() => handleDeleteObjective(objective.id)}
+                      onClick={() => handleDeleteIndicator(indicator.id)}
                       className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors ml-3"
-                      title="Delete objective"
+                      title="Delete indicator"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -256,26 +297,55 @@ const ActivityObjectivesModal: React.FC<ActivityObjectivesModalProps> = ({
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Baseline</label>
+                      <p className="text-lg font-bold text-gray-900">{indicator.baseline_value}</p>
+                    </div>
                     <div className="bg-purple-50 rounded-lg p-3">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Target Value</label>
-                      <input
-                        type="text"
-                        value={objective.target_value || ''}
-                        onChange={(e) => handleUpdateObjective(objective.id, { target_value: e.target.value })}
-                        placeholder="Set target"
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      />
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Target</label>
+                      <p className="text-lg font-bold text-purple-700">{indicator.target_value}</p>
                     </div>
                     <div className="bg-green-50 rounded-lg p-3">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Achieved Value</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Current Value</label>
                       <input
-                        type="text"
-                        value={objective.achieved_value || ''}
-                        onChange={(e) => handleUpdateObjective(objective.id, { achieved_value: e.target.value })}
-                        placeholder="Enter achieved"
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        type="number"
+                        step="0.01"
+                        value={indicator.current_value}
+                        onChange={(e) => handleUpdateCurrentValue(indicator.id, parseFloat(e.target.value) || 0)}
+                        className="w-full px-2 py-1 text-lg font-bold text-green-700 bg-white border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent"
                       />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-700">Achievement Progress:</span>
+                      <span className={`text-xl font-bold ${
+                        (indicator.achievement_percentage || 0) >= 100
+                          ? 'text-green-600'
+                          : (indicator.achievement_percentage || 0) >= 75
+                          ? 'text-blue-600'
+                          : (indicator.achievement_percentage || 0) >= 50
+                          ? 'text-yellow-600'
+                          : 'text-red-600'
+                      }`}>
+                        {indicator.achievement_percentage || 0}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full transition-all ${
+                          (indicator.achievement_percentage || 0) >= 100
+                            ? 'bg-green-600'
+                            : (indicator.achievement_percentage || 0) >= 75
+                            ? 'bg-blue-600'
+                            : (indicator.achievement_percentage || 0) >= 50
+                            ? 'bg-yellow-600'
+                            : 'bg-red-600'
+                        }`}
+                        style={{ width: `${Math.min(indicator.achievement_percentage || 0, 100)}%` }}
+                      ></div>
                     </div>
                   </div>
                 </div>
