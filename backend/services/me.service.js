@@ -318,7 +318,14 @@ class MEService {
             SET name = ?, description = ?,
                 activity_date = ?, status = ?, approval_status = ?,
                 actual_beneficiaries = ?, budget_spent = ?,
-                progress_percentage = ?, updated_at = NOW()
+                progress_percentage = ?,
+                outcome_notes = ?,
+                challenges_faced = ?,
+                lessons_learned = ?,
+                recommendations = ?,
+                immediate_objectives = ?,
+                expected_results = ?,
+                updated_at = NOW()
             WHERE id = ?
         `, [
             data.name,
@@ -329,6 +336,12 @@ class MEService {
             toNull(data.actual_beneficiaries),
             toNull(data.budget_spent),
             toNull(data.progress_percentage),
+            toNull(data.outcome_notes),
+            toNull(data.challenges_faced),
+            toNull(data.lessons_learned),
+            toNull(data.recommendations),
+            toNull(data.immediate_objectives),
+            toNull(data.expected_results),
             id
         ]);
 

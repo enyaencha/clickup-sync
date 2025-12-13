@@ -15,6 +15,12 @@ interface Activity {
     status_override?: boolean;
     progress_percentage?: number;
     risk_level?: string;
+    immediate_objectives?: string;
+    expected_results?: string;
+    outcome_notes?: string;
+    challenges_faced?: string;
+    lessons_learned?: string;
+    recommendations?: string;
     indicators?: Indicator[];
     means_of_verification?: MeansOfVerification[];
 }
@@ -424,7 +430,55 @@ const LogframeTemplateView: React.FC = () => {
 
                                             {/* Activity */}
                                             <td className="border border-gray-300 px-4 py-2">
-                                                {activity ? activity.name : ''}
+                                                {activity ? (
+                                                    <div className="space-y-2">
+                                                        <div className="font-medium text-gray-900">{activity.name}</div>
+
+                                                        {/* Objectives */}
+                                                        {activity.immediate_objectives && (
+                                                            <div className="text-xs">
+                                                                <span className="font-semibold text-purple-700">Objectives: </span>
+                                                                <span className="text-gray-700">{activity.immediate_objectives}</span>
+                                                            </div>
+                                                        )}
+
+                                                        {activity.expected_results && (
+                                                            <div className="text-xs">
+                                                                <span className="font-semibold text-indigo-700">Expected Results: </span>
+                                                                <span className="text-gray-700">{activity.expected_results}</span>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Outcomes */}
+                                                        {activity.outcome_notes && (
+                                                            <div className="text-xs mt-2 pt-2 border-t border-gray-200">
+                                                                <span className="font-semibold text-green-700">Outcomes: </span>
+                                                                <span className="text-gray-700">{activity.outcome_notes}</span>
+                                                            </div>
+                                                        )}
+
+                                                        {activity.challenges_faced && (
+                                                            <div className="text-xs">
+                                                                <span className="font-semibold text-orange-700">Challenges: </span>
+                                                                <span className="text-gray-700">{activity.challenges_faced}</span>
+                                                            </div>
+                                                        )}
+
+                                                        {activity.lessons_learned && (
+                                                            <div className="text-xs">
+                                                                <span className="font-semibold text-blue-700">Lessons: </span>
+                                                                <span className="text-gray-700">{activity.lessons_learned}</span>
+                                                            </div>
+                                                        )}
+
+                                                        {activity.recommendations && (
+                                                            <div className="text-xs">
+                                                                <span className="font-semibold text-teal-700">Recommendations: </span>
+                                                                <span className="text-gray-700">{activity.recommendations}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : ''}
                                             </td>
 
                                         {/* Indicators */}
