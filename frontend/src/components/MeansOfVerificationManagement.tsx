@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { authFetch } from '../config/api';
+import { authFetch, API_BASE_URL } from '../config/api';
 import EvidenceViewer from './EvidenceViewer';
 
 interface Verification {
@@ -951,7 +951,7 @@ const MeansOfVerificationManagement: React.FC = () => {
                             <div key={attachment.id} className="flex items-center justify-between p-2 bg-gray-50 rounded text-xs sm:text-sm">
                               <div className="flex-1 min-w-0">
                                 <a
-                                  href={`http://localhost:3000${attachment.file_path || attachment.file_url}`}
+                                  href={`${API_BASE_URL}${attachment.file_path || attachment.file_url}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-blue-600 hover:underline font-medium truncate block"
