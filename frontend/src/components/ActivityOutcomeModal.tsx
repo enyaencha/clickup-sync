@@ -70,9 +70,13 @@ const ActivityOutcomeModal: React.FC<ActivityOutcomeModalProps> = ({
   };
 
   const handleSaveOutcome = async () => {
+    if (!activity) return;
+
     try {
-      // Prepare data with proper null handling
+      // Merge outcome data with existing activity data - PUT requires ALL fields
       const payload = {
+        ...activity, // Start with all existing fields
+        // Override only outcome-related fields with proper null handling
         actual_beneficiaries: formData.actual_beneficiaries || null,
         budget_spent: formData.budget_spent || null,
         outcome_notes: formData.outcome_notes.trim() || null,

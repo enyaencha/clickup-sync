@@ -1,18 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
 
-interface Indicator {
+interface Activity {
   id: number;
-  activity_id: number;
   name: string;
+  immediate_objectives: string;
+  expected_results: string;
   description: string;
-  baseline_value: number;
-  target_value: number;
-  current_value: number;
-  achievement_percentage: number;
-  unit_of_measure: string;
-  status: string;
-  type: string;
 }
 
 interface ActivityObjectivesModalProps {
@@ -28,132 +22,67 @@ const ActivityObjectivesModal: React.FC<ActivityObjectivesModalProps> = ({
   activityId,
   activityName,
 }) => {
-  const [indicators, setIndicators] = useState<Indicator[]>([]);
+  const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(false);
-  const [newIndicator, setNewIndicator] = useState({
-    name: '',
-    description: '',
-    baseline_value: 0,
-    target_value: 0,
-    unit_of_measure: '',
-    type: 'output',
+  const [formData, setFormData] = useState({
+    immediate_objectives: '',
+    expected_results: '',
   });
 
   useEffect(() => {
     if (isOpen) {
-      fetchIndicators();
+      fetchActivity();
     }
   }, [isOpen, activityId]);
 
-  const fetchIndicators = async () => {
+  const fetchActivity = async () => {
     try {
       setLoading(true);
-      const response = await authFetch(`/api/indicators/entity/activity/${activityId}`);
+      const response = await authFetch(`/api/activities/${activityId}`);
       if (response.ok) {
         const data = await response.json();
-        setIndicators(data.data || []);
+        setActivity(data.data);
+        setFormData({
+          immediate_objectives: data.data.immediate_objectives || '',
+          expected_results: data.data.expected_results || '',
+        });
       }
       setLoading(false);
     } catch (err) {
-      console.error('Failed to fetch indicators:', err);
+      console.error('Failed to fetch activity:', err);
       setLoading(false);
     }
   };
 
-  const handleAddIndicator = async () => {
-    if (!newIndicator.name.trim()) {
-      alert('Please enter indicator name');
-      return;
-    }
+  const handleSaveObjectives = async () => {
+    if (!activity) return;
 
     try {
-      // Prepare payload with proper null handling - NO undefined values allowed
+      // Merge objectives data with existing activity data - PUT requires ALL fields
       const payload = {
-        name: newIndicator.name.trim(),
-        description: newIndicator.description.trim() || null,
-        baseline_value: newIndicator.baseline_value || null,
-        target_value: newIndicator.target_value || null,
-        unit_of_measure: newIndicator.unit_of_measure.trim() || null,
-        type: newIndicator.type || 'output',
-        activity_id: activityId,
-        code: `IND-${activityId}-${Date.now()}`,
-        current_value: newIndicator.baseline_value || 0,
-        status: 'not-started',
-        // Additional required fields with null defaults
-        program_id: null,
-        project_id: null,
-        module_id: null,
-        sub_program_id: null,
-        component_id: null,
-        category: null,
-        baseline_date: null,
-        target_date: null,
-        collection_frequency: 'monthly',
-        data_source: null,
-        verification_method: null,
-        responsible_person: null,
-        notes: null,
-        clickup_custom_field_id: null,
+        ...activity, // Start with all existing fields
+        // Override only objectives-related fields with proper null handling
+        immediate_objectives: formData.immediate_objectives.trim() || null,
+        expected_results: formData.expected_results.trim() || null,
       };
 
-      const response = await authFetch(`/api/indicators`, {
-        method: 'POST',
+      const response = await authFetch(`/api/activities/${activityId}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
       if (response.ok) {
-        setNewIndicator({
-          name: '',
-          description: '',
-          baseline_value: 0,
-          target_value: 0,
-          unit_of_measure: '',
-          type: 'output',
-        });
-        await fetchIndicators();
+        alert('Objectives saved successfully!');
+        await fetchActivity();
+        onClose();
       } else {
         const errorData = await response.json();
-        alert('Failed to add indicator: ' + (errorData.error || 'Unknown error'));
+        alert('Failed to save objectives: ' + (errorData.error || 'Unknown error'));
       }
     } catch (err) {
-      console.error('Failed to add indicator:', err);
-      alert('Failed to add indicator');
-    }
-  };
-
-  const handleUpdateCurrentValue = async (indicatorId: number, currentValue: number) => {
-    try {
-      const response = await authFetch(`/api/indicators/${indicatorId}/value`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          value: currentValue,
-          measurement_date: new Date().toISOString().split('T')[0],
-        }),
-      });
-
-      if (response.ok) {
-        await fetchIndicators();
-      }
-    } catch (err) {
-      console.error('Failed to update current value:', err);
-    }
-  };
-
-  const handleDeleteIndicator = async (indicatorId: number) => {
-    if (!confirm('Delete this indicator?')) return;
-
-    try {
-      const response = await authFetch(`/api/indicators/${indicatorId}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        await fetchIndicators();
-      }
-    } catch (err) {
-      console.error('Failed to delete indicator:', err);
+      console.error('Failed to save objectives:', err);
+      alert('Failed to save objectives');
     }
   };
 
@@ -173,7 +102,7 @@ const ActivityObjectivesModal: React.FC<ActivityObjectivesModalProps> = ({
           <div>
             <h2 className="text-2xl font-bold flex items-center gap-3">
               <span className="text-3xl">🎯</span>
-              Activity Indicators & Objectives
+              Activity Objectives
             </h2>
             <p className="text-purple-100 text-sm mt-1">{activityName}</p>
           </div>
@@ -189,191 +118,114 @@ const ActivityObjectivesModal: React.FC<ActivityObjectivesModalProps> = ({
 
         {/* Content */}
         <div className="p-6">
-          {/* Add New Indicator */}
-          <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-5 mb-6 border-2 border-purple-200">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <span className="text-xl">➕</span>
-              Add New Indicator
-            </h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Indicator Name *
-                </label>
-                <input
-                  type="text"
-                  value={newIndicator.name}
-                  onChange={(e) => setNewIndicator({ ...newIndicator, name: e.target.value })}
-                  placeholder="e.g., Number of farmers trained"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={newIndicator.description}
-                  onChange={(e) => setNewIndicator({ ...newIndicator, description: e.target.value })}
-                  placeholder="Describe how this indicator is measured..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  rows={2}
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Unit of Measure
-                  </label>
-                  <input
-                    type="text"
-                    value={newIndicator.unit_of_measure}
-                    onChange={(e) => setNewIndicator({ ...newIndicator, unit_of_measure: e.target.value })}
-                    placeholder="e.g., farmers, %, sessions"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Baseline Value
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={newIndicator.baseline_value}
-                    onChange={(e) => setNewIndicator({ ...newIndicator, baseline_value: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Target Value *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={newIndicator.target_value}
-                    onChange={(e) => setNewIndicator({ ...newIndicator, target_value: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-              <button
-                onClick={handleAddIndicator}
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
-              >
-                ➕ Add Indicator
-              </button>
-            </div>
-          </div>
-
-          {/* Indicators List */}
           {loading ? (
             <div className="flex justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
             </div>
-          ) : indicators.length === 0 ? (
+          ) : !activity ? (
             <div className="text-center py-12 bg-gray-50 rounded-xl">
-              <span className="text-6xl mb-4 block">🎯</span>
-              <p className="text-gray-600 text-lg font-medium">No indicators added yet</p>
-              <p className="text-gray-500 text-sm mt-2">Start by adding your first indicator above</p>
+              <span className="text-6xl mb-4 block">⚠️</span>
+              <p className="text-gray-600 text-lg font-medium">Failed to load activity data</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              <h3 className="font-semibold text-gray-900 text-lg mb-4">
-                Activity Indicators ({indicators.length})
-              </h3>
-              {indicators.map((indicator, index) => (
-                <div
-                  key={indicator.id}
-                  className="bg-white border-2 border-gray-200 rounded-xl p-5 hover:border-purple-300 hover:shadow-md transition-all"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2 flex-wrap">
-                        <span className="bg-purple-100 text-purple-700 text-sm font-bold px-3 py-1 rounded-full">
-                          #{index + 1}
-                        </span>
-                        <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-1 rounded uppercase">
-                          {indicator.type}
-                        </span>
-                        {indicator.unit_of_measure && (
-                          <span className="text-sm text-gray-600">
-                            Unit: {indicator.unit_of_measure}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-gray-900 font-medium text-lg mb-2">{indicator.name}</p>
-                      {indicator.description && (
-                        <p className="text-sm text-gray-600 mb-3">{indicator.description}</p>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => handleDeleteIndicator(indicator.id)}
-                      className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors ml-3"
-                      title="Delete indicator"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
+            <>
+              {/* Info Box */}
+              <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Baseline</label>
-                      <p className="text-lg font-bold text-gray-900">{indicator.baseline_value}</p>
-                    </div>
-                    <div className="bg-purple-50 rounded-lg p-3">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Target</label>
-                      <p className="text-lg font-bold text-purple-700">{indicator.target_value}</p>
-                    </div>
-                    <div className="bg-green-50 rounded-lg p-3">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Current Value</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={indicator.current_value}
-                        onChange={(e) => handleUpdateCurrentValue(indicator.id, parseFloat(e.target.value) || 0)}
-                        className="w-full px-2 py-1 text-lg font-bold text-green-700 bg-white border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium text-gray-700">Achievement Progress:</span>
-                      <span className={`text-xl font-bold ${
-                        (indicator.achievement_percentage || 0) >= 100
-                          ? 'text-green-600'
-                          : (indicator.achievement_percentage || 0) >= 75
-                          ? 'text-blue-600'
-                          : (indicator.achievement_percentage || 0) >= 50
-                          ? 'text-yellow-600'
-                          : 'text-red-600'
-                      }`}>
-                        {indicator.achievement_percentage || 0}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full transition-all ${
-                          (indicator.achievement_percentage || 0) >= 100
-                            ? 'bg-green-600'
-                            : (indicator.achievement_percentage || 0) >= 75
-                            ? 'bg-blue-600'
-                            : (indicator.achievement_percentage || 0) >= 50
-                            ? 'bg-yellow-600'
-                            : 'bg-red-600'
-                        }`}
-                        style={{ width: `${Math.min(indicator.achievement_percentage || 0, 100)}%` }}
-                      ></div>
-                    </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-blue-700">
+                      Define the <strong>immediate objectives</strong> and <strong>expected results</strong> for this activity.
+                      This is for activity planning and tracking, separate from M&E indicators.
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+
+              {/* Objectives Form */}
+              <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-6 mb-6 border-2 border-purple-200">
+                <h3 className="font-semibold text-gray-900 mb-5 flex items-center gap-2 text-lg">
+                  <span className="text-2xl">🎯</span>
+                  Activity Objectives & Expected Results
+                </h3>
+
+                <div className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-800 mb-2">
+                      Immediate Objectives
+                    </label>
+                    <p className="text-xs text-gray-600 mb-2">
+                      What are the immediate goals this activity aims to achieve? (e.g., "Train 50 farmers on sustainable agriculture", "Distribute 200 hygiene kits to vulnerable families")
+                    </p>
+                    <textarea
+                      value={formData.immediate_objectives}
+                      onChange={(e) => setFormData({ ...formData, immediate_objectives: e.target.value })}
+                      placeholder="Describe the immediate objectives of this activity..."
+                      className="w-full px-4 py-3 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      rows={4}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-800 mb-2">
+                      Expected Results / Deliverables
+                    </label>
+                    <p className="text-xs text-gray-600 mb-2">
+                      What specific results or deliverables do you expect from this activity? (e.g., "50 farmers trained and certified", "200 hygiene kits distributed with usage demonstration")
+                    </p>
+                    <textarea
+                      value={formData.expected_results}
+                      onChange={(e) => setFormData({ ...formData, expected_results: e.target.value })}
+                      placeholder="List the expected results and deliverables..."
+                      className="w-full px-4 py-3 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      rows={4}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Current Values Display */}
+              {(activity.immediate_objectives || activity.expected_results) && (
+                <div className="bg-gray-50 rounded-xl p-5 mb-6">
+                  <h4 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide">
+                    Current Objectives (Saved)
+                  </h4>
+                  <div className="space-y-3">
+                    {activity.immediate_objectives && (
+                      <div>
+                        <p className="text-xs font-medium text-gray-600 mb-1">Immediate Objectives:</p>
+                        <p className="text-sm text-gray-800 bg-white p-3 rounded-lg border border-gray-200">
+                          {activity.immediate_objectives}
+                        </p>
+                      </div>
+                    )}
+                    {activity.expected_results && (
+                      <div>
+                        <p className="text-xs font-medium text-gray-600 mb-1">Expected Results:</p>
+                        <p className="text-sm text-gray-800 bg-white p-3 rounded-lg border border-gray-200">
+                          {activity.expected_results}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Save Button */}
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSaveObjectives}
+                  disabled={loading}
+                  className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
+                >
+                  💾 Save Objectives
+                </button>
+              </div>
+            </>
           )}
         </div>
 
