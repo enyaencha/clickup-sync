@@ -67,21 +67,39 @@ const ActivityObjectivesModal: React.FC<ActivityObjectivesModalProps> = ({
     }
 
     try {
+      // Prepare payload with proper null handling - NO undefined values allowed
+      const payload = {
+        name: newIndicator.name.trim(),
+        description: newIndicator.description.trim() || null,
+        baseline_value: newIndicator.baseline_value || null,
+        target_value: newIndicator.target_value || null,
+        unit_of_measure: newIndicator.unit_of_measure.trim() || null,
+        type: newIndicator.type || 'output',
+        activity_id: activityId,
+        code: `IND-${activityId}-${Date.now()}`,
+        current_value: newIndicator.baseline_value || 0,
+        status: 'not-started',
+        // Additional required fields with null defaults
+        program_id: null,
+        project_id: null,
+        module_id: null,
+        sub_program_id: null,
+        component_id: null,
+        category: null,
+        baseline_date: null,
+        target_date: null,
+        collection_frequency: 'monthly',
+        data_source: null,
+        verification_method: null,
+        responsible_person: null,
+        notes: null,
+        clickup_custom_field_id: null,
+      };
+
       const response = await authFetch(`/api/indicators`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newIndicator.name.trim(),
-          description: newIndicator.description.trim() || null,
-          baseline_value: newIndicator.baseline_value || null,
-          target_value: newIndicator.target_value || null,
-          unit_of_measure: newIndicator.unit_of_measure.trim() || null,
-          type: newIndicator.type || 'output',
-          activity_id: activityId,
-          code: `IND-${activityId}-${Date.now()}`,
-          current_value: newIndicator.baseline_value || 0,
-          status: 'not-started',
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {

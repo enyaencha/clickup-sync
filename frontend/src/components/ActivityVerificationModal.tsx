@@ -3,15 +3,23 @@ import { authFetch } from '../config/api';
 
 interface Verification {
   id: number;
-  activity_id: number;
-  verification_type: string;
+  entity_type: string;
+  entity_id: number;
   verification_method: string;
-  verified_by: string;
-  verification_date: string;
+  description: string;
+  evidence_type: string;
+  document_name: string;
+  document_path: string;
+  document_date: string;
+  verification_status: string;
+  verified_by: number | null;
+  verified_date: string | null;
   verification_notes: string;
-  status: string;
-  attachments: string[];
+  collection_frequency: string;
+  responsible_person: string;
+  notes: string;
   created_at: string;
+  attachments?: any[];
 }
 
 interface ActivityVerificationModalProps {
@@ -30,13 +38,16 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
   const [verifications, setVerifications] = useState<Verification[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [newVerification, setNewVerification] = useState({
-    verification_type: 'site-visit',
     verification_method: '',
-    verified_by: '',
-    verification_date: new Date().toISOString().split('T')[0],
-    verification_notes: '',
-    status: 'pending',
+    description: '',
+    evidence_type: 'document',
+    document_name: '',
+    document_date: new Date().toISOString().split('T')[0],
+    collection_frequency: 'once',
+    responsible_person: '',
+    notes: '',
   });
 
   useEffect(() => {
@@ -48,7 +59,7 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
   const fetchVerifications = async () => {
     try {
       setLoading(true);
-      const response = await authFetch(`/api/activities/${activityId}/verifications`);
+      const response = await authFetch(`/api/means-of-verification?entity_type=activity&entity_id=${activityId}`);
       if (response.ok) {
         const data = await response.json();
         setVerifications(data.data || []);
@@ -67,24 +78,70 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
     }
 
     try {
-      const response = await authFetch(`/api/activities/${activityId}/verifications`, {
+      // Create verification with proper null handling - NO undefined values
+      const payload = {
+        entity_type: 'activity',
+        entity_id: activityId,
+        verification_method: newVerification.verification_method.trim(),
+        description: newVerification.description.trim() || null,
+        evidence_type: newVerification.evidence_type || 'document',
+        document_name: newVerification.document_name.trim() || null,
+        document_path: null,
+        document_date: newVerification.document_date || null,
+        verification_status: 'pending',
+        verified_by: null,
+        verified_date: null,
+        verification_notes: null,
+        collection_frequency: newVerification.collection_frequency || 'once',
+        responsible_person: newVerification.responsible_person.trim() || null,
+        notes: newVerification.notes.trim() || null,
+      };
+
+      const response = await authFetch('/api/means-of-verification', {
         method: 'POST',
-        body: JSON.stringify(newVerification),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
+        const data = await response.json();
+        const verificationId = data.id;
+
+        // Upload file if selected
+        if (selectedFile && verificationId) {
+          const formData = new FormData();
+          formData.append('file', selectedFile);
+          formData.append('entity_type', 'verification');
+          formData.append('entity_id', verificationId.toString());
+
+          const uploadResponse = await authFetch('/api/attachments/upload', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (!uploadResponse.ok) {
+            console.error('Failed to upload file');
+            alert('Verification created but file upload failed');
+          }
+        }
+
+        // Reset form
         setNewVerification({
-          verification_type: 'site-visit',
           verification_method: '',
-          verified_by: '',
-          verification_date: new Date().toISOString().split('T')[0],
-          verification_notes: '',
-          status: 'pending',
+          description: '',
+          evidence_type: 'document',
+          document_name: '',
+          document_date: new Date().toISOString().split('T')[0],
+          collection_frequency: 'once',
+          responsible_person: '',
+          notes: '',
         });
+        setSelectedFile(null);
         setShowAddForm(false);
         await fetchVerifications();
       } else {
-        alert('Failed to add verification');
+        const errorData = await response.json();
+        alert('Failed to add verification: ' + (errorData.error || 'Unknown error'));
       }
     } catch (err) {
       console.error('Failed to add verification:', err);
@@ -94,9 +151,15 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
 
   const handleUpdateStatus = async (verificationId: number, status: string) => {
     try {
-      const response = await authFetch(`/api/activities/${activityId}/verifications/${verificationId}`, {
+      const payload = {
+        verification_status: status,
+        verified_date: status === 'verified' ? new Date().toISOString().split('T')[0] : null,
+      };
+
+      const response = await authFetch(`/api/means-of-verification/${verificationId}`, {
         method: 'PUT',
-        body: JSON.stringify({ status }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -111,7 +174,7 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
     if (!confirm('Delete this verification record?')) return;
 
     try {
-      const response = await authFetch(`/api/activities/${activityId}/verifications/${verificationId}`, {
+      const response = await authFetch(`/api/means-of-verification/${verificationId}`, {
         method: 'DELETE',
       });
 
@@ -120,6 +183,12 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
       }
     } catch (err) {
       console.error('Failed to delete verification:', err);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setSelectedFile(e.target.files[0]);
     }
   };
 
@@ -139,7 +208,7 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
           <div>
             <h2 className="text-2xl font-bold flex items-center gap-3">
               <span className="text-3xl">✅</span>
-              Activity Verification
+              Activity Verification & Evidence
             </h2>
             <p className="text-blue-100 text-sm mt-1">{activityName}</p>
           </div>
@@ -155,23 +224,23 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
 
         {/* Content */}
         <div className="p-6">
-          {/* Quick Actions */}
+          {/* Quick Stats */}
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-4">
               <div className="bg-blue-50 px-4 py-2 rounded-lg">
-                <span className="text-xs font-medium text-gray-600">Total Verifications</span>
+                <span className="text-xs font-medium text-gray-600">Total</span>
                 <p className="text-2xl font-bold text-blue-600">{verifications.length}</p>
               </div>
               <div className="bg-green-50 px-4 py-2 rounded-lg">
                 <span className="text-xs font-medium text-gray-600">Verified</span>
                 <p className="text-2xl font-bold text-green-600">
-                  {verifications.filter(v => v.status === 'verified').length}
+                  {verifications.filter(v => v.verification_status === 'verified').length}
                 </p>
               </div>
               <div className="bg-yellow-50 px-4 py-2 rounded-lg">
                 <span className="text-xs font-medium text-gray-600">Pending</span>
                 <p className="text-2xl font-bold text-yellow-600">
-                  {verifications.filter(v => v.status === 'pending').length}
+                  {verifications.filter(v => v.verification_status === 'pending').length}
                 </p>
               </div>
             </div>
@@ -194,10 +263,13 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-semibold text-gray-900 flex items-center gap-2">
                   <span className="text-xl">➕</span>
-                  New Verification Record
+                  New Verification & Evidence
                 </h3>
                 <button
-                  onClick={() => setShowAddForm(false)}
+                  onClick={() => {
+                    setShowAddForm(false);
+                    setSelectedFile(null);
+                  }}
                   className="text-gray-600 hover:text-gray-800"
                 >
                   ✕
@@ -207,80 +279,150 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Verification Type *
-                    </label>
-                    <select
-                      value={newVerification.verification_type}
-                      onChange={(e) => setNewVerification({ ...newVerification, verification_type: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="site-visit">Site Visit</option>
-                      <option value="document-review">Document Review</option>
-                      <option value="beneficiary-interview">Beneficiary Interview</option>
-                      <option value="photo-evidence">Photo Evidence</option>
-                      <option value="partner-confirmation">Partner Confirmation</option>
-                      <option value="financial-audit">Financial Audit</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Verification Date *
-                    </label>
-                    <input
-                      type="date"
-                      value={newVerification.verification_date}
-                      onChange={(e) => setNewVerification({ ...newVerification, verification_date: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Verification Method *
                     </label>
                     <input
                       type="text"
                       value={newVerification.verification_method}
                       onChange={(e) => setNewVerification({ ...newVerification, verification_method: e.target.value })}
-                      placeholder="e.g., Physical inspection, Phone interview"
+                      placeholder="e.g., Site Visit, Document Review, Photo Evidence"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Verified By
+                      Evidence Type
+                    </label>
+                    <select
+                      value={newVerification.evidence_type}
+                      onChange={(e) => setNewVerification({ ...newVerification, evidence_type: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="document">Document</option>
+                      <option value="photo">Photo</option>
+                      <option value="video">Video</option>
+                      <option value="report">Report</option>
+                      <option value="attendance-sheet">Attendance Sheet</option>
+                      <option value="interview">Interview Recording</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={newVerification.description}
+                    onChange={(e) => setNewVerification({ ...newVerification, description: e.target.value })}
+                    placeholder="Describe the verification process and findings..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    rows={2}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Document Name
                     </label>
                     <input
                       type="text"
-                      value={newVerification.verified_by}
-                      onChange={(e) => setNewVerification({ ...newVerification, verified_by: e.target.value })}
-                      placeholder="Name of verifier"
+                      value={newVerification.document_name}
+                      onChange={(e) => setNewVerification({ ...newVerification, document_name: e.target.value })}
+                      placeholder="Name of the evidence document"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Document Date
+                    </label>
+                    <input
+                      type="date"
+                      value={newVerification.document_date}
+                      onChange={(e) => setNewVerification({ ...newVerification, document_date: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Responsible Person
+                    </label>
+                    <input
+                      type="text"
+                      value={newVerification.responsible_person}
+                      onChange={(e) => setNewVerification({ ...newVerification, responsible_person: e.target.value })}
+                      placeholder="Person responsible for verification"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Collection Frequency
+                    </label>
+                    <select
+                      value={newVerification.collection_frequency}
+                      onChange={(e) => setNewVerification({ ...newVerification, collection_frequency: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="once">Once</option>
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                      <option value="quarterly">Quarterly</option>
+                      <option value="annually">Annually</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* File Upload */}
+                <div className="bg-white rounded-lg p-4 border-2 border-dashed border-blue-300">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    📎 Upload Evidence Document
+                  </label>
+                  <input
+                    type="file"
+                    onChange={handleFileChange}
+                    className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx,.xls"
+                  />
+                  {selectedFile && (
+                    <p className="mt-2 text-sm text-green-600">
+                      ✓ Selected: {selectedFile.name}
+                    </p>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Verification Notes
+                    Additional Notes
                   </label>
                   <textarea
-                    value={newVerification.verification_notes}
-                    onChange={(e) => setNewVerification({ ...newVerification, verification_notes: e.target.value })}
-                    placeholder="Enter detailed verification findings..."
+                    value={newVerification.notes}
+                    onChange={(e) => setNewVerification({ ...newVerification, notes: e.target.value })}
+                    placeholder="Any additional notes or comments..."
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={3}
+                    rows={2}
                   />
                 </div>
+
                 <div className="flex gap-2">
                   <button
                     onClick={handleAddVerification}
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all shadow-md"
+                    disabled={loading}
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all shadow-md disabled:opacity-50"
                   >
                     ✅ Add Verification
                   </button>
                   <button
-                    onClick={() => setShowAddForm(false)}
+                    onClick={() => {
+                      setShowAddForm(false);
+                      setSelectedFile(null);
+                    }}
                     className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
                   >
                     Cancel
@@ -299,7 +441,7 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
             <div className="text-center py-12 bg-gray-50 rounded-xl">
               <span className="text-6xl mb-4 block">✅</span>
               <p className="text-gray-600 text-lg font-medium">No verification records yet</p>
-              <p className="text-gray-500 text-sm mt-2">Click "Add Verification" to create your first record</p>
+              <p className="text-gray-500 text-sm mt-2">Click "Add Verification" to create your first record with evidence</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -315,36 +457,51 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2 flex-wrap">
                         <span className="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full uppercase">
-                          {verification.verification_type.replace('-', ' ')}
+                          {verification.evidence_type}
                         </span>
                         <select
-                          value={verification.status}
+                          value={verification.verification_status}
                           onChange={(e) => handleUpdateStatus(verification.id, e.target.value)}
                           className={`text-sm font-semibold rounded-lg px-3 py-1 border-0 cursor-pointer ${
-                            verification.status === 'verified'
+                            verification.verification_status === 'verified'
                               ? 'bg-green-100 text-green-800'
-                              : verification.status === 'pending'
+                              : verification.verification_status === 'pending'
                               ? 'bg-yellow-100 text-yellow-800'
                               : 'bg-red-100 text-red-800'
                           }`}
                         >
                           <option value="pending">Pending</option>
                           <option value="verified">Verified</option>
-                          <option value="failed">Failed</option>
+                          <option value="rejected">Rejected</option>
+                          <option value="needs-update">Needs Update</option>
                         </select>
-                        <span className="text-sm text-gray-500">
-                          {new Date(verification.verification_date).toLocaleDateString()}
-                        </span>
+                        {verification.document_date && (
+                          <span className="text-sm text-gray-500">
+                            📅 {new Date(verification.document_date).toLocaleDateString()}
+                          </span>
+                        )}
                       </div>
-                      <p className="text-gray-900 font-medium text-base mb-2">{verification.verification_method}</p>
-                      {verification.verified_by && (
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Verified by:</span> {verification.verified_by}
-                        </p>
+                      <p className="text-gray-900 font-medium text-lg mb-2">{verification.verification_method}</p>
+                      {verification.description && (
+                        <p className="text-sm text-gray-600 mb-2">{verification.description}</p>
                       )}
-                      {verification.verification_notes && (
-                        <p className="text-sm text-gray-600 mt-2 p-3 bg-gray-50 rounded-lg">
-                          {verification.verification_notes}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
+                        {verification.document_name && (
+                          <div className="bg-gray-50 rounded-lg p-2">
+                            <span className="text-xs font-medium text-gray-600">Document:</span>
+                            <p className="text-sm text-gray-900">{verification.document_name}</p>
+                          </div>
+                        )}
+                        {verification.responsible_person && (
+                          <div className="bg-gray-50 rounded-lg p-2">
+                            <span className="text-xs font-medium text-gray-600">Responsible:</span>
+                            <p className="text-sm text-gray-900">{verification.responsible_person}</p>
+                          </div>
+                        )}
+                      </div>
+                      {verification.notes && (
+                        <p className="text-sm text-gray-600 mt-2 p-3 bg-blue-50 rounded-lg">
+                          💬 {verification.notes}
                         </p>
                       )}
                     </div>
