@@ -181,6 +181,17 @@ module.exports = (meService) => {
 
     router.put('/activities/:id', checkModulePermission(db, 'edit'), async (req, res) => {
         try {
+            // Debug logging for outcome and objectives fields
+            console.log('📝 Activity Update Request:', {
+                id: req.params.id,
+                outcome_notes: req.body.outcome_notes ? 'HAS DATA' : 'EMPTY',
+                challenges_faced: req.body.challenges_faced ? 'HAS DATA' : 'EMPTY',
+                lessons_learned: req.body.lessons_learned ? 'HAS DATA' : 'EMPTY',
+                recommendations: req.body.recommendations ? 'HAS DATA' : 'EMPTY',
+                immediate_objectives: req.body.immediate_objectives ? 'HAS DATA' : 'EMPTY',
+                expected_results: req.body.expected_results ? 'HAS DATA' : 'EMPTY',
+            });
+
             // Check checklist completion if status is being changed to "completed"
             if (req.body.status === 'completed') {
                 const settings = await settingsService.getSettings();
