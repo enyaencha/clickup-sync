@@ -313,21 +313,18 @@ class MEService {
         // Helper to convert undefined to null
         const toNull = (value) => value === undefined ? null : value;
 
-        await this.db.query(`
-            UPDATE activities
-            SET name = ?, description = ?,
-                activity_date = ?, status = ?, approval_status = ?,
-                actual_beneficiaries = ?, budget_spent = ?,
-                progress_percentage = ?,
-                outcome_notes = ?,
-                challenges_faced = ?,
-                lessons_learned = ?,
-                recommendations = ?,
-                immediate_objectives = ?,
-                expected_results = ?,
-                updated_at = NOW()
-            WHERE id = ?
-        `, [
+        // Debug logging
+        console.log('🔧 updateActivity called with data:', {
+            id,
+            outcome_notes: data.outcome_notes ? `"${data.outcome_notes.substring(0, 50)}..."` : 'NULL/EMPTY',
+            challenges_faced: data.challenges_faced ? `"${data.challenges_faced.substring(0, 50)}..."` : 'NULL/EMPTY',
+            lessons_learned: data.lessons_learned ? `"${data.lessons_learned.substring(0, 50)}..."` : 'NULL/EMPTY',
+            recommendations: data.recommendations ? `"${data.recommendations.substring(0, 50)}..."` : 'NULL/EMPTY',
+            immediate_objectives: data.immediate_objectives ? `"${data.immediate_objectives.substring(0, 50)}..."` : 'NULL/EMPTY',
+            expected_results: data.expected_results ? `"${data.expected_results.substring(0, 50)}..."` : 'NULL/EMPTY',
+        });
+
+        const queryParams = [
             data.name,
             data.description,
             toNull(data.activity_date),
@@ -343,7 +340,34 @@ class MEService {
             toNull(data.immediate_objectives),
             toNull(data.expected_results),
             id
-        ]);
+        ];
+
+        console.log('🔧 SQL params (outcome fields):', {
+            param9_outcome_notes: queryParams[8],
+            param10_challenges: queryParams[9],
+            param11_lessons: queryParams[10],
+            param12_recommendations: queryParams[11],
+            param13_objectives: queryParams[12],
+            param14_results: queryParams[13],
+        });
+
+        await this.db.query(`
+            UPDATE activities
+            SET name = ?, description = ?,
+                activity_date = ?, status = ?, approval_status = ?,
+                actual_beneficiaries = ?, budget_spent = ?,
+                progress_percentage = ?,
+                outcome_notes = ?,
+                challenges_faced = ?,
+                lessons_learned = ?,
+                recommendations = ?,
+                immediate_objectives = ?,
+                expected_results = ?,
+                updated_at = NOW()
+            WHERE id = ?
+        `, queryParams);
+
+        console.log('✅ SQL UPDATE executed successfully for activity', id);
 
         await this.queueForSync('activity', id, 'update', 3);
         return id;
