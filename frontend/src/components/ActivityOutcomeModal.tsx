@@ -10,6 +10,10 @@ interface Activity {
   budget_spent: number;
   description: string;
   status: string;
+  outcome_notes: string;
+  challenges_faced: string;
+  lessons_learned: string;
+  recommendations: string;
 }
 
 interface ActivityOutcomeModalProps {
@@ -67,10 +71,20 @@ const ActivityOutcomeModal: React.FC<ActivityOutcomeModalProps> = ({
 
   const handleSaveOutcome = async () => {
     try {
+      // Prepare data with proper null handling
+      const payload = {
+        actual_beneficiaries: formData.actual_beneficiaries || null,
+        budget_spent: formData.budget_spent || null,
+        outcome_notes: formData.outcome_notes.trim() || null,
+        challenges_faced: formData.challenges_faced.trim() || null,
+        lessons_learned: formData.lessons_learned.trim() || null,
+        recommendations: formData.recommendations.trim() || null,
+      };
+
       const response = await authFetch(`/api/activities/${activityId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -88,7 +102,7 @@ const ActivityOutcomeModal: React.FC<ActivityOutcomeModalProps> = ({
   };
 
   const calculateAchievementPercentage = (actual: number, target: number): number => {
-    if (target === 0) return 0;
+    if (!target || target === 0) return 0;
     return Math.round((actual / target) * 100);
   };
 
@@ -142,7 +156,7 @@ const ActivityOutcomeModal: React.FC<ActivityOutcomeModalProps> = ({
                   Performance Against Targets
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Beneficiaries */}
                   <div className="bg-white rounded-lg p-4 border border-blue-200">
                     <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
