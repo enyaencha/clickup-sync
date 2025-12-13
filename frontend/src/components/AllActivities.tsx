@@ -556,18 +556,11 @@ const AllActivities: React.FC = () => {
                     {openDropdownId === activity.id && (
                       <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
                         <button
-                          onClick={() => handleViewActivity(activity.id)}
-                          className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-2 text-sm text-gray-700"
-                        >
-                          <span className="text-lg">✏️</span>
-                          <span className="font-medium">Edit Activity</span>
-                        </button>
-                        <button
                           onClick={() => handleOpenObjectives(activity)}
                           className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-2 text-sm text-gray-700"
                         >
                           <span className="text-lg">🎯</span>
-                          <span className="font-medium">Add Objectives</span>
+                          <span className="font-medium">Set Objectives</span>
                         </button>
                         <button
                           onClick={() => handleOpenVerification(activity)}
@@ -578,10 +571,17 @@ const AllActivities: React.FC = () => {
                         </button>
                         <button
                           onClick={() => handleOpenOutcome(activity)}
-                          className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-2 text-sm text-gray-700 border-t border-gray-100"
+                          className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-2 text-sm text-gray-700"
                         >
                           <span className="text-lg">📊</span>
                           <span className="font-medium">Record Outcome</span>
+                        </button>
+                        <button
+                          onClick={() => handleViewActivity(activity.id)}
+                          className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-2 text-sm text-gray-700 border-t border-gray-100"
+                        >
+                          <span className="text-lg">👁️</span>
+                          <span className="font-medium">View Details</span>
                         </button>
                       </div>
                     )}
@@ -772,18 +772,11 @@ const AllActivities: React.FC = () => {
                         {openDropdownId === activity.id && (
                           <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
                             <button
-                              onClick={() => handleViewActivity(activity.id)}
-                              className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-2 text-sm text-gray-700"
-                            >
-                              <span className="text-lg">✏️</span>
-                              <span className="font-medium">Edit Activity</span>
-                            </button>
-                            <button
                               onClick={() => handleOpenObjectives(activity)}
                               className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-2 text-sm text-gray-700"
                             >
                               <span className="text-lg">🎯</span>
-                              <span className="font-medium">Add Objectives</span>
+                              <span className="font-medium">Set Objectives</span>
                             </button>
                             <button
                               onClick={() => handleOpenVerification(activity)}
@@ -794,10 +787,17 @@ const AllActivities: React.FC = () => {
                             </button>
                             <button
                               onClick={() => handleOpenOutcome(activity)}
-                              className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-2 text-sm text-gray-700 border-t border-gray-100"
+                              className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-2 text-sm text-gray-700"
                             >
                               <span className="text-lg">📊</span>
                               <span className="font-medium">Record Outcome</span>
+                            </button>
+                            <button
+                              onClick={() => handleViewActivity(activity.id)}
+                              className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-2 text-sm text-gray-700 border-t border-gray-100"
+                            >
+                              <span className="text-lg">👁️</span>
+                              <span className="font-medium">View Details</span>
                             </button>
                           </div>
                         )}

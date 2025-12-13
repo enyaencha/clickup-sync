@@ -38,6 +38,7 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
   const [verifications, setVerifications] = useState<Verification[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [newVerification, setNewVerification] = useState({
     verification_method: '',
@@ -45,6 +46,16 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
     evidence_type: 'document',
     document_name: '',
     document_date: new Date().toISOString().split('T')[0],
+    collection_frequency: 'once',
+    responsible_person: '',
+    notes: '',
+  });
+  const [editFormData, setEditFormData] = useState({
+    verification_method: '',
+    description: '',
+    evidence_type: 'document',
+    document_name: '',
+    document_date: '',
     collection_frequency: 'once',
     responsible_person: '',
     notes: '',
@@ -186,6 +197,73 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
       }
     } catch (err) {
       console.error('Failed to delete verification:', err);
+    }
+  };
+
+  const handleStartEdit = (verification: Verification) => {
+    setEditingId(verification.id);
+    setEditFormData({
+      verification_method: verification.verification_method || '',
+      description: verification.description || '',
+      evidence_type: verification.evidence_type || 'document',
+      document_name: verification.document_name || '',
+      document_date: verification.document_date || '',
+      collection_frequency: verification.collection_frequency || 'once',
+      responsible_person: verification.responsible_person || '',
+      notes: verification.notes || '',
+    });
+    setShowAddForm(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditFormData({
+      verification_method: '',
+      description: '',
+      evidence_type: 'document',
+      document_name: '',
+      document_date: '',
+      collection_frequency: 'once',
+      responsible_person: '',
+      notes: '',
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingId || !editFormData.verification_method.trim()) {
+      alert('Please enter verification method');
+      return;
+    }
+
+    try {
+      const payload = {
+        verification_method: editFormData.verification_method.trim(),
+        description: editFormData.description.trim() || null,
+        evidence_type: editFormData.evidence_type || 'document',
+        document_name: editFormData.document_name.trim() || null,
+        document_date: editFormData.document_date || null,
+        collection_frequency: editFormData.collection_frequency || 'once',
+        responsible_person: editFormData.responsible_person.trim() || null,
+        notes: editFormData.notes.trim() || null,
+      };
+
+      const response = await authFetch(`/api/means-of-verification/${editingId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        alert('Verification updated successfully!');
+        handleCancelEdit();
+        await fetchVerifications();
+      } else {
+        const errorData = await response.json();
+        alert('Failed to update verification: ' + (errorData.error || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error('Failed to update verification:', err);
+      alert('Failed to update verification');
     }
   };
 
@@ -456,68 +534,184 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
                   key={verification.id}
                   className="bg-white border-2 border-gray-200 rounded-xl p-5 hover:border-blue-300 hover:shadow-md transition-all"
                 >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2 flex-wrap">
-                        <span className="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full uppercase">
-                          {verification.evidence_type}
-                        </span>
-                        <select
-                          value={verification.verification_status}
-                          onChange={(e) => handleUpdateStatus(verification.id, e.target.value)}
-                          className={`text-sm font-semibold rounded-lg px-3 py-1 border-0 cursor-pointer ${
-                            verification.verification_status === 'verified'
-                              ? 'bg-green-100 text-green-800'
-                              : verification.verification_status === 'pending'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="verified">Verified</option>
-                          <option value="rejected">Rejected</option>
-                          <option value="needs-update">Needs Update</option>
-                        </select>
-                        {verification.document_date && (
-                          <span className="text-sm text-gray-500">
-                            📅 {new Date(verification.document_date).toLocaleDateString()}
-                          </span>
-                        )}
+                  {editingId === verification.id ? (
+                    /* Edit Form */
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="font-semibold text-gray-900">Edit Verification</h4>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleCancelEdit}
+                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleSaveEdit}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                          >
+                            Save Changes
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-gray-900 font-medium text-lg mb-2">{verification.verification_method}</p>
-                      {verification.description && (
-                        <p className="text-sm text-gray-600 mb-2">{verification.description}</p>
-                      )}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
-                        {verification.document_name && (
-                          <div className="bg-gray-50 rounded-lg p-2">
-                            <span className="text-xs font-medium text-gray-600">Document:</span>
-                            <p className="text-sm text-gray-900">{verification.document_name}</p>
-                          </div>
-                        )}
-                        {verification.responsible_person && (
-                          <div className="bg-gray-50 rounded-lg p-2">
-                            <span className="text-xs font-medium text-gray-600">Responsible:</span>
-                            <p className="text-sm text-gray-900">{verification.responsible_person}</p>
-                          </div>
-                        )}
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Verification Method *
+                        </label>
+                        <input
+                          type="text"
+                          value={editFormData.verification_method}
+                          onChange={(e) => setEditFormData({ ...editFormData, verification_method: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          placeholder="e.g., Site visit, Document review"
+                        />
                       </div>
-                      {verification.notes && (
-                        <p className="text-sm text-gray-600 mt-2 p-3 bg-blue-50 rounded-lg">
-                          💬 {verification.notes}
-                        </p>
-                      )}
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                        <textarea
+                          value={editFormData.description}
+                          onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          rows={3}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Evidence Type</label>
+                          <select
+                            value={editFormData.evidence_type}
+                            onChange={(e) => setEditFormData({ ...editFormData, evidence_type: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                          >
+                            <option value="document">Document</option>
+                            <option value="photo">Photo</option>
+                            <option value="video">Video</option>
+                            <option value="report">Report</option>
+                            <option value="attendance-sheet">Attendance Sheet</option>
+                            <option value="interview">Interview</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Document Date</label>
+                          <input
+                            type="date"
+                            value={editFormData.document_date}
+                            onChange={(e) => setEditFormData({ ...editFormData, document_date: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Document Name</label>
+                          <input
+                            type="text"
+                            value={editFormData.document_name}
+                            onChange={(e) => setEditFormData({ ...editFormData, document_name: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Responsible Person</label>
+                          <input
+                            type="text"
+                            value={editFormData.responsible_person}
+                            onChange={(e) => setEditFormData({ ...editFormData, responsible_person: e.target.value })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                        <textarea
+                          value={editFormData.notes}
+                          onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                          rows={2}
+                        />
+                      </div>
                     </div>
-                    <button
-                      onClick={() => handleDeleteVerification(verification.id)}
-                      className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors ml-3"
-                      title="Delete verification"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
+                  ) : (
+                    /* View Mode */
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2 flex-wrap">
+                          <span className="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full uppercase">
+                            {verification.evidence_type}
+                          </span>
+                          <select
+                            value={verification.verification_status}
+                            onChange={(e) => handleUpdateStatus(verification.id, e.target.value)}
+                            className={`text-sm font-semibold rounded-lg px-3 py-1 border-0 cursor-pointer ${
+                              verification.verification_status === 'verified'
+                                ? 'bg-green-100 text-green-800'
+                                : verification.verification_status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="verified">Verified</option>
+                            <option value="rejected">Rejected</option>
+                            <option value="needs-update">Needs Update</option>
+                          </select>
+                          {verification.document_date && (
+                            <span className="text-sm text-gray-500">
+                              📅 {new Date(verification.document_date).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-gray-900 font-medium text-lg mb-2">{verification.verification_method}</p>
+                        {verification.description && (
+                          <p className="text-sm text-gray-600 mb-2">{verification.description}</p>
+                        )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
+                          {verification.document_name && (
+                            <div className="bg-gray-50 rounded-lg p-2">
+                              <span className="text-xs font-medium text-gray-600">Document:</span>
+                              <p className="text-sm text-gray-900">{verification.document_name}</p>
+                            </div>
+                          )}
+                          {verification.responsible_person && (
+                            <div className="bg-gray-50 rounded-lg p-2">
+                              <span className="text-xs font-medium text-gray-600">Responsible:</span>
+                              <p className="text-sm text-gray-900">{verification.responsible_person}</p>
+                            </div>
+                          )}
+                        </div>
+                        {verification.notes && (
+                          <p className="text-sm text-gray-600 mt-2 p-3 bg-blue-50 rounded-lg">
+                            💬 {verification.notes}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex gap-2 ml-3">
+                        <button
+                          onClick={() => handleStartEdit(verification)}
+                          className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition-colors"
+                          title="Edit verification"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteVerification(verification.id)}
+                          className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                          title="Delete verification"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
