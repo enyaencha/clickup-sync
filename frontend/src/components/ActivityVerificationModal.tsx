@@ -114,13 +114,16 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
           formData.append('entity_type', 'verification');
           formData.append('entity_id', verificationId.toString());
 
-          const uploadResponse = await authFetch('/api/attachments/upload', {
+          // Don't set Content-Type header - let browser set it with boundary for multipart/form-data
+          const uploadResponse = await fetch('/api/attachments/upload', {
             method: 'POST',
             body: formData,
+            credentials: 'include', // Important for auth
           });
 
           if (!uploadResponse.ok) {
-            console.error('Failed to upload file');
+            const errorText = await uploadResponse.text();
+            console.error('Failed to upload file:', errorText);
             alert('Verification created but file upload failed');
           }
         }
