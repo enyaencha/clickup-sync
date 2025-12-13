@@ -1,4 +1,5 @@
 import React from 'react';
+import { API_BASE_URL } from '../config/api';
 
 interface Attachment {
   id: number;
@@ -39,7 +40,7 @@ const EvidenceViewer: React.FC<EvidenceViewerProps> = ({
   };
 
   const getFileUrl = (attachment: Attachment): string => {
-    return `http://localhost:3000${attachment.file_path || attachment.file_url || ''}`;
+    return `${API_BASE_URL}${attachment.file_path || attachment.file_url || ''}`;
   };
 
   const isImage = (fileType: string | null): boolean => {
