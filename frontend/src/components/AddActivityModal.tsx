@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
 
 interface AddActivityModalProps {
@@ -14,6 +14,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
   componentId,
   onSuccess,
 }) => {
+  // Basic form data
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -34,8 +35,75 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
     approval_status: 'draft',
     priority: 'normal',
   });
+
+  // Module-specific data for Finance (module_id = 6)
+  const [financeData, setFinanceData] = useState({
+    transaction_type: 'expense',
+    expense_category: 'program',
+    payment_method: 'bank_transfer',
+    budget_line: '',
+    vendor_payee: '',
+    invoice_number: '',
+    receipt_number: '',
+    approval_level: 'department',
+    expected_amount: '',
+  });
+
+  // Module-specific data for Resource Management (module_id = 5)
+  const [resourceData, setResourceData] = useState({
+    activity_type: 'resource_allocation',
+    resource_category: 'equipment',
+    resource_id: '',
+    quantity_needed: '1',
+    duration_of_use: '',
+    maintenance_type: '',
+    training_topic: '',
+    participants_count: '',
+  });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [moduleId, setModuleId] = useState<number | null>(null);
+  const [moduleName, setModuleName] = useState<string>('');
+  const [loadingModule, setLoadingModule] = useState(true);
+
+  // Fetch component details to determine the module
+  useEffect(() => {
+    if (isOpen && componentId) {
+      fetchModuleInfo();
+    }
+  }, [isOpen, componentId]);
+
+  const fetchModuleInfo = async () => {
+    try {
+      setLoadingModule(true);
+      // Fetch component details
+      const response = await authFetch(`/api/components/${componentId}`);
+      if (!response.ok) throw new Error('Failed to fetch component details');
+      const data = await response.json();
+      const component = data.data;
+
+      // Fetch sub-program to get module_id
+      const subProgramRes = await authFetch(`/api/sub-programs/${component.sub_program_id}`);
+      if (!subProgramRes.ok) throw new Error('Failed to fetch sub-program details');
+      const subProgramData = await subProgramRes.json();
+      const subProgram = subProgramData.data;
+
+      // Fetch module details
+      const moduleRes = await authFetch(`/api/programs/${subProgram.module_id}`);
+      if (!moduleRes.ok) throw new Error('Failed to fetch module details');
+      const moduleData = await moduleRes.json();
+      const module = moduleData.data;
+
+      setModuleId(module.id);
+      setModuleName(module.name);
+    } catch (err) {
+      console.error('Error fetching module info:', err);
+      setError('Could not determine module type');
+    } finally {
+      setLoadingModule(false);
+    }
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -44,12 +112,36 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleFinanceChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFinanceData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleResourceChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setResourceData((prev) => ({ ...prev, [name]: value }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
+      // Build module-specific data object
+      let moduleSpecificData = null;
+      if (moduleId === 6) {
+        // Finance Module
+        moduleSpecificData = financeData;
+      } else if (moduleId === 5) {
+        // Resource Management Module
+        moduleSpecificData = resourceData;
+      }
+
       const payload = {
         component_id: componentId,
         code: `ACT-${Date.now()}`, // Generate unique code
@@ -75,7 +167,8 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
         status: formData.status,
         approval_status: formData.approval_status,
         priority: formData.priority,
-        created_by: null, // TODO: Get user ID from auth context
+        module_specific_data: moduleSpecificData ? JSON.stringify(moduleSpecificData) : null,
+        created_by: null, // Backend will set this from auth
       };
 
       const response = await authFetch('/api/activities', {
@@ -92,26 +185,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
       }
 
       // Reset form and close
-      setFormData({
-        name: '',
-        description: '',
-        location_details: '',
-        parish: '',
-        ward: '',
-        county: '',
-        activity_date: '',
-        start_date: '',
-        end_date: '',
-        duration_hours: '',
-        facilitators: '',
-        staff_assigned: '',
-        target_beneficiaries: '',
-        beneficiary_type: '',
-        budget_allocated: '',
-        status: 'planned',
-        approval_status: 'draft',
-        priority: 'normal',
-      });
+      resetForm();
       onSuccess();
       onClose();
     } catch (err) {
@@ -121,15 +195,73 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
     }
   };
 
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      description: '',
+      location_details: '',
+      parish: '',
+      ward: '',
+      county: '',
+      activity_date: '',
+      start_date: '',
+      end_date: '',
+      duration_hours: '',
+      facilitators: '',
+      staff_assigned: '',
+      target_beneficiaries: '',
+      beneficiary_type: '',
+      budget_allocated: '',
+      status: 'planned',
+      approval_status: 'draft',
+      priority: 'normal',
+    });
+    setFinanceData({
+      transaction_type: 'expense',
+      expense_category: 'program',
+      payment_method: 'bank_transfer',
+      budget_line: '',
+      vendor_payee: '',
+      invoice_number: '',
+      receipt_number: '',
+      approval_level: 'department',
+      expected_amount: '',
+    });
+    setResourceData({
+      activity_type: 'resource_allocation',
+      resource_category: 'equipment',
+      resource_id: '',
+      quantity_needed: '1',
+      duration_of_use: '',
+      maintenance_type: '',
+      training_topic: '',
+      participants_count: '',
+    });
+  };
+
   if (!isOpen) return null;
+
+  // Determine if this is a Finance or Resource module
+  const isFinanceModule = moduleId === 6;
+  const isResourceModule = moduleId === 5;
+  const isStandardModule = !isFinanceModule && !isResourceModule;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Add New Field Activity / Task
+          <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+            {loadingModule ? (
+              'Add New Activity'
+            ) : (
+              <>
+                {isFinanceModule && <span className="text-2xl">💰</span>}
+                {isResourceModule && <span className="text-2xl">🏗️</span>}
+                {isStandardModule && <span className="text-2xl">✓</span>}
+                Add New {moduleName} Activity
+              </>
+            )}
           </h2>
           <button
             onClick={onClose}
@@ -154,314 +286,623 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
             </div>
           )}
 
-          {/* Basic Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
-              Basic Information
-            </h3>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Activity Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="e.g., Community Health Training"
-              />
+          {loadingModule ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading module information...</p>
             </div>
+          ) : (
+            <>
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2 flex items-center gap-2">
+                  <span>📋</span>
+                  Basic Information
+                </h3>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description
-              </label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Brief description of the activity..."
-              />
-            </div>
-          </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Activity Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder={
+                      isFinanceModule
+                        ? 'e.g., Budget Allocation Request'
+                        : isResourceModule
+                        ? 'e.g., Vehicle Maintenance or Training Session'
+                        : 'e.g., Community Health Training'
+                    }
+                  />
+                </div>
 
-          {/* Location Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
-              Location
-            </h3>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Location Details
-              </label>
-              <input
-                type="text"
-                name="location_details"
-                value={formData.location_details}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="e.g., Community Center, Main Road"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Parish
-                </label>
-                <input
-                  type="text"
-                  name="parish"
-                  value={formData.parish}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Parish"
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Brief description of the activity..."
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Ward
-                </label>
-                <input
-                  type="text"
-                  name="ward"
-                  value={formData.ward}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Ward"
-                />
+              {/* ===== FINANCE MODULE SPECIFIC FIELDS ===== */}
+              {isFinanceModule && (
+                <div className="space-y-4 bg-green-50 p-4 rounded-lg border-2 border-green-200">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b border-green-300 pb-2 flex items-center gap-2">
+                    <span>💰</span>
+                    Finance Details
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Transaction Type
+                      </label>
+                      <select
+                        name="transaction_type"
+                        value={financeData.transaction_type}
+                        onChange={handleFinanceChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      >
+                        <option value="expense">Expense</option>
+                        <option value="reimbursement">Reimbursement</option>
+                        <option value="advance">Advance Payment</option>
+                        <option value="refund">Refund</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Expense Category
+                      </label>
+                      <select
+                        name="expense_category"
+                        value={financeData.expense_category}
+                        onChange={handleFinanceChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      >
+                        <option value="operational">Operational</option>
+                        <option value="program">Program</option>
+                        <option value="capital">Capital</option>
+                        <option value="administrative">Administrative</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Payment Method
+                      </label>
+                      <select
+                        name="payment_method"
+                        value={financeData.payment_method}
+                        onChange={handleFinanceChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      >
+                        <option value="cash">Cash</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="mobile_money">Mobile Money</option>
+                        <option value="check">Check</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Approval Level Required
+                      </label>
+                      <select
+                        name="approval_level"
+                        value={financeData.approval_level}
+                        onChange={handleFinanceChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      >
+                        <option value="department">Department Head</option>
+                        <option value="director">Director</option>
+                        <option value="board">Board Approval</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Budget Line/Code
+                      </label>
+                      <input
+                        type="text"
+                        name="budget_line"
+                        value={financeData.budget_line}
+                        onChange={handleFinanceChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        placeholder="e.g., BL-2025-001"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Expected Amount ($)
+                      </label>
+                      <input
+                        type="number"
+                        name="expected_amount"
+                        value={financeData.expected_amount}
+                        onChange={handleFinanceChange}
+                        min="0"
+                        step="0.01"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Vendor/Payee Name
+                      </label>
+                      <input
+                        type="text"
+                        name="vendor_payee"
+                        value={financeData.vendor_payee}
+                        onChange={handleFinanceChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        placeholder="Name of vendor or payee"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Invoice Number
+                      </label>
+                      <input
+                        type="text"
+                        name="invoice_number"
+                        value={financeData.invoice_number}
+                        onChange={handleFinanceChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        placeholder="INV-XXXXX"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Receipt Number
+                      </label>
+                      <input
+                        type="text"
+                        name="receipt_number"
+                        value={financeData.receipt_number}
+                        onChange={handleFinanceChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        placeholder="RCP-XXXXX"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ===== RESOURCE MANAGEMENT MODULE SPECIFIC FIELDS ===== */}
+              {isResourceModule && (
+                <div className="space-y-4 bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b border-blue-300 pb-2 flex items-center gap-2">
+                    <span>🏗️</span>
+                    Resource Management Details
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Activity Type
+                      </label>
+                      <select
+                        name="activity_type"
+                        value={resourceData.activity_type}
+                        onChange={handleResourceChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="resource_allocation">Resource Allocation</option>
+                        <option value="maintenance">Maintenance</option>
+                        <option value="capacity_building">Capacity Building / Training</option>
+                        <option value="equipment_request">Equipment Request</option>
+                        <option value="facility_booking">Facility Booking</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Resource Category
+                      </label>
+                      <select
+                        name="resource_category"
+                        value={resourceData.resource_category}
+                        onChange={handleResourceChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="equipment">Equipment</option>
+                        <option value="vehicle">Vehicle</option>
+                        <option value="facility">Facility</option>
+                        <option value="tools">Tools</option>
+                        <option value="materials">Materials</option>
+                      </select>
+                    </div>
+
+                    {resourceData.activity_type === 'maintenance' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Maintenance Type
+                        </label>
+                        <select
+                          name="maintenance_type"
+                          value={resourceData.maintenance_type}
+                          onChange={handleResourceChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="">Select type...</option>
+                          <option value="preventive">Preventive</option>
+                          <option value="corrective">Corrective</option>
+                          <option value="emergency">Emergency</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {resourceData.activity_type === 'capacity_building' && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Training Topic
+                          </label>
+                          <input
+                            type="text"
+                            name="training_topic"
+                            value={resourceData.training_topic}
+                            onChange={handleResourceChange}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="e.g., Financial Literacy"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Expected Participants
+                          </label>
+                          <input
+                            type="number"
+                            name="participants_count"
+                            value={resourceData.participants_count}
+                            onChange={handleResourceChange}
+                            min="0"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="0"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Quantity Needed
+                      </label>
+                      <input
+                        type="number"
+                        name="quantity_needed"
+                        value={resourceData.quantity_needed}
+                        onChange={handleResourceChange}
+                        min="1"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="1"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Duration of Use (days)
+                      </label>
+                      <input
+                        type="number"
+                        name="duration_of_use"
+                        value={resourceData.duration_of_use}
+                        onChange={handleResourceChange}
+                        min="1"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Number of days"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Standard Fields (shown for all modules) */}
+              {!isFinanceModule && (
+                <>
+                  {/* Location Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900 border-b pb-2 flex items-center gap-2">
+                      <span>📍</span>
+                      Location
+                    </h3>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Location Details
+                      </label>
+                      <input
+                        type="text"
+                        name="location_details"
+                        value={formData.location_details}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="e.g., Community Center, Main Road"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Parish
+                        </label>
+                        <input
+                          type="text"
+                          name="parish"
+                          value={formData.parish}
+                          onChange={handleChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Parish"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Ward
+                        </label>
+                        <input
+                          type="text"
+                          name="ward"
+                          value={formData.ward}
+                          onChange={handleChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Ward"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          County
+                        </label>
+                        <input
+                          type="text"
+                          name="county"
+                          value={formData.county}
+                          onChange={handleChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="County"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Dates and Duration */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2 flex items-center gap-2">
+                  <span>📅</span>
+                  Schedule
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Activity Date
+                    </label>
+                    <input
+                      type="date"
+                      name="activity_date"
+                      value={formData.activity_date}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      name="start_date"
+                      value={formData.start_date}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      name="end_date"
+                      value={formData.end_date}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {!isFinanceModule && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Duration (Hours)
+                    </label>
+                    <input
+                      type="number"
+                      name="duration_hours"
+                      value={formData.duration_hours}
+                      onChange={handleChange}
+                      min="0"
+                      step="0.5"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="e.g., 2.5"
+                    />
+                  </div>
+                )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  County
-                </label>
-                <input
-                  type="text"
-                  name="county"
-                  value={formData.county}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="County"
-                />
+              {/* Staff and Beneficiaries (skip for Finance module) */}
+              {!isFinanceModule && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2 flex items-center gap-2">
+                    <span>👥</span>
+                    Staff & Beneficiaries
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Facilitators
+                      </label>
+                      <input
+                        type="text"
+                        name="facilitators"
+                        value={formData.facilitators}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Comma-separated names"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Staff Assigned
+                      </label>
+                      <input
+                        type="text"
+                        name="staff_assigned"
+                        value={formData.staff_assigned}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Comma-separated names"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Target Beneficiaries
+                      </label>
+                      <input
+                        type="number"
+                        name="target_beneficiaries"
+                        value={formData.target_beneficiaries}
+                        onChange={handleChange}
+                        min="0"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="0"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Beneficiary Type
+                      </label>
+                      <input
+                        type="text"
+                        name="beneficiary_type"
+                        value={formData.beneficiary_type}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="e.g., Women, Children, Youth"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Budget and Status */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2 flex items-center gap-2">
+                  <span>⚙️</span>
+                  Budget & Status
+                </h3>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Budget Allocated ($)
+                  </label>
+                  <input
+                    type="number"
+                    name="budget_allocated"
+                    value={formData.budget_allocated}
+                    onChange={handleChange}
+                    min="0"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Status
+                    </label>
+                    <select
+                      name="status"
+                      value={formData.status}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="planned">Planned</option>
+                      <option value="ongoing">Ongoing</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Approval Status
+                    </label>
+                    <select
+                      name="approval_status"
+                      value={formData.approval_status}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="draft">Draft</option>
+                      <option value="submitted">Submitted</option>
+                      <option value="approved">Approved</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Priority
+                    </label>
+                    <select
+                      name="priority"
+                      value={formData.priority}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="low">Low</option>
+                      <option value="normal">Normal</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-
-          {/* Dates and Duration */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
-              Schedule
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Activity Date
-                </label>
-                <input
-                  type="date"
-                  name="activity_date"
-                  value={formData.activity_date}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  name="start_date"
-                  value={formData.start_date}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  End Date
-                </label>
-                <input
-                  type="date"
-                  name="end_date"
-                  value={formData.end_date}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Duration (Hours)
-              </label>
-              <input
-                type="number"
-                name="duration_hours"
-                value={formData.duration_hours}
-                onChange={handleChange}
-                min="0"
-                step="0.5"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="e.g., 2.5"
-              />
-            </div>
-          </div>
-
-          {/* Staff and Beneficiaries */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
-              Staff & Beneficiaries
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Facilitators
-                </label>
-                <input
-                  type="text"
-                  name="facilitators"
-                  value={formData.facilitators}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Comma-separated names"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Staff Assigned
-                </label>
-                <input
-                  type="text"
-                  name="staff_assigned"
-                  value={formData.staff_assigned}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Comma-separated names"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Target Beneficiaries
-                </label>
-                <input
-                  type="number"
-                  name="target_beneficiaries"
-                  value={formData.target_beneficiaries}
-                  onChange={handleChange}
-                  min="0"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="0"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Beneficiary Type
-                </label>
-                <input
-                  type="text"
-                  name="beneficiary_type"
-                  value={formData.beneficiary_type}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="e.g., Women, Children, Youth"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Budget and Status */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
-              Budget & Status
-            </h3>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Budget Allocated ($)
-              </label>
-              <input
-                type="number"
-                name="budget_allocated"
-                value={formData.budget_allocated}
-                onChange={handleChange}
-                min="0"
-                step="0.01"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="0.00"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
-                </label>
-                <select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="planned">Planned</option>
-                  <option value="ongoing">Ongoing</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Approval Status
-                </label>
-                <select
-                  name="approval_status"
-                  value={formData.approval_status}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="draft">Draft</option>
-                  <option value="submitted">Submitted</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Priority
-                </label>
-                <select
-                  name="priority"
-                  value={formData.priority}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="low">Low</option>
-                  <option value="normal">Normal</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
-                </select>
-              </div>
-            </div>
-          </div>
+            </>
+          )}
 
           {/* Footer Buttons */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
@@ -475,7 +916,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || loadingModule}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 disabled:bg-blue-300 transition-colors"
             >
               {loading ? 'Creating...' : 'Create Activity'}
