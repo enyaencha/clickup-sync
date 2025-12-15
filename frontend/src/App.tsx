@@ -25,6 +25,8 @@ import GBVCaseManagement from './components/GBVCaseManagement';
 import ReliefDistribution from './components/ReliefDistribution';
 import NutritionAssessment from './components/NutritionAssessment';
 import AgricultureMonitoring from './components/AgricultureMonitoring';
+import FinanceDashboard from './components/FinanceDashboard';
+import ResourceManagement from './components/ResourceManagement';
 
 const App: React.FC = () => {
   return (
@@ -86,6 +88,14 @@ const App: React.FC = () => {
                     <Route path="/relief" element={<ReliefDistribution />} />
                     <Route path="/nutrition" element={<NutritionAssessment />} />
                     <Route path="/agriculture" element={<AgricultureMonitoring />} />
+
+                    {/* Finance Management Module Routes */}
+                    <Route path="/finance" element={<FinanceDashboard />} />
+                    <Route path="/finance/dashboard" element={<FinanceDashboard />} />
+
+                    {/* Resource Management Module Routes */}
+                    <Route path="/resources" element={<ResourceManagement />} />
+                    <Route path="/resources/inventory" element={<ResourceManagement />} />
                   </Routes>
                 </Layout>
               </ProtectedRoute>

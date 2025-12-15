@@ -107,6 +107,23 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
       ]
     },
     {
+      section: 'FINANCE & RESOURCES',
+      items: [
+        {
+          icon: '💰',
+          label: 'Finance',
+          path: '/finance',
+          description: 'Budget & Expenditure'
+        },
+        {
+          icon: '🏗️',
+          label: 'Resources',
+          path: '/resources',
+          description: 'Asset Management'
+        }
+      ]
+    },
+    {
       section: 'LOGFRAME & M&E',
       items: [
         {
