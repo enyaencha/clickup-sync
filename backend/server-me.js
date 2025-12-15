@@ -442,6 +442,20 @@ async function initializeServices() {
             console.log('✅ Agriculture routes registered at /api/agriculture');
             logger.info('✅ Agriculture routes registered');
 
+            // ==================== FINANCE MANAGEMENT MODULE ====================
+            console.log('\n📊 Registering Finance Management routes...');
+            const financeRouter = require('./routes/finance.routes')(dbManager);
+            app.use('/api/finance', authMW(authSvc), financeRouter);
+            console.log('✅ Finance routes registered at /api/finance');
+            logger.info('✅ Finance routes registered');
+
+            // ==================== RESOURCE MANAGEMENT MODULE ====================
+            console.log('\n🏗️  Registering Resource Management routes...');
+            const resourcesRouter = require('./routes/resources.routes')(dbManager);
+            app.use('/api/resources', authMW(authSvc), resourcesRouter);
+            console.log('✅ Resources routes registered at /api/resources');
+            logger.info('✅ Resources routes registered');
+
         } catch (error) {
             console.error('❌ Failed to register Additional Program Module Routes:', error);
             throw error;
