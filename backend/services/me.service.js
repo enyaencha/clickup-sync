@@ -275,8 +275,8 @@ class MEService {
                 facilitators, staff_assigned,
                 target_beneficiaries, beneficiary_type,
                 budget_allocated, status, approval_status,
-                priority, created_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                priority, created_by, module_specific_data
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
             component.sub_program_id,
             data.component_id,
@@ -300,7 +300,8 @@ class MEService {
             data.status || 'planned',
             data.approval_status || 'draft',
             data.priority || 'normal',
-            toNull(data.created_by)
+            toNull(data.created_by),
+            toNull(data.module_specific_data)
         ]);
 
         const activityId = result.insertId;
