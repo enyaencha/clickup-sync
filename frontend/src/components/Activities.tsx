@@ -904,8 +904,6 @@ const Activities: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         componentId={parseInt(componentId!)}
         onSuccess={handleActivityCreated}
-        moduleId={program?.id}
-        moduleName={program?.name}
       />
 
       <ActivityDetailsModal

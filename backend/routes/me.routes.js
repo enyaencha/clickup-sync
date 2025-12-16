@@ -119,6 +119,46 @@ module.exports = (meService) => {
         }
     });
 
+    // Get module info for a specific component (for module-specific activity forms)
+    router.get('/components/:id/module', async (req, res) => {
+        try {
+            const componentId = req.params.id;
+
+            const query = `
+                SELECT
+                    pm.id as module_id,
+                    pm.name as module_name,
+                    pm.code as module_code,
+                    pm.icon as module_icon
+                FROM project_components pc
+                INNER JOIN sub_programs sp ON pc.sub_program_id = sp.id
+                INNER JOIN program_modules pm ON sp.module_id = pm.id
+                WHERE pc.id = ?
+                LIMIT 1
+            `;
+
+            const results = await db.query(query, [componentId]);
+
+            if (!results || results.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Component not found or not linked to a module'
+                });
+            }
+
+            res.json({
+                success: true,
+                data: results[0]
+            });
+        } catch (error) {
+            console.error('Error fetching component module:', error);
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    });
+
     // ==============================================
     // ACTIVITIES
     // ==============================================
