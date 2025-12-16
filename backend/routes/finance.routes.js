@@ -77,8 +77,7 @@ module.exports = (db) => {
                 LEFT JOIN programs p ON pb.sub_program_id = p.id
                 LEFT JOIN users u1 ON pb.submitted_by = u1.id
                 LEFT JOIN users u2 ON pb.approved_by = u2.id
-                WHERE pb.deleted_at IS NULL
-            `;
+                WHERE pb.deleted_at IS NULL`;
 
             const params = [];
 
@@ -205,8 +204,7 @@ module.exports = (db) => {
                 LEFT JOIN users u1 ON ft.requested_by = u1.id
                 LEFT JOIN users u2 ON ft.approved_by = u2.id
                 LEFT JOIN users u3 ON ft.verified_by = u3.id
-                WHERE ft.deleted_at IS NULL
-            `;
+                WHERE ft.deleted_at IS NULL`;
 
             const params = [];
 
@@ -239,9 +237,6 @@ module.exports = (db) => {
                 ORDER BY ft.transaction_date DESC, ft.created_at DESC
                 LIMIT ? OFFSET ?`;
             params.push(limit, offset);
-
-            console.log('DEBUG - Transaction query params:', { limit, offset, params, paramsLength: params.length });
-            console.log('DEBUG - Param types:', params.map((p, i) => `${i}: ${typeof p} = ${p}`));
 
             const results = await db.query(query, params);
 
@@ -356,8 +351,7 @@ module.exports = (db) => {
                 LEFT JOIN users u3 ON fa.approved_by = u3.id
                 LEFT JOIN program_budgets pb ON fa.program_budget_id = pb.id
                 LEFT JOIN program_modules pm ON pb.program_module_id = pm.id
-                WHERE fa.deleted_at IS NULL
-            `;
+                WHERE fa.deleted_at IS NULL`;
 
             const params = [];
 
@@ -380,9 +374,6 @@ module.exports = (db) => {
                 ORDER BY FIELD(fa.priority, 'urgent', 'high', 'medium', 'low'), fa.requested_at DESC
                 LIMIT ? OFFSET ?`;
             params.push(limit, offset);
-
-            console.log('DEBUG - Approvals query params:', { limit, offset, params, paramsLength: params.length });
-            console.log('DEBUG - Param types:', params.map((p, i) => `${i}: ${typeof p} = ${p}`));
 
             const results = await db.query(query, params);
 
