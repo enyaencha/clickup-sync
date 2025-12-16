@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { authFetch } from '../config/api';
 
 interface AddActivityModalProps {
@@ -6,6 +6,8 @@ interface AddActivityModalProps {
   onClose: () => void;
   componentId: number;
   onSuccess: () => void;
+  moduleId?: number;
+  moduleName?: string;
 }
 
 const AddActivityModal: React.FC<AddActivityModalProps> = ({
@@ -13,6 +15,8 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
   onClose,
   componentId,
   onSuccess,
+  moduleId: propModuleId,
+  moduleName: propModuleName,
 }) => {
   // Basic form data
   const [formData, setFormData] = useState({
@@ -63,47 +67,11 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [moduleId, setModuleId] = useState<number | null>(null);
-  const [moduleName, setModuleName] = useState<string>('');
-  const [loadingModule, setLoadingModule] = useState(true);
 
-  // Fetch component details to determine the module
-  useEffect(() => {
-    if (isOpen && componentId) {
-      fetchModuleInfo();
-    }
-  }, [isOpen, componentId]);
-
-  const fetchModuleInfo = async () => {
-    try {
-      setLoadingModule(true);
-      // Fetch component details
-      const response = await authFetch(`/api/components/${componentId}`);
-      if (!response.ok) throw new Error('Failed to fetch component details');
-      const data = await response.json();
-      const component = data.data;
-
-      // Fetch sub-program to get module_id
-      const subProgramRes = await authFetch(`/api/sub-programs/${component.sub_program_id}`);
-      if (!subProgramRes.ok) throw new Error('Failed to fetch sub-program details');
-      const subProgramData = await subProgramRes.json();
-      const subProgram = subProgramData.data;
-
-      // Fetch module details
-      const moduleRes = await authFetch(`/api/programs/${subProgram.module_id}`);
-      if (!moduleRes.ok) throw new Error('Failed to fetch module details');
-      const moduleData = await moduleRes.json();
-      const module = moduleData.data;
-
-      setModuleId(module.id);
-      setModuleName(module.name);
-    } catch (err) {
-      console.error('Error fetching module info:', err);
-      setError('Could not determine module type');
-    } finally {
-      setLoadingModule(false);
-    }
-  };
+  // Use props or default values
+  const moduleId = propModuleId || null;
+  const moduleName = propModuleName || '';
+  const loadingModule = false; // No longer fetching, using props
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
