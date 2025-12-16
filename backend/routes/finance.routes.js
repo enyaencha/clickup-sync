@@ -240,6 +240,9 @@ module.exports = (db) => {
                 LIMIT ? OFFSET ?`;
             params.push(limit, offset);
 
+            console.log('DEBUG - Transaction query params:', { limit, offset, params, paramsLength: params.length });
+            console.log('DEBUG - Param types:', params.map((p, i) => `${i}: ${typeof p} = ${p}`));
+
             const results = await db.query(query, params);
 
             res.json({
@@ -377,6 +380,9 @@ module.exports = (db) => {
                 ORDER BY FIELD(fa.priority, 'urgent', 'high', 'medium', 'low'), fa.requested_at DESC
                 LIMIT ? OFFSET ?`;
             params.push(limit, offset);
+
+            console.log('DEBUG - Approvals query params:', { limit, offset, params, paramsLength: params.length });
+            console.log('DEBUG - Param types:', params.map((p, i) => `${i}: ${typeof p} = ${p}`));
 
             const results = await db.query(query, params);
 
