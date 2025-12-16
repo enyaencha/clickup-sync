@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
 
 interface AddActivityModalProps {
@@ -6,8 +6,6 @@ interface AddActivityModalProps {
   onClose: () => void;
   componentId: number;
   onSuccess: () => void;
-  moduleId?: number;
-  moduleName?: string;
 }
 
 const AddActivityModal: React.FC<AddActivityModalProps> = ({
@@ -15,8 +13,6 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
   onClose,
   componentId,
   onSuccess,
-  moduleId: propModuleId,
-  moduleName: propModuleName,
 }) => {
   // Basic form data
   const [formData, setFormData] = useState({
@@ -67,11 +63,47 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [moduleId, setModuleId] = useState<number | null>(null);
+  const [moduleName, setModuleName] = useState<string>('');
+  const [loadingModule, setLoadingModule] = useState(true);
 
-  // Use props or default values
-  const moduleId = propModuleId || null;
-  const moduleName = propModuleName || '';
-  const loadingModule = false; // No longer fetching, using props
+  // Fetch module info when modal opens
+  useEffect(() => {
+    if (isOpen && componentId) {
+      fetchModuleInfo();
+    }
+  }, [isOpen, componentId]);
+
+  const fetchModuleInfo = async () => {
+    try {
+      setLoadingModule(true);
+      setError(null);
+
+      // Fetch module info using the new endpoint
+      const response = await authFetch(`/api/components/${componentId}/module`);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch module information');
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        setModuleId(data.data.module_id);
+        setModuleName(data.data.module_name);
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (err) {
+      console.error('Error fetching module info:', err);
+      setError('Could not determine module type. Using standard form.');
+      // Set defaults so form still works
+      setModuleId(null);
+      setModuleName('');
+    } finally {
+      setLoadingModule(false);
+    }
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
