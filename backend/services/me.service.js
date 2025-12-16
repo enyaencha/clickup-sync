@@ -340,6 +340,7 @@ class MEService {
             toNull(data.recommendations),
             toNull(data.immediate_objectives),
             toNull(data.expected_results),
+            toNull(data.module_specific_data),
             id
         ];
 
@@ -364,6 +365,7 @@ class MEService {
                 recommendations = ?,
                 immediate_objectives = ?,
                 expected_results = ?,
+                module_specific_data = ?,
                 updated_at = NOW()
             WHERE id = ?
         `, queryParams);

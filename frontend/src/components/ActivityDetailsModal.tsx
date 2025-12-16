@@ -25,6 +25,7 @@ interface Activity {
   status: string;
   approval_status: string;
   priority: string;
+  module_specific_data?: string; // JSON string
 }
 
 interface ActivityDetailsModalProps {
@@ -45,6 +46,18 @@ const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Activity>>({});
+  const [moduleSpecificData, setModuleSpecificData] = useState<any>(null);
+
+  // Parse module-specific data when activity is loaded
+  const parseModuleSpecificData = (jsonString: string | undefined) => {
+    if (!jsonString) return null;
+    try {
+      return JSON.parse(jsonString);
+    } catch (e) {
+      console.error('Failed to parse module_specific_data:', e);
+      return null;
+    }
+  };
 
   useEffect(() => {
     if (isOpen && activityId) {
@@ -61,6 +74,11 @@ const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
       const data = await response.json();
       setActivity(data.data);
       setFormData(data.data);
+
+      // Parse module-specific data if present
+      const parsed = parseModuleSpecificData(data.data.module_specific_data);
+      setModuleSpecificData(parsed);
+
       setLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -75,13 +93,27 @@ const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleModuleSpecificChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setModuleSpecificData((prev: any) => ({ ...prev, [name]: value }));
+  };
+
   const handleSave = async () => {
     try {
       setLoading(true);
+
+      // Prepare payload with module-specific data if present
+      const payload = {
+        ...formData,
+        module_specific_data: moduleSpecificData ? JSON.stringify(moduleSpecificData) : null
+      };
+
       const response = await authFetch(`/api/activities/${activityId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -368,6 +400,36 @@ const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
                   />
                 </div>
               </div>
+
+              {/* Module-Specific Data (Finance/Resource) */}
+              {moduleSpecificData && (
+                <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
+                  <h3 className="font-semibold text-gray-900 border-b pb-2">
+                    {moduleSpecificData.transaction_type ? '💰 Finance Details' :
+                     moduleSpecificData.activity_type ? '🏗️ Resource Details' :
+                     '📝 Module-Specific Data'}
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Display all module-specific fields */}
+                    {Object.entries(moduleSpecificData).map(([key, value]) => (
+                      <div key={key}>
+                        <label className="block text-sm font-medium text-gray-700 mb-1 capitalize">
+                          {key.replace(/_/g, ' ')}
+                        </label>
+                        <input
+                          type="text"
+                          name={key}
+                          value={isEditing ? (moduleSpecificData[key] || '') : (value as string || '')}
+                          onChange={handleModuleSpecificChange}
+                          disabled={!isEditing}
+                          className="w-full px-3 py-2 border rounded-lg disabled:bg-gray-50"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Budget */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
