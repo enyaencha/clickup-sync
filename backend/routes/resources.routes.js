@@ -78,10 +78,12 @@ module.exports = (db) => {
                 availability_status,
                 condition_status,
                 assigned_to_program,
-                search,
-                limit = 100,
-                offset = 0
+                search
             } = req.query;
+
+            // Safely parse limit and offset with defaults
+            const limit = Math.max(1, parseInt(req.query.limit) || 100);
+            const offset = Math.max(0, parseInt(req.query.offset) || 0);
 
             let query = `
                 SELECT
@@ -125,7 +127,7 @@ module.exports = (db) => {
             }
 
             query += ` ORDER BY r.created_at DESC LIMIT ? OFFSET ?`;
-            params.push(parseInt(limit), parseInt(offset));
+            params.push(limit, offset);
 
             const results = await db.query(query, params);
 
@@ -319,10 +321,12 @@ module.exports = (db) => {
             const {
                 status,
                 request_type,
-                program_module_id,
-                limit = 50,
-                offset = 0
+                program_module_id
             } = req.query;
+
+            // Safely parse limit and offset with defaults
+            const limit = Math.max(1, parseInt(req.query.limit) || 50);
+            const offset = Math.max(0, parseInt(req.query.offset) || 0);
 
             let query = `
                 SELECT
@@ -365,7 +369,7 @@ module.exports = (db) => {
                 FIELD(rr.priority, 'urgent', 'high', 'medium', 'low'),
                 rr.created_at DESC
                 LIMIT ? OFFSET ?`;
-            params.push(parseInt(limit), parseInt(offset));
+            params.push(limit, offset);
 
             const results = await db.query(query, params);
 

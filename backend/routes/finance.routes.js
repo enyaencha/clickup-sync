@@ -58,10 +58,12 @@ module.exports = (db) => {
             const {
                 program_module_id,
                 fiscal_year,
-                status,
-                limit = 50,
-                offset = 0
+                status
             } = req.query;
+
+            // Safely parse limit and offset with defaults
+            const limit = Math.max(1, parseInt(req.query.limit) || 50);
+            const offset = Math.max(0, parseInt(req.query.offset) || 0);
 
             let query = `
                 SELECT
@@ -96,7 +98,7 @@ module.exports = (db) => {
             }
 
             query += ` ORDER BY pb.created_at DESC LIMIT ? OFFSET ?`;
-            params.push(parseInt(limit), parseInt(offset));
+            params.push(limit, offset);
 
             const results = await db.query(query, params);
 
@@ -180,10 +182,12 @@ module.exports = (db) => {
                 approval_status,
                 verification_status,
                 start_date,
-                end_date,
-                limit = 10,
-                offset = 0
+                end_date
             } = req.query;
+
+            // Safely parse limit and offset with defaults
+            const limit = Math.max(1, parseInt(req.query.limit) || 10);
+            const offset = Math.max(0, parseInt(req.query.offset) || 0);
 
             let query = `
                 SELECT
@@ -230,7 +234,7 @@ module.exports = (db) => {
             }
 
             query += ` ORDER BY ft.transaction_date DESC, ft.created_at DESC LIMIT ? OFFSET ?`;
-            params.push(parseInt(limit), parseInt(offset));
+            params.push(limit, offset);
 
             const results = await db.query(query, params);
 
@@ -324,10 +328,12 @@ module.exports = (db) => {
             const {
                 status,
                 request_type,
-                priority,
-                limit = 50,
-                offset = 0
+                priority
             } = req.query;
+
+            // Safely parse limit and offset with defaults
+            const limit = Math.max(1, parseInt(req.query.limit) || 50);
+            const offset = Math.max(0, parseInt(req.query.offset) || 0);
 
             let query = `
                 SELECT
@@ -367,7 +373,7 @@ module.exports = (db) => {
                 FIELD(fa.priority, 'urgent', 'high', 'medium', 'low'),
                 fa.requested_at DESC
                 LIMIT ? OFFSET ?`;
-            params.push(parseInt(limit), parseInt(offset));
+            params.push(limit, offset);
 
             const results = await db.query(query, params);
 
