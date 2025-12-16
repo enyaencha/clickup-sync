@@ -97,7 +97,9 @@ module.exports = (db) => {
                 params.push(status);
             }
 
-            query += ` ORDER BY pb.created_at DESC LIMIT ? OFFSET ?`;
+            query += `
+                ORDER BY pb.created_at DESC
+                LIMIT ? OFFSET ?`;
             params.push(limit, offset);
 
             const results = await db.query(query, params);
@@ -233,7 +235,9 @@ module.exports = (db) => {
                 params.push(end_date);
             }
 
-            query += ` ORDER BY ft.transaction_date DESC, ft.created_at DESC LIMIT ? OFFSET ?`;
+            query += `
+                ORDER BY ft.transaction_date DESC, ft.created_at DESC
+                LIMIT ? OFFSET ?`;
             params.push(limit, offset);
 
             const results = await db.query(query, params);
@@ -369,9 +373,8 @@ module.exports = (db) => {
                 params.push(priority);
             }
 
-            query += ` ORDER BY
-                FIELD(fa.priority, 'urgent', 'high', 'medium', 'low'),
-                fa.requested_at DESC
+            query += `
+                ORDER BY FIELD(fa.priority, 'urgent', 'high', 'medium', 'low'), fa.requested_at DESC
                 LIMIT ? OFFSET ?`;
             params.push(limit, offset);
 
