@@ -80,7 +80,7 @@ async function initializeDatabase() {
             log('📦 Fresh database detected - running full schema initialization', colors.yellow);
 
             // Run the latest complete schema
-            const schemaPath = path.join(__dirname, '../database/me_clickup_system_2025_dec_16.sql');
+            const schemaPath = path.join(__dirname, '../../database/me_clickup_system_2025_dec_16.sql');
             log(`📄 Loading schema: ${path.basename(schemaPath)}`, colors.blue);
 
             const schema = await fs.readFile(schemaPath, 'utf8');
@@ -118,7 +118,7 @@ async function initializeDatabase() {
 
         // Run migrations from database/migrations directory
         log('\n📋 Checking for pending migrations...', colors.blue);
-        const migrationsDir = path.join(__dirname, '../database/migrations');
+        const migrationsDir = path.join(__dirname, '../../database/migrations');
 
         try {
             const files = await fs.readdir(migrationsDir);
