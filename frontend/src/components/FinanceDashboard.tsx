@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { authFetch } from '../config/api';
+import AddBudgetModal from './AddBudgetModal';
+import AddTransactionModal from './AddTransactionModal';
 
 interface BudgetSummary {
   program_module_id: number;
@@ -45,6 +47,8 @@ const FinanceDashboard: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterProgram, setFilterProgram] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [showBudgetModal, setShowBudgetModal] = useState(false);
+  const [showTransactionModal, setShowTransactionModal] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -147,7 +151,7 @@ const FinanceDashboard: React.FC = () => {
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => {/* TODO: Open new budget modal */}}
+                onClick={() => setShowBudgetModal(true)}
                 className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,7 +160,7 @@ const FinanceDashboard: React.FC = () => {
                 New Budget
               </button>
               <button
-                onClick={() => {/* TODO: Open new transaction modal */}}
+                onClick={() => setShowTransactionModal(true)}
                 className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -444,6 +448,18 @@ const FinanceDashboard: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* Modals */}
+      <AddBudgetModal
+        isOpen={showBudgetModal}
+        onClose={() => setShowBudgetModal(false)}
+        onSuccess={fetchFinanceData}
+      />
+      <AddTransactionModal
+        isOpen={showTransactionModal}
+        onClose={() => setShowTransactionModal(false)}
+        onSuccess={fetchFinanceData}
+      />
     </div>
   );
 };
