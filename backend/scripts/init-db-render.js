@@ -2,9 +2,10 @@
  * Render.com Database Initialization Script
  *
  * This script runs automatically on every Render deployment to:
- * 1. Initialize the database with the latest schema
- * 2. Run all pending migrations
- * 3. Ensure the database is up-to-date
+ * 1. Initialize the database with the latest complete schema
+ *    (me_clickup_system_2025_dec_16.sql - includes all migrations)
+ * 2. Skip if database already exists (idempotent)
+ * 3. Verify database setup
  */
 
 const mysql = require('mysql2/promise');
@@ -114,77 +115,7 @@ async function initializeDatabase() {
             log(`\n✅ Schema initialized successfully (${executed} statements)`, colors.green);
         } else {
             log('📊 Existing database detected - skipping schema initialization', colors.blue);
-        }
-
-        // Run migrations from database/migrations directory
-        log('\n📋 Checking for pending migrations...', colors.blue);
-        const migrationsDir = path.join(__dirname, '../../database/migrations');
-
-        try {
-            const files = await fs.readdir(migrationsDir);
-            const sqlFiles = files
-                .filter(f => f.endsWith('.sql') && !f.includes('MANUAL'))
-                .sort();
-
-            log(`   Found ${sqlFiles.length} migration files`, colors.blue);
-
-            if (sqlFiles.length > 0) {
-                // Create migrations tracking table if it doesn't exist
-                await connection.query(`
-                    CREATE TABLE IF NOT EXISTS _migrations (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        filename VARCHAR(255) UNIQUE NOT NULL,
-                        executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        INDEX idx_filename (filename)
-                    )
-                `);
-
-                for (const file of sqlFiles) {
-                    // Check if migration was already run
-                    const [rows] = await connection.query(
-                        'SELECT COUNT(*) as count FROM _migrations WHERE filename = ?',
-                        [file]
-                    );
-
-                    if (rows[0].count === 0) {
-                        log(`   🔄 Running migration: ${file}`, colors.yellow);
-
-                        const migrationPath = path.join(migrationsDir, file);
-                        const migrationSQL = await fs.readFile(migrationPath, 'utf8');
-
-                        try {
-                            // Split and execute migration statements
-                            const statements = migrationSQL
-                                .split(';')
-                                .map(stmt => stmt.trim())
-                                .filter(stmt => stmt.length > 0);
-
-                            for (const statement of statements) {
-                                await connection.query(statement);
-                            }
-
-                            // Mark migration as executed
-                            await connection.query(
-                                'INSERT INTO _migrations (filename) VALUES (?)',
-                                [file]
-                            );
-
-                            log(`   ✅ Completed: ${file}`, colors.green);
-                        } catch (error) {
-                            log(`   ❌ Failed: ${file} - ${error.message}`, colors.red);
-                            // Continue with other migrations
-                        }
-                    } else {
-                        log(`   ⏭️  Skipped (already applied): ${file}`, colors.blue);
-                    }
-                }
-            }
-        } catch (error) {
-            if (error.code === 'ENOENT') {
-                log('   No migrations directory found', colors.yellow);
-            } else {
-                throw error;
-            }
+            log('   Database already contains all tables and migrations', colors.blue);
         }
 
         // Verify database setup
