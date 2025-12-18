@@ -13,30 +13,18 @@ services:
         value: production
       - key: PORT
         value: 3000
-      - key: DB_HOST
-        fromDatabase:
-          name: clickup-mysql
-          property: host
-      - key: DB_USER
-        fromDatabase:
-          name: clickup-mysql
-          property: user
-      - key: DB_PASSWORD
-        fromDatabase:
-          name: clickup-mysql
-          property: password
-      - key: DB_NAME
-        fromDatabase:
-          name: clickup-mysql
-          property: database
-      - key: DB_PORT
-        fromDatabase:
-          name: clickup-mysql
-          property: port
       - key: DATABASE_URL
-        fromDatabase:
-          name: clickup-mysql
-          property: connectionString
+        sync: false  # You'll set this manually with PlanetScale connection string
+      - key: DB_HOST
+        sync: false  # From PlanetScale
+      - key: DB_USER
+        sync: false  # From PlanetScale
+      - key: DB_PASSWORD
+        sync: false  # From PlanetScale
+      - key: DB_NAME
+        value: me_clickup_system
+      - key: DB_PORT
+        value: 3306
       - key: JWT_SECRET
         generateValue: true
       - key: CLICKUP_API_TOKEN
@@ -69,10 +57,5 @@ services:
         value: https://clickup-sync-backend.onrender.com
     autoDeploy: true
 
-databases:
-  # MySQL Database - Free tier on Render (PostgreSQL) or external MySQL
-  # For true MySQL, use PlanetScale (free) or Railway
-  - name: clickup-mysql
-    databaseName: me_clickup_system
-    user: clickup_user
-    plan: free
+# Database: Using PlanetScale (external free MySQL)
+# No managed database needed - connection details set via environment variables
