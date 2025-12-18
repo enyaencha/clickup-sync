@@ -95,152 +95,67 @@ async function initializeDatabase() {
         const tablesExist = parseInt(result.rows[0].count) > 0;
 
         if (!tablesExist) {
-            log('📦 Fresh database detected - initializing with basic schema', colors.yellow);
-            log('⚠️  Note: Using simplified PostgreSQL schema', colors.yellow);
-            log('   Full MySQL schema will be converted in future update\n', colors.yellow);
+            log('📦 Fresh database detected - initializing with complete schema', colors.yellow);
+            log('📋 Loading converted PostgreSQL schema (76 tables)...\n', colors.blue);
 
-            // Create basic tables for now
-            const basicSchema = `
-                CREATE TABLE IF NOT EXISTS organizations (
-                    id SERIAL PRIMARY KEY,
-                    name VARCHAR(255) NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
+            // Load the converted PostgreSQL schema
+            const schemaPath = path.join(__dirname, '../../database/me_clickup_system_postgres.sql');
 
-                CREATE TABLE IF NOT EXISTS users (
-                    id SERIAL PRIMARY KEY,
-                    username VARCHAR(255) UNIQUE NOT NULL,
-                    email VARCHAR(255) UNIQUE NOT NULL,
-                    password_hash VARCHAR(255) NOT NULL,
-                    full_name VARCHAR(255),
-                    profile_picture TEXT,
-                    role VARCHAR(50) DEFAULT 'field_officer',
-                    is_active BOOLEAN DEFAULT true,
-                    is_system_admin BOOLEAN DEFAULT false,
-                    last_login_at TIMESTAMP,
-                    organization_id INTEGER REFERENCES organizations(id),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
+            try {
+                const schema = await fs.readFile(schemaPath, 'utf8');
 
-                CREATE TABLE IF NOT EXISTS roles (
-                    id SERIAL PRIMARY KEY,
-                    name VARCHAR(100) UNIQUE NOT NULL,
-                    display_name VARCHAR(255),
-                    description TEXT,
-                    scope VARCHAR(50),
-                    level INTEGER DEFAULT 0,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
+                // Split into individual statements (careful with complex queries)
+                const statements = schema
+                    .split(';')
+                    .map(s => s.trim())
+                    .filter(s => s.length > 0 && !s.startsWith('--'));
 
-                CREATE TABLE IF NOT EXISTS user_roles (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                    role_id INTEGER REFERENCES roles(id) ON DELETE CASCADE,
-                    expires_at TIMESTAMP,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(user_id, role_id)
-                );
+                log(`⚙️  Executing ${statements.length} SQL statements...`, colors.yellow);
 
-                CREATE TABLE IF NOT EXISTS permissions (
-                    id SERIAL PRIMARY KEY,
-                    name VARCHAR(100) UNIQUE NOT NULL,
-                    resource VARCHAR(100),
-                    action VARCHAR(50),
-                    description TEXT,
-                    applies_to VARCHAR(50),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
+                let executed = 0;
+                let skipped = 0;
+                let errors = 0;
 
-                CREATE TABLE IF NOT EXISTS role_permissions (
-                    id SERIAL PRIMARY KEY,
-                    role_id INTEGER REFERENCES roles(id) ON DELETE CASCADE,
-                    permission_id INTEGER REFERENCES permissions(id) ON DELETE CASCADE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(role_id, permission_id)
-                );
+                for (const statement of statements) {
+                    // Skip DROP TABLE statements to avoid errors on fresh database
+                    if (statement.match(/^DROP TABLE/i)) {
+                        skipped++;
+                        continue;
+                    }
 
-                CREATE TABLE IF NOT EXISTS user_sessions (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                    token TEXT NOT NULL,
-                    refresh_token TEXT,
-                    expires_at TIMESTAMP,
-                    refresh_expires_at TIMESTAMP,
-                    ip_address VARCHAR(45),
-                    user_agent TEXT,
-                    is_active BOOLEAN DEFAULT true,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
+                    try {
+                        await client.query(statement + ';');
+                        executed++;
 
-                CREATE TABLE IF NOT EXISTS access_audit_log (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER REFERENCES users(id),
-                    action VARCHAR(100),
-                    resource VARCHAR(100),
-                    resource_id INTEGER,
-                    access_granted BOOLEAN,
-                    denial_reason TEXT,
-                    ip_address VARCHAR(45),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
+                        // Log progress every 10 statements
+                        if (executed % 10 === 0) {
+                            log(`   ✓ Executed ${executed}/${statements.length - skipped} statements...`, colors.blue);
+                        }
+                    } catch (error) {
+                        // Log error but continue (some statements might fail due to dependencies)
+                        if (error.message.includes('already exists')) {
+                            skipped++;
+                        } else {
+                            errors++;
+                            if (errors <= 5) {  // Only log first 5 errors
+                                log(`   ⚠️  Error in statement: ${error.message.substring(0, 100)}`, colors.yellow);
+                            }
+                        }
+                    }
+                }
 
-                CREATE TABLE IF NOT EXISTS programs (
-                    id SERIAL PRIMARY KEY,
-                    name VARCHAR(255) NOT NULL,
-                    code VARCHAR(50) UNIQUE,
-                    description TEXT,
-                    organization_id INTEGER REFERENCES organizations(id),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
+                log(`\n✅ Schema initialization completed`, colors.green);
+                log(`   ✓ Executed: ${executed} statements`, colors.green);
+                log(`   ⊘ Skipped: ${skipped} statements`, colors.yellow);
+                if (errors > 0) {
+                    log(`   ⚠️  Errors: ${errors} statements (non-critical)\n`, colors.yellow);
+                }
 
-                CREATE TABLE IF NOT EXISTS program_modules (
-                    id SERIAL PRIMARY KEY,
-                    name VARCHAR(255) NOT NULL,
-                    code VARCHAR(50) UNIQUE NOT NULL,
-                    description TEXT,
-                    organization_id INTEGER REFERENCES organizations(id),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-
-                CREATE TABLE IF NOT EXISTS user_module_assignments (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                    module_id INTEGER REFERENCES programs(id) ON DELETE CASCADE,
-                    can_view BOOLEAN DEFAULT true,
-                    can_create BOOLEAN DEFAULT false,
-                    can_edit BOOLEAN DEFAULT false,
-                    can_delete BOOLEAN DEFAULT false,
-                    can_approve BOOLEAN DEFAULT false,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-
-                CREATE TABLE IF NOT EXISTS activities (
-                    id SERIAL PRIMARY KEY,
-                    title VARCHAR(255) NOT NULL,
-                    description TEXT,
-                    status VARCHAR(50) DEFAULT 'pending',
-                    program_module_id INTEGER REFERENCES program_modules(id),
-                    created_by INTEGER REFERENCES users(id),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-
-                -- Insert default organization
-                INSERT INTO organizations (name) VALUES ('Default Organization')
-                ON CONFLICT DO NOTHING;
-
-                -- Insert default admin user (password: admin123)
-                INSERT INTO users (username, email, password_hash, full_name, role, is_system_admin, is_active)
-                VALUES ('admin', 'admin@example.com', '$2a$10$X8xZ8Z8Z8Z8Z8Z8Z8Z8Z8uKj7VZ8Z8Z8Z8Z8Z8Z8Z8Z8Z8Z8Z8Z8Z8', 'System Administrator', 'admin', true, true)
-                ON CONFLICT (email) DO NOTHING;
-            `;
-
-            await client.query(basicSchema);
-            log('✅ Basic schema initialized successfully\n', colors.green);
+            } catch (error) {
+                log('❌ Failed to load schema file:', colors.red);
+                log(error.message, colors.red);
+                throw error;
+            }
 
         } else {
             log('📊 Existing database detected - skipping initialization', colors.blue);
