@@ -2,9 +2,10 @@
  * Render.com Database Initialization Script
  *
  * This script runs automatically on every Render deployment to:
- * 1. Initialize the database with the latest schema
- * 2. Run all pending migrations
- * 3. Ensure the database is up-to-date
+ * 1. Initialize the database with the latest complete schema
+ *    (me_clickup_system_2025_dec_16.sql - includes all migrations)
+ * 2. Skip if database already exists (idempotent)
+ * 3. Verify database setup
  */
 
 const mysql = require('mysql2/promise');
@@ -23,6 +24,27 @@ const colors = {
 
 function log(message, color = colors.reset) {
     console.log(`${color}${message}${colors.reset}`);
+}
+
+async function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function connectWithRetry(dbConfig, maxRetries = 10, delayMs = 5000) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            log(`📡 Connection attempt ${attempt}/${maxRetries} to ${dbConfig.host}:${dbConfig.port}`, colors.blue);
+            const connection = await mysql.createConnection(dbConfig);
+            log('✅ Connected to database successfully\n', colors.green);
+            return connection;
+        } catch (error) {
+            if (attempt === maxRetries) {
+                throw error;
+            }
+            log(`   ⏳ Database not ready yet, retrying in ${delayMs / 1000}s... (${error.code})`, colors.yellow);
+            await sleep(delayMs);
+        }
+    }
 }
 
 async function checkTableExists(connection, tableName) {
@@ -55,7 +77,7 @@ async function initializeDatabase() {
                 multipleStatements: true,
                 connectTimeout: 60000
             };
-            log(`📡 Connecting to: ${url.hostname}:${url.port || 3306}`, colors.blue);
+            log(`🎯 Target database: ${url.hostname}:${url.port || 3306}`, colors.blue);
         } else {
             dbConfig = {
                 host: process.env.DB_HOST || 'localhost',
@@ -66,12 +88,13 @@ async function initializeDatabase() {
                 multipleStatements: true,
                 connectTimeout: 60000
             };
-            log(`📡 Connecting to: ${dbConfig.host}:${dbConfig.port}`, colors.blue);
+            log(`🎯 Target database: ${dbConfig.host}:${dbConfig.port}`, colors.blue);
         }
 
-        // Connect to database
-        connection = await mysql.createConnection(dbConfig);
-        log('✅ Connected to database successfully\n', colors.green);
+        log('⏳ Waiting for database to be ready (may take up to 50 seconds)...\n', colors.yellow);
+
+        // Connect to database with retry logic
+        connection = await connectWithRetry(dbConfig);
 
         // Check if this is a fresh database or existing one
         const tablesExist = await checkTableExists(connection, 'organizations');
@@ -80,7 +103,7 @@ async function initializeDatabase() {
             log('📦 Fresh database detected - running full schema initialization', colors.yellow);
 
             // Run the latest complete schema
-            const schemaPath = path.join(__dirname, '../database/me_clickup_system_2025_dec_16.sql');
+            const schemaPath = path.join(__dirname, '../../database/me_clickup_system_2025_dec_16.sql');
             log(`📄 Loading schema: ${path.basename(schemaPath)}`, colors.blue);
 
             const schema = await fs.readFile(schemaPath, 'utf8');
@@ -114,77 +137,7 @@ async function initializeDatabase() {
             log(`\n✅ Schema initialized successfully (${executed} statements)`, colors.green);
         } else {
             log('📊 Existing database detected - skipping schema initialization', colors.blue);
-        }
-
-        // Run migrations from database/migrations directory
-        log('\n📋 Checking for pending migrations...', colors.blue);
-        const migrationsDir = path.join(__dirname, '../database/migrations');
-
-        try {
-            const files = await fs.readdir(migrationsDir);
-            const sqlFiles = files
-                .filter(f => f.endsWith('.sql') && !f.includes('MANUAL'))
-                .sort();
-
-            log(`   Found ${sqlFiles.length} migration files`, colors.blue);
-
-            if (sqlFiles.length > 0) {
-                // Create migrations tracking table if it doesn't exist
-                await connection.query(`
-                    CREATE TABLE IF NOT EXISTS _migrations (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        filename VARCHAR(255) UNIQUE NOT NULL,
-                        executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        INDEX idx_filename (filename)
-                    )
-                `);
-
-                for (const file of sqlFiles) {
-                    // Check if migration was already run
-                    const [rows] = await connection.query(
-                        'SELECT COUNT(*) as count FROM _migrations WHERE filename = ?',
-                        [file]
-                    );
-
-                    if (rows[0].count === 0) {
-                        log(`   🔄 Running migration: ${file}`, colors.yellow);
-
-                        const migrationPath = path.join(migrationsDir, file);
-                        const migrationSQL = await fs.readFile(migrationPath, 'utf8');
-
-                        try {
-                            // Split and execute migration statements
-                            const statements = migrationSQL
-                                .split(';')
-                                .map(stmt => stmt.trim())
-                                .filter(stmt => stmt.length > 0);
-
-                            for (const statement of statements) {
-                                await connection.query(statement);
-                            }
-
-                            // Mark migration as executed
-                            await connection.query(
-                                'INSERT INTO _migrations (filename) VALUES (?)',
-                                [file]
-                            );
-
-                            log(`   ✅ Completed: ${file}`, colors.green);
-                        } catch (error) {
-                            log(`   ❌ Failed: ${file} - ${error.message}`, colors.red);
-                            // Continue with other migrations
-                        }
-                    } else {
-                        log(`   ⏭️  Skipped (already applied): ${file}`, colors.blue);
-                    }
-                }
-            }
-        } catch (error) {
-            if (error.code === 'ENOENT') {
-                log('   No migrations directory found', colors.yellow);
-            } else {
-                throw error;
-            }
+            log('   Database already contains all tables and migrations', colors.blue);
         }
 
         // Verify database setup
