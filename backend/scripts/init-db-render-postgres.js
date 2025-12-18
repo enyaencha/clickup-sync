@@ -112,8 +112,85 @@ async function initializeDatabase() {
                     id SERIAL PRIMARY KEY,
                     username VARCHAR(255) UNIQUE NOT NULL,
                     email VARCHAR(255) UNIQUE NOT NULL,
-                    password VARCHAR(255) NOT NULL,
-                    role VARCHAR(50) DEFAULT 'user',
+                    password_hash VARCHAR(255) NOT NULL,
+                    full_name VARCHAR(255),
+                    profile_picture TEXT,
+                    role VARCHAR(50) DEFAULT 'field_officer',
+                    is_active BOOLEAN DEFAULT true,
+                    is_system_admin BOOLEAN DEFAULT false,
+                    last_login_at TIMESTAMP,
+                    organization_id INTEGER REFERENCES organizations(id),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS roles (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(100) UNIQUE NOT NULL,
+                    display_name VARCHAR(255),
+                    description TEXT,
+                    scope VARCHAR(50),
+                    level INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS user_roles (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    role_id INTEGER REFERENCES roles(id) ON DELETE CASCADE,
+                    expires_at TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, role_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS permissions (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(100) UNIQUE NOT NULL,
+                    resource VARCHAR(100),
+                    action VARCHAR(50),
+                    description TEXT,
+                    applies_to VARCHAR(50),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS role_permissions (
+                    id SERIAL PRIMARY KEY,
+                    role_id INTEGER REFERENCES roles(id) ON DELETE CASCADE,
+                    permission_id INTEGER REFERENCES permissions(id) ON DELETE CASCADE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(role_id, permission_id)
+                );
+
+                CREATE TABLE IF NOT EXISTS user_sessions (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    token TEXT NOT NULL,
+                    refresh_token TEXT,
+                    expires_at TIMESTAMP,
+                    refresh_expires_at TIMESTAMP,
+                    ip_address VARCHAR(45),
+                    user_agent TEXT,
+                    is_active BOOLEAN DEFAULT true,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS access_audit_log (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id),
+                    action VARCHAR(100),
+                    resource VARCHAR(100),
+                    resource_id INTEGER,
+                    access_granted BOOLEAN,
+                    denial_reason TEXT,
+                    ip_address VARCHAR(45),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS programs (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    code VARCHAR(50) UNIQUE,
+                    description TEXT,
                     organization_id INTEGER REFERENCES organizations(id),
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -127,6 +204,18 @@ async function initializeDatabase() {
                     organization_id INTEGER REFERENCES organizations(id),
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS user_module_assignments (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    module_id INTEGER REFERENCES programs(id) ON DELETE CASCADE,
+                    can_view BOOLEAN DEFAULT true,
+                    can_create BOOLEAN DEFAULT false,
+                    can_edit BOOLEAN DEFAULT false,
+                    can_delete BOOLEAN DEFAULT false,
+                    can_approve BOOLEAN DEFAULT false,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
 
                 CREATE TABLE IF NOT EXISTS activities (
@@ -143,6 +232,11 @@ async function initializeDatabase() {
                 -- Insert default organization
                 INSERT INTO organizations (name) VALUES ('Default Organization')
                 ON CONFLICT DO NOTHING;
+
+                -- Insert default admin user (password: admin123)
+                INSERT INTO users (username, email, password_hash, full_name, role, is_system_admin, is_active)
+                VALUES ('admin', 'admin@example.com', '$2a$10$X8xZ8Z8Z8Z8Z8Z8Z8Z8Z8uKj7VZ8Z8Z8Z8Z8Z8Z8Z8Z8Z8Z8Z8Z8Z8', 'System Administrator', 'admin', true, true)
+                ON CONFLICT (email) DO NOTHING;
             `;
 
             await client.query(basicSchema);
