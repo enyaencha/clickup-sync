@@ -50,6 +50,7 @@ services:
   # Frontend Service (Static Site)
   - type: web
     name: clickup-sync-frontend
+    env: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: ./frontend/dist
     routes:
