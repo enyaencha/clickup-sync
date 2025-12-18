@@ -1,7 +1,5 @@
 services:
-  # ======================
-  # Backend Service (Node)
-  # ======================
+  # Backend Service
   - type: web
     name: clickup-sync-backend
     env: node
@@ -15,7 +13,6 @@ services:
         value: production
       - key: PORT
         value: 3000
-
       - key: DB_HOST
         fromDatabase:
           name: clickup-mysql
@@ -40,33 +37,25 @@ services:
         fromDatabase:
           name: clickup-mysql
           property: connectionString
-
       - key: JWT_SECRET
         generateValue: true
-      - key: ENCRYPTION_KEY
-        generateValue: true
-
       - key: CLICKUP_API_TOKEN
         sync: false
-
+      - key: ENCRYPTION_KEY
+        generateValue: true
       - key: ALLOWED_ORIGINS
         value: https://clickup-sync-frontend.onrender.com
-
     autoDeploy: true
 
-  # ======================
-  # Frontend (Static Vite)
-  # ======================
-  - type: static
+  # Frontend Service (Static Site)
+  - type: web
     name: clickup-sync-frontend
     buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: frontend/dist
-
+    staticPublishPath: ./frontend/dist
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
-
     headers:
       - path: /*
         name: X-Frame-Options
@@ -74,17 +63,14 @@ services:
       - path: /*
         name: X-Content-Type-Options
         value: nosniff
-
     envVars:
       - key: VITE_API_URL
         value: https://clickup-sync-backend.onrender.com
-
     autoDeploy: true
 
-# ======================
-# Database
-# ======================
 databases:
+  # MySQL Database - Free tier on Render (PostgreSQL) or external MySQL
+  # For true MySQL, use PlanetScale (free) or Railway
   - name: clickup-mysql
     databaseName: me_clickup_system
     user: clickup_user
