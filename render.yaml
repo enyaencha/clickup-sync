@@ -1,0 +1,80 @@
+services:
+  # Backend Service
+  - type: web
+    name: clickup-sync-backend
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && node ../scripts/init-db-render.js && npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DB_HOST
+        fromDatabase:
+          name: clickup-mysql
+          property: host
+      - key: DB_USER
+        fromDatabase:
+          name: clickup-mysql
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: clickup-mysql
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: clickup-mysql
+          property: database
+      - key: DB_PORT
+        fromDatabase:
+          name: clickup-mysql
+          property: port
+      - key: DATABASE_URL
+        fromDatabase:
+          name: clickup-mysql
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLICKUP_API_TOKEN
+        sync: false
+      - key: ENCRYPTION_KEY
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        value: https://clickup-sync-frontend.onrender.com
+    autoDeploy: true
+
+  # Frontend Service
+  - type: web
+    name: clickup-sync-frontend
+    env: static
+    plan: free
+    region: oregon
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: ./frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: SAMEORIGIN
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+    envVars:
+      - key: VITE_API_URL
+        value: https://clickup-sync-backend.onrender.com
+    autoDeploy: true
+
+databases:
+  # MySQL Database - Free tier on Render (PostgreSQL) or external MySQL
+  # For true MySQL, use PlanetScale (free) or Railway
+  - name: clickup-mysql
+    databaseName: me_clickup_system
+    user: clickup_user
+    plan: free

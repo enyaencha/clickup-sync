@@ -84,6 +84,12 @@ const allowedOrigins = [
     'http://172.17.0.1:5173'
 ];
 
+// Add additional allowed origins from environment variable (for production deployments)
+if (process.env.ALLOWED_ORIGINS) {
+    const additionalOrigins = process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim());
+    allowedOrigins.push(...additionalOrigins);
+}
+
 app.use(cors({
     origin: (origin, callback) => {
         // Allow requests with no origin (mobile apps, Postman, etc.)
