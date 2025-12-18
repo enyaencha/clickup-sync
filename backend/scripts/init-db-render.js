@@ -26,6 +26,27 @@ function log(message, color = colors.reset) {
     console.log(`${color}${message}${colors.reset}`);
 }
 
+async function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function connectWithRetry(dbConfig, maxRetries = 10, delayMs = 5000) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            log(`📡 Connection attempt ${attempt}/${maxRetries} to ${dbConfig.host}:${dbConfig.port}`, colors.blue);
+            const connection = await mysql.createConnection(dbConfig);
+            log('✅ Connected to database successfully\n', colors.green);
+            return connection;
+        } catch (error) {
+            if (attempt === maxRetries) {
+                throw error;
+            }
+            log(`   ⏳ Database not ready yet, retrying in ${delayMs / 1000}s... (${error.code})`, colors.yellow);
+            await sleep(delayMs);
+        }
+    }
+}
+
 async function checkTableExists(connection, tableName) {
     const [rows] = await connection.query(
         `SELECT COUNT(*) as count FROM information_schema.tables
@@ -56,7 +77,7 @@ async function initializeDatabase() {
                 multipleStatements: true,
                 connectTimeout: 60000
             };
-            log(`📡 Connecting to: ${url.hostname}:${url.port || 3306}`, colors.blue);
+            log(`🎯 Target database: ${url.hostname}:${url.port || 3306}`, colors.blue);
         } else {
             dbConfig = {
                 host: process.env.DB_HOST || 'localhost',
@@ -67,12 +88,13 @@ async function initializeDatabase() {
                 multipleStatements: true,
                 connectTimeout: 60000
             };
-            log(`📡 Connecting to: ${dbConfig.host}:${dbConfig.port}`, colors.blue);
+            log(`🎯 Target database: ${dbConfig.host}:${dbConfig.port}`, colors.blue);
         }
 
-        // Connect to database
-        connection = await mysql.createConnection(dbConfig);
-        log('✅ Connected to database successfully\n', colors.green);
+        log('⏳ Waiting for database to be ready (may take up to 50 seconds)...\n', colors.yellow);
+
+        // Connect to database with retry logic
+        connection = await connectWithRetry(dbConfig);
 
         // Check if this is a fresh database or existing one
         const tablesExist = await checkTableExists(connection, 'organizations');
