@@ -6,7 +6,7 @@ services:
     plan: free
     region: oregon
     buildCommand: cd backend && npm install
-    startCommand: cd backend && node scripts/init-db-render.js && npm start
+    startCommand: cd backend && node scripts/init-db-render-postgres.js && npm start
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
@@ -14,17 +14,9 @@ services:
       - key: PORT
         value: 3000
       - key: DATABASE_URL
-        sync: false  # You'll set this manually with PlanetScale connection string
-      - key: DB_HOST
-        sync: false  # From PlanetScale
-      - key: DB_USER
-        sync: false  # From PlanetScale
-      - key: DB_PASSWORD
-        sync: false  # From PlanetScale
-      - key: DB_NAME
-        value: me_clickup_system
-      - key: DB_PORT
-        value: 3306
+        fromDatabase:
+          name: clickup-db
+          property: connectionString
       - key: JWT_SECRET
         generateValue: true
       - key: CLICKUP_API_TOKEN
@@ -57,5 +49,8 @@ services:
         value: https://clickup-sync-backend.onrender.com
     autoDeploy: true
 
-# Database: Using PlanetScale (external free MySQL)
-# No managed database needed - connection details set via environment variables
+databases:
+  - name: clickup-db
+    databaseName: clickup_sync
+    user: clickup_user
+    plan: free
