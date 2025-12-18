@@ -83,6 +83,16 @@ class DatabaseManager {
     }
 
     /**
+     * Convert MySQL-style placeholders (?) to PostgreSQL-style ($1, $2, $3)
+     */
+    convertPlaceholders(sql) {
+        if (this.dbType !== 'postgres') return sql;
+
+        let index = 1;
+        return sql.replace(/\?/g, () => `$${index++}`);
+    }
+
+    /**
      * Execute a query
      * @param {string} sql - SQL query
      * @param {Array} params - Query parameters
@@ -91,7 +101,8 @@ class DatabaseManager {
     async query(sql, params = []) {
         try {
             if (this.dbType === 'postgres') {
-                const result = await this.pool.query(sql, params);
+                const convertedSql = this.convertPlaceholders(sql);
+                const result = await this.pool.query(convertedSql, params);
                 return result.rows;
             } else {
                 const [results] = await this.pool.execute(sql, params);
