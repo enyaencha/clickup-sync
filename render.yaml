@@ -52,7 +52,6 @@ services:
     name: clickup-sync-frontend
     env: static
     plan: free
-    region: oregon
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: ./frontend/dist
     routes:
