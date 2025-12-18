@@ -47,10 +47,9 @@ services:
         value: https://clickup-sync-frontend.onrender.com
     autoDeploy: true
 
-  # Frontend Service
-  - type: static
+  # Frontend Service (Static Site)
+  - type: web
     name: clickup-sync-frontend
-    plan: starter
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: ./frontend/dist
     routes:
