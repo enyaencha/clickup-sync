@@ -59,7 +59,7 @@ const AddResourceRequestModal: React.FC<AddResourceRequestModalProps> = ({ isOpe
 
   const fetchProgramModules = async () => {
     try {
-      const response = await authFetch('/api/modules');
+      const response = await authFetch('/api/me/programs');
       if (response.ok) {
         const data = await response.json();
         setProgramModules(data.data || []);

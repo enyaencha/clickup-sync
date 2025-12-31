@@ -62,7 +62,7 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({ isOpen, onClose, onSucc
 
   const fetchProgramModules = async () => {
     try {
-      const response = await authFetch('/api/modules');
+      const response = await authFetch('/api/me/programs');
       if (response.ok) {
         const data = await response.json();
         setProgramModules(data.data || []);
@@ -74,7 +74,7 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({ isOpen, onClose, onSucc
 
   const fetchSubPrograms = async () => {
     try {
-      const response = await authFetch('/api/programs');
+      const response = await authFetch('/api/me/sub-programs');
       if (response.ok) {
         const data = await response.json();
         setSubPrograms(data.data || []);
