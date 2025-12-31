@@ -1665,6 +1665,16 @@ const logframeExcelRoutes = require('./routes/logframe-excel.routes');
         const logframeExcelService = new LogframeExcelService(db);
         app.use('/api/logframe', logframeExcelRoutes(logframeExcelService));
         console.log('Logframe Excel routes registered: /api/logframe');
+
+        // Finance Management routes
+        const financeRoutes = require('./routes/finance.routes');
+        app.use('/api/finance', financeRoutes(db));
+        console.log('Finance routes registered: /api/finance');
+
+        // Resource Management routes
+        const resourcesRoutes = require('./routes/resources.routes');
+        app.use('/api/resources', resourcesRoutes(db));
+        console.log('Resources routes registered: /api/resources');
     } catch (error) {
         console.error('Failed to initialize sync engine:', error);
         process.exit(1);
