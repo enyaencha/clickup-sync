@@ -181,10 +181,17 @@ module.exports = (db) => {
             `;
 
             const result = await db.query(query, [
-                requestNumber, resource_id, resource_type_id,
-                program_module_id, activity_id,
-                request_type, quantity_requested || 1, purpose,
-                start_date, end_date, durationDays,
+                requestNumber,
+                resource_id || null,
+                resource_type_id || null,
+                program_module_id || null,
+                activity_id || null,
+                request_type,
+                quantity_requested || 1,
+                purpose,
+                start_date || null,
+                end_date || null,
+                durationDays,
                 priority || 'medium',
                 req.user.id
             ]);

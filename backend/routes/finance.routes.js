@@ -257,6 +257,13 @@ module.exports = (db) => {
 
             const results = await db.query(query, params);
 
+            console.log(`📊 Transactions query returned ${results.length} records`);
+            if (results.length > 0) {
+                console.log('Sample transaction:', JSON.stringify(results[0], null, 2));
+            } else {
+                console.log('No transactions found. Query params:', params);
+            }
+
             res.json({
                 success: true,
                 data: results
@@ -392,6 +399,13 @@ module.exports = (db) => {
                 LIMIT ${limit} OFFSET ${offset}`;
 
             const results = await db.query(query, params);
+
+            console.log(`✅ Approvals query returned ${results.length} records`);
+            if (results.length > 0) {
+                console.log('Sample approval:', JSON.stringify(results[0], null, 2));
+            } else {
+                console.log('No approvals found. Query params:', params);
+            }
 
             res.json({
                 success: true,
