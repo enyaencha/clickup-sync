@@ -65,6 +65,210 @@ module.exports = (db) => {
         }
     });
 
+    // ==================== RESOURCE REQUESTS ====================
+
+    /**
+     * GET /api/resources/requests
+     * Get all resource requests with optional filtering
+     */
+    router.get('/requests', async (req, res) => {
+        try {
+            const {
+                status,
+                request_type,
+                program_module_id
+            } = req.query;
+
+            // Safely parse limit and offset with defaults
+            const limit = Math.max(1, parseInt(req.query.limit) || 50);
+            const offset = Math.max(0, parseInt(req.query.offset) || 0);
+
+            let query = `
+                SELECT
+                    rr.*,
+                    r.name as resource_name,
+                    r.resource_code,
+                    rt.name as resource_type_name,
+                    u.full_name as requester_name,
+                    pm.name as program_module_name,
+                    u2.full_name as approved_by_name,
+                    u3.full_name as fulfilled_by_name
+                FROM resource_requests rr
+                LEFT JOIN resources r ON rr.resource_id = r.id
+                LEFT JOIN resource_types rt ON rr.resource_type_id = rt.id
+                LEFT JOIN users u ON rr.requested_by = u.id
+                LEFT JOIN program_modules pm ON rr.program_module_id = pm.id
+                LEFT JOIN users u2 ON rr.approved_by = u2.id
+                LEFT JOIN users u3 ON rr.fulfilled_by = u3.id
+                WHERE rr.deleted_at IS NULL
+            `;
+
+            const params = [];
+
+            if (status) {
+                query += ` AND rr.status = ?`;
+                params.push(status);
+            }
+
+            if (request_type) {
+                query += ` AND rr.request_type = ?`;
+                params.push(request_type);
+            }
+
+            if (program_module_id) {
+                query += ` AND rr.program_module_id = ?`;
+                params.push(program_module_id);
+            }
+
+            query += ` ORDER BY
+                FIELD(rr.priority, 'urgent', 'high', 'medium', 'low'),
+                rr.created_at DESC
+                LIMIT ${limit} OFFSET ${offset}`;
+
+            const results = await db.query(query, params);
+
+            res.json({
+                success: true,
+                data: results
+            });
+        } catch (error) {
+            console.error('Error fetching resource requests:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch resource requests'
+            });
+        }
+    });
+
+    /**
+     * POST /api/resources/requests
+     * Create a new resource request
+     */
+    router.post('/requests', async (req, res) => {
+        try {
+            const {
+                resource_id,
+                resource_type_id,
+                program_module_id,
+                activity_id,
+                request_type,
+                quantity_requested,
+                purpose,
+                start_date,
+                end_date,
+                priority
+            } = req.body;
+
+            // Generate request number
+            const requestNumber = `REQ-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+            // Calculate duration if dates provided
+            let durationDays = null;
+            if (start_date && end_date) {
+                const start = new Date(start_date);
+                const end = new Date(end_date);
+                durationDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+            }
+
+            const query = `
+                INSERT INTO resource_requests (
+                    request_number, resource_id, resource_type_id,
+                    program_module_id, activity_id,
+                    request_type, quantity_requested, purpose,
+                    start_date, end_date, duration_days,
+                    priority, status, requested_by
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+            `;
+
+            const result = await db.query(query, [
+                requestNumber, resource_id, resource_type_id,
+                program_module_id, activity_id,
+                request_type, quantity_requested || 1, purpose,
+                start_date, end_date, durationDays,
+                priority || 'medium',
+                req.user.id
+            ]);
+
+            res.status(201).json({
+                success: true,
+                data: { id: result.insertId, request_number: requestNumber },
+                message: 'Resource request created successfully'
+            });
+        } catch (error) {
+            console.error('Error creating resource request:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to create resource request'
+            });
+        }
+    });
+
+    /**
+     * PUT /api/resources/requests/:id/approve
+     * Approve a resource request
+     */
+    router.put('/requests/:id/approve', async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            const query = `
+                UPDATE resource_requests
+                SET
+                    status = 'approved',
+                    approved_by = ?,
+                    approved_at = NOW()
+                WHERE id = ? AND deleted_at IS NULL
+            `;
+
+            await db.query(query, [req.user.id, id]);
+
+            res.json({
+                success: true,
+                message: 'Resource request approved successfully'
+            });
+        } catch (error) {
+            console.error('Error approving resource request:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to approve resource request'
+            });
+        }
+    });
+
+    /**
+     * PUT /api/resources/requests/:id/reject
+     * Reject a resource request
+     */
+    router.put('/requests/:id/reject', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { rejection_reason } = req.body;
+
+            const query = `
+                UPDATE resource_requests
+                SET
+                    status = 'rejected',
+                    rejection_reason = ?,
+                    approved_by = ?,
+                    approved_at = NOW()
+                WHERE id = ? AND deleted_at IS NULL
+            `;
+
+            await db.query(query, [rejection_reason, req.user.id, id]);
+
+            res.json({
+                success: true,
+                message: 'Resource request rejected'
+            });
+        } catch (error) {
+            console.error('Error rejecting resource request:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to reject resource request'
+            });
+        }
+    });
+
     // ==================== RESOURCES ====================
 
     /**
@@ -126,8 +330,7 @@ module.exports = (db) => {
                 params.push(searchTerm, searchTerm, searchTerm);
             }
 
-            query += ` ORDER BY r.created_at DESC LIMIT ? OFFSET ?`;
-            params.push(limit, offset);
+            query += ` ORDER BY r.created_at DESC LIMIT ${limit} OFFSET ${offset}`;
 
             const results = await db.query(query, params);
 
@@ -306,211 +509,6 @@ module.exports = (db) => {
             res.status(500).json({
                 success: false,
                 error: 'Failed to update resource'
-            });
-        }
-    });
-
-    // ==================== RESOURCE REQUESTS ====================
-
-    /**
-     * GET /api/resources/requests
-     * Get all resource requests with optional filtering
-     */
-    router.get('/requests', async (req, res) => {
-        try {
-            const {
-                status,
-                request_type,
-                program_module_id
-            } = req.query;
-
-            // Safely parse limit and offset with defaults
-            const limit = Math.max(1, parseInt(req.query.limit) || 50);
-            const offset = Math.max(0, parseInt(req.query.offset) || 0);
-
-            let query = `
-                SELECT
-                    rr.*,
-                    r.name as resource_name,
-                    r.resource_code,
-                    rt.name as resource_type_name,
-                    u.full_name as requester_name,
-                    pm.name as program_module_name,
-                    u2.full_name as approved_by_name,
-                    u3.full_name as fulfilled_by_name
-                FROM resource_requests rr
-                LEFT JOIN resources r ON rr.resource_id = r.id
-                LEFT JOIN resource_types rt ON rr.resource_type_id = rt.id
-                LEFT JOIN users u ON rr.requested_by = u.id
-                LEFT JOIN program_modules pm ON rr.program_module_id = pm.id
-                LEFT JOIN users u2 ON rr.approved_by = u2.id
-                LEFT JOIN users u3 ON rr.fulfilled_by = u3.id
-                WHERE rr.deleted_at IS NULL
-            `;
-
-            const params = [];
-
-            if (status) {
-                query += ` AND rr.status = ?`;
-                params.push(status);
-            }
-
-            if (request_type) {
-                query += ` AND rr.request_type = ?`;
-                params.push(request_type);
-            }
-
-            if (program_module_id) {
-                query += ` AND rr.program_module_id = ?`;
-                params.push(program_module_id);
-            }
-
-            query += ` ORDER BY
-                FIELD(rr.priority, 'urgent', 'high', 'medium', 'low'),
-                rr.created_at DESC
-                LIMIT ? OFFSET ?`;
-            params.push(limit, offset);
-
-            const results = await db.query(query, params);
-
-            res.json({
-                success: true,
-                data: results
-            });
-        } catch (error) {
-            console.error('Error fetching resource requests:', error);
-            res.status(500).json({
-                success: false,
-                error: 'Failed to fetch resource requests'
-            });
-        }
-    });
-
-    /**
-     * POST /api/resources/requests
-     * Create a new resource request
-     */
-    router.post('/requests', async (req, res) => {
-        try {
-            const {
-                resource_id,
-                resource_type_id,
-                program_module_id,
-                activity_id,
-                request_type,
-                quantity_requested,
-                purpose,
-                start_date,
-                end_date,
-                priority
-            } = req.body;
-
-            // Generate request number
-            const requestNumber = `REQ-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-
-            // Calculate duration if dates provided
-            let durationDays = null;
-            if (start_date && end_date) {
-                const start = new Date(start_date);
-                const end = new Date(end_date);
-                durationDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-            }
-
-            const query = `
-                INSERT INTO resource_requests (
-                    request_number, resource_id, resource_type_id,
-                    program_module_id, activity_id,
-                    request_type, quantity_requested, purpose,
-                    start_date, end_date, duration_days,
-                    priority, status, requested_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
-            `;
-
-            const result = await db.query(query, [
-                requestNumber, resource_id, resource_type_id,
-                program_module_id, activity_id,
-                request_type, quantity_requested || 1, purpose,
-                start_date, end_date, durationDays,
-                priority || 'medium',
-                req.user.id
-            ]);
-
-            res.status(201).json({
-                success: true,
-                data: { id: result.insertId, request_number: requestNumber },
-                message: 'Resource request created successfully'
-            });
-        } catch (error) {
-            console.error('Error creating resource request:', error);
-            res.status(500).json({
-                success: false,
-                error: 'Failed to create resource request'
-            });
-        }
-    });
-
-    /**
-     * PUT /api/resources/requests/:id/approve
-     * Approve a resource request
-     */
-    router.put('/requests/:id/approve', async (req, res) => {
-        try {
-            const { id } = req.params;
-
-            const query = `
-                UPDATE resource_requests
-                SET
-                    status = 'approved',
-                    approved_by = ?,
-                    approved_at = NOW()
-                WHERE id = ? AND deleted_at IS NULL
-            `;
-
-            await db.query(query, [req.user.id, id]);
-
-            res.json({
-                success: true,
-                message: 'Resource request approved successfully'
-            });
-        } catch (error) {
-            console.error('Error approving resource request:', error);
-            res.status(500).json({
-                success: false,
-                error: 'Failed to approve resource request'
-            });
-        }
-    });
-
-    /**
-     * PUT /api/resources/requests/:id/reject
-     * Reject a resource request
-     */
-    router.put('/requests/:id/reject', async (req, res) => {
-        try {
-            const { id } = req.params;
-            const { rejection_reason } = req.body;
-
-            const query = `
-                UPDATE resource_requests
-                SET
-                    status = 'rejected',
-                    rejection_reason = ?,
-                    approved_by = ?,
-                    approved_at = NOW()
-                WHERE id = ? AND deleted_at IS NULL
-            `;
-
-            await db.query(query, [rejection_reason, req.user.id, id]);
-
-            res.json({
-                success: true,
-                message: 'Resource request rejected'
-            });
-        } catch (error) {
-            console.error('Error rejecting resource request:', error);
-            res.status(500).json({
-                success: false,
-                error: 'Failed to reject resource request'
             });
         }
     });
