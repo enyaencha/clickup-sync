@@ -137,6 +137,25 @@ module.exports = (db) => {
                 notes
             } = req.body;
 
+            // Convert sub_program_id to null if not provided or invalid
+            let subProgramId = sub_program_id && parseInt(sub_program_id) > 0
+                ? parseInt(sub_program_id)
+                : null;
+
+            // Validate that sub_program_id exists if provided
+            if (subProgramId) {
+                const checkSubProgram = await db.query(
+                    'SELECT id FROM programs WHERE id = ? AND deleted_at IS NULL',
+                    [subProgramId]
+                );
+
+                if (checkSubProgram.length === 0) {
+                    // Sub-program doesn't exist, set to null instead of failing
+                    console.warn(`Sub-program ID ${subProgramId} not found, setting to null`);
+                    subProgramId = null;
+                }
+            }
+
             const query = `
                 INSERT INTO program_budgets (
                     program_module_id, sub_program_id, fiscal_year,
@@ -148,7 +167,7 @@ module.exports = (db) => {
             `;
 
             const result = await db.query(query, [
-                program_module_id, sub_program_id, fiscal_year,
+                program_module_id, subProgramId, fiscal_year,
                 total_budget, operational_budget, program_budget, capital_budget,
                 donor, funding_source, grant_number,
                 budget_start_date, budget_end_date,
