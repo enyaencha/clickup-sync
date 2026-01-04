@@ -104,6 +104,7 @@ function TabPanel(props: TabPanelProps) {
 const ReportsAnalytics: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [modules, setModules] = useState<ProgramModule[]>([]);
   const [components, setComponents] = useState<ComponentOption[]>([]);
   const [selectedModule, setSelectedModule] = useState<string>('all');
@@ -117,8 +118,19 @@ const ReportsAnalytics: React.FC = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    fetchModules();
-    loadExecutiveSummary();
+    console.log('[ReportsAnalytics] Component mounted');
+    const init = async () => {
+      try {
+        console.log('[ReportsAnalytics] Fetching modules...');
+        await fetchModules();
+        console.log('[ReportsAnalytics] Modules fetched');
+      } catch (err) {
+        console.error('[ReportsAnalytics] Initialization error:', err);
+        setError('Failed to load modules. Please refresh the page.');
+      }
+    };
+    init();
+    // Note: loadExecutiveSummary is called by the tab change useEffect below
   }, []);
 
   const fetchModules = async () => {
@@ -370,6 +382,7 @@ const ReportsAnalytics: React.FC = () => {
   };
 
   useEffect(() => {
+    console.log('[ReportsAnalytics] Tab changed to:', activeTab);
     switch (activeTab) {
       case 0:
         loadExecutiveSummary();
@@ -438,8 +451,17 @@ const ReportsAnalytics: React.FC = () => {
     }
   };
 
+  console.log('[ReportsAnalytics] Rendering, activeTab:', activeTab, 'reportData:', Object.keys(reportData));
+
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+          <AlertTitle>Error</AlertTitle>
+          {error}
+        </Alert>
+      )}
+
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <AssessmentIcon fontSize="large" />
