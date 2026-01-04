@@ -654,7 +654,7 @@ const ReportsAnalytics: React.FC = () => {
 };
 
 // Sub-components for each report type
-const ExecutiveSummaryPanel: React.FC<{ data: any; formatCurrency: any }> = ({ data, formatCurrency }) => {
+function ExecutiveSummaryPanel({ data, formatCurrency }: { data: any; formatCurrency: any }) {
   if (!data) return <Typography>Loading...</Typography>;
 
   return (
@@ -725,7 +725,7 @@ const ExecutiveSummaryPanel: React.FC<{ data: any; formatCurrency: any }> = ({ d
   );
 };
 
-const ProgramPerformancePanel: React.FC<{ data: any[]; formatCurrency: any; getStatusColor: any }> = ({ data, formatCurrency, getStatusColor }) => {
+function ProgramPerformancePanel({ data, formatCurrency, getStatusColor }: { data: any[]; formatCurrency: any; getStatusColor: any }) {
   if (!data || data.length === 0) {
     return <Alert severity="info">No data available</Alert>;
   }
@@ -787,7 +787,7 @@ const ProgramPerformancePanel: React.FC<{ data: any[]; formatCurrency: any; getS
   );
 };
 
-const FinancialReportPanel: React.FC<{ data: any[]; formatCurrency: any; getStatusColor: any }> = ({ data, formatCurrency, getStatusColor }) => {
+function FinancialReportPanel({ data, formatCurrency, getStatusColor }: { data: any[]; formatCurrency: any; getStatusColor: any }) {
   if (!data || data.length === 0) {
     return <Alert severity="info">No financial data available</Alert>;
   }
@@ -838,7 +838,7 @@ const FinancialReportPanel: React.FC<{ data: any[]; formatCurrency: any; getStat
   );
 };
 
-const BeneficiaryReportPanel: React.FC<{ data: any[] }> = ({ data }) => {
+function BeneficiaryReportPanel({ data }: { data: any[] }) {
   if (!data || data.length === 0) {
     return <Alert severity="info">No beneficiary data available</Alert>;
   }
@@ -886,7 +886,7 @@ const BeneficiaryReportPanel: React.FC<{ data: any[] }> = ({ data }) => {
   );
 };
 
-const IndicatorReportPanel: React.FC<{ data: any[]; getStatusColor: any }> = ({ data, getStatusColor }) => {
+function IndicatorReportPanel({ data, getStatusColor }: { data: any[]; getStatusColor: any }) {
   if (!data || data.length === 0) {
     return <Alert severity="info">No indicator data available</Alert>;
   }
@@ -943,7 +943,7 @@ const IndicatorReportPanel: React.FC<{ data: any[]; getStatusColor: any }> = ({ 
   );
 };
 
-const RiskReportPanel: React.FC<{ data: any[]; formatCurrency: any; getStatusColor: any }> = ({ data, formatCurrency, getStatusColor }) => {
+function RiskReportPanel({ data, formatCurrency, getStatusColor }: { data: any[]; formatCurrency: any; getStatusColor: any }) {
   if (!data || data.length === 0) {
     return <Alert severity="success">No high-risk activities found!</Alert>;
   }
@@ -1000,7 +1000,7 @@ const RiskReportPanel: React.FC<{ data: any[]; formatCurrency: any; getStatusCol
   );
 };
 
-const DataQualityPanel: React.FC<{ data: any[] }> = ({ data }) => {
+function DataQualityPanel({ data }: { data: any[] }) {
   if (!data || data.length === 0) {
     return <Alert severity="info">No data quality information available</Alert>;
   }
@@ -1075,7 +1075,7 @@ const DataQualityPanel: React.FC<{ data: any[] }> = ({ data }) => {
   );
 };
 
-const AIPredictionsPanel: React.FC<any> = ({
+function AIPredictionsPanel({
   budgetPrediction,
   activityPrediction,
   beneficiaryPrediction,
@@ -1086,7 +1086,7 @@ const AIPredictionsPanel: React.FC<any> = ({
   getStatusColor,
   selectedModule,
   selectedComponent,
-}) => {
+}: any) {
   return (
     <Grid container spacing={3}>
       {/* Budget Burn Rate Prediction */}
