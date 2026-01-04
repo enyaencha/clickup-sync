@@ -802,8 +802,7 @@ class ReportsService {
         COUNT(DISTINCT CASE WHEN a.status = 'completed' THEN a.id END) as completed_activities,
         COUNT(DISTINCT b.id) as total_beneficiaries,
         SUM(COALESCE(a.budget_allocated, 0)) as total_budget,
-        SUM(COALESCE(ae.amount, 0)) as total_spent,
-        COUNT(DISTINCT sg.id) as total_goals
+        SUM(COALESCE(ae.amount, 0)) as total_spent
       FROM program_modules pm
       LEFT JOIN sub_programs sp ON pm.id = sp.module_id AND sp.deleted_at IS NULL
       LEFT JOIN project_components pc ON sp.id = pc.sub_program_id AND pc.deleted_at IS NULL
@@ -811,12 +810,20 @@ class ReportsService {
       LEFT JOIN activity_beneficiaries ab ON a.id = ab.activity_id
       LEFT JOIN beneficiaries b ON ab.beneficiary_id = b.id AND b.deleted_at IS NULL
       LEFT JOIN activity_expenses ae ON a.id = ae.activity_id
-      LEFT JOIN strategic_goals sg ON pm.id = sg.module_id AND sg.deleted_at IS NULL
       WHERE pm.deleted_at IS NULL
     `;
 
     const overallResults = await db.query(overallQuery, params);
     const summary = overallResults[0];
+
+    // Count strategic goals separately
+    const goalsQuery = `
+      SELECT COUNT(*) as total_goals
+      FROM strategic_goals
+      WHERE is_active = 1
+    `;
+    const goalsResult = await db.query(goalsQuery);
+    summary.total_goals = goalsResult[0].total_goals;
 
     // Count indicators separately (strategic goal indicators + ME indicators)
     const indicatorsQuery = `
