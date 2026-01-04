@@ -462,6 +462,13 @@ async function initializeServices() {
             console.log('✅ Resources routes registered at /api/resources');
             logger.info('✅ Resources routes registered');
 
+            // ==================== REPORTS & AI ANALYTICS MODULE ====================
+            console.log('\n📊 Registering Reports & AI Analytics routes...');
+            const reportsRouter = require('./routes/reports');
+            app.use('/api/reports', reportsRouter);
+            console.log('✅ Reports & AI Analytics routes registered at /api/reports');
+            logger.info('✅ Reports & AI Analytics routes registered');
+
         } catch (error) {
             console.error('❌ Failed to register Additional Program Module Routes:', error);
             throw error;
