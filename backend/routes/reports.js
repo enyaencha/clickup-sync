@@ -596,4 +596,137 @@ router.get('/ai/smart-insights', async (req, res) => {
   }
 });
 
+// ==================== ADVANCED ANALYTICS ENDPOINTS ====================
+
+/**
+ * GET /api/reports/ai/performance-score
+ * Get comprehensive performance scoring
+ */
+router.get('/ai/performance-score', async (req, res) => {
+  try {
+    const { moduleId } = req.query;
+
+    if (!moduleId) {
+      return res.status(400).json({
+        success: false,
+        message: 'moduleId is required'
+      });
+    }
+
+    const scores = await AIAnalyticsService.calculatePerformanceScore(parseInt(moduleId));
+
+    res.json({
+      success: true,
+      data: scores
+    });
+  } catch (error) {
+    console.error('Error calculating performance score:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to calculate performance score',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/reports/ai/trend-analysis
+ * Advanced trend analysis with seasonality detection
+ */
+router.get('/ai/trend-analysis', async (req, res) => {
+  try {
+    const { moduleId, months } = req.query;
+
+    if (!moduleId) {
+      return res.status(400).json({
+        success: false,
+        message: 'moduleId is required'
+      });
+    }
+
+    const analysis = await AIAnalyticsService.analyzeTrends(
+      parseInt(moduleId),
+      { months: months ? parseInt(months) : 12 }
+    );
+
+    res.json({
+      success: true,
+      data: analysis
+    });
+  } catch (error) {
+    console.error('Error analyzing trends:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to analyze trends',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/reports/ai/resource-optimization
+ * Resource allocation optimization recommendations
+ */
+router.get('/ai/resource-optimization', async (req, res) => {
+  try {
+    const { moduleId } = req.query;
+
+    if (!moduleId) {
+      return res.status(400).json({
+        success: false,
+        message: 'moduleId is required'
+      });
+    }
+
+    const optimization = await AIAnalyticsService.optimizeResourceAllocation(parseInt(moduleId));
+
+    res.json({
+      success: true,
+      data: optimization
+    });
+  } catch (error) {
+    console.error('Error optimizing resource allocation:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to optimize resource allocation',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/reports/ai/impact-prediction
+ * Predict impact based on proposed budget or activities
+ */
+router.get('/ai/impact-prediction', async (req, res) => {
+  try {
+    const { moduleId, proposedBudget, proposedActivities } = req.query;
+
+    if (!moduleId) {
+      return res.status(400).json({
+        success: false,
+        message: 'moduleId is required'
+      });
+    }
+
+    const options = {};
+    if (proposedBudget) options.proposedBudget = parseFloat(proposedBudget);
+    if (proposedActivities) options.proposedActivities = parseInt(proposedActivities);
+
+    const prediction = await AIAnalyticsService.predictImpact(parseInt(moduleId), options);
+
+    res.json({
+      success: true,
+      data: prediction
+    });
+  } catch (error) {
+    console.error('Error predicting impact:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to predict impact',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
