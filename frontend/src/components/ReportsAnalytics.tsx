@@ -115,22 +115,17 @@ const ReportsAnalytics: React.FC = () => {
   const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
   const [showAIDialog, setShowAIDialog] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
-
-  // Safely get auth context
-  let user;
-  try {
-    const authContext = useAuth();
-    user = authContext?.user;
-  } catch (e) {
-    console.error('Auth context error:', e);
-  }
+  const { user } = useAuth();
 
   useEffect(() => {
+    console.log('[ReportsAnalytics] Component mounted');
     const init = async () => {
       try {
+        console.log('[ReportsAnalytics] Fetching modules...');
         await fetchModules();
+        console.log('[ReportsAnalytics] Modules fetched');
       } catch (err) {
-        console.error('Initialization error:', err);
+        console.error('[ReportsAnalytics] Initialization error:', err);
         setError('Failed to load modules. Please refresh the page.');
       }
     };
@@ -387,6 +382,7 @@ const ReportsAnalytics: React.FC = () => {
   };
 
   useEffect(() => {
+    console.log('[ReportsAnalytics] Tab changed to:', activeTab);
     switch (activeTab) {
       case 0:
         loadExecutiveSummary();
@@ -454,6 +450,8 @@ const ReportsAnalytics: React.FC = () => {
         return <InfoIcon sx={{ color: '#2196f3' }} />;
     }
   };
+
+  console.log('[ReportsAnalytics] Rendering, activeTab:', activeTab, 'reportData:', Object.keys(reportData));
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
