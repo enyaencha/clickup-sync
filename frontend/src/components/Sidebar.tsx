@@ -165,6 +165,17 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
       ]
     },
     {
+      section: 'ANALYTICS & INSIGHTS',
+      items: [
+        {
+          icon: '📈',
+          label: 'Reports & Analytics',
+          path: '/reports',
+          description: 'AI-Powered Insights'
+        }
+      ]
+    },
+    {
       section: 'SYSTEM',
       items: [
         {

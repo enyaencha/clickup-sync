@@ -27,6 +27,7 @@ import NutritionAssessment from './components/NutritionAssessment';
 import AgricultureMonitoring from './components/AgricultureMonitoring';
 import FinanceDashboard from './components/FinanceDashboard';
 import ResourceManagement from './components/ResourceManagement';
+import ReportsAnalytics from './components/ReportsAnalytics';
 
 const App: React.FC = () => {
   return (
@@ -96,6 +97,10 @@ const App: React.FC = () => {
                     {/* Resource Management Module Routes */}
                     <Route path="/resources" element={<ResourceManagement />} />
                     <Route path="/resources/inventory" element={<ResourceManagement />} />
+
+                    {/* Reports & Analytics Module Routes */}
+                    <Route path="/reports" element={<ReportsAnalytics />} />
+                    <Route path="/reports/analytics" element={<ReportsAnalytics />} />
                   </Routes>
                 </Layout>
               </ProtectedRoute>
