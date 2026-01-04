@@ -459,7 +459,7 @@ class ReportsService {
       LEFT JOIN strategic_goals sg ON i.goal_id = sg.id
       LEFT JOIN program_modules pm ON sg.module_id = pm.id
       LEFT JOIN indicator_activity_links ial ON i.id = ial.indicator_id
-      WHERE i.deleted_at IS NULL
+      WHERE 1=1
     `;
 
     const params = [];
@@ -780,7 +780,7 @@ class ReportsService {
       LEFT JOIN beneficiaries b ON ab.beneficiary_id = b.id AND b.deleted_at IS NULL
       LEFT JOIN activity_expenses ae ON a.id = ae.activity_id
       LEFT JOIN strategic_goals sg ON pm.id = sg.module_id AND sg.deleted_at IS NULL
-      LEFT JOIN indicators i ON sg.id = i.goal_id AND i.deleted_at IS NULL
+      LEFT JOIN indicators i ON sg.id = i.goal_id
       WHERE pm.deleted_at IS NULL
     `;
 
