@@ -1,4 +1,4 @@
-const db = require('../core/db');
+const db = require('../core/database/connection');
 
 class AIAnalyticsService {
   // ==================== PREDICTIVE ANALYTICS ====================
@@ -27,7 +27,7 @@ class AIAnalyticsService {
       ORDER BY date
     `;
 
-    const [historicalData] = await db.query(query, [moduleId]);
+    const historicalData = await db.query(query, [moduleId]);
 
     if (historicalData.length < 5) {
       return {
@@ -54,7 +54,7 @@ class AIAnalyticsService {
     const stdDev = Math.sqrt(variance);
 
     // Get current budget status
-    const [budgetData] = await db.query(`
+    const budgetData = await db.query(`
       SELECT
         SUM(COALESCE(a.budget_allocated, 0)) as total_budget,
         SUM(COALESCE(ae.amount, 0)) as total_spent
@@ -151,7 +151,7 @@ class AIAnalyticsService {
       ORDER BY a.activity_date DESC
     `;
 
-    const [activities] = await db.query(query, [componentId]);
+    const activities = await db.query(query, [componentId]);
 
     if (activities.length === 0) {
       return {
@@ -254,7 +254,7 @@ class AIAnalyticsService {
       ORDER BY month
     `;
 
-    const [historicalData] = await db.query(query, [moduleId]);
+    const historicalData = await db.query(query, [moduleId]);
 
     if (historicalData.length < 3) {
       return {
@@ -340,7 +340,7 @@ class AIAnalyticsService {
       HAVING total_spent > 0
     `;
 
-    const [activities] = await db.query(query, [moduleId]);
+    const activities = await db.query(query, [moduleId]);
 
     if (activities.length < 10) {
       return {
@@ -427,7 +427,7 @@ class AIAnalyticsService {
     const issues = [];
 
     // Check for activities without beneficiaries
-    const [activitiesWithoutBeneficiaries] = await db.query(`
+    const activitiesWithoutBeneficiaries = await db.query(`
       SELECT a.id, a.name, a.activity_date
       FROM activities a
       JOIN project_components pc ON a.component_id = pc.id
@@ -452,7 +452,7 @@ class AIAnalyticsService {
     }
 
     // Check for activities without location
-    const [activitiesWithoutLocation] = await db.query(`
+    const activitiesWithoutLocation = await db.query(`
       SELECT a.id, a.name, a.activity_date
       FROM activities a
       JOIN project_components pc ON a.component_id = pc.id
@@ -474,7 +474,7 @@ class AIAnalyticsService {
     }
 
     // Check for activities without evidence/attachments
-    const [activitiesWithoutEvidence] = await db.query(`
+    const activitiesWithoutEvidence = await db.query(`
       SELECT a.id, a.name, a.activity_date
       FROM activities a
       JOIN project_components pc ON a.component_id = pc.id
@@ -500,7 +500,7 @@ class AIAnalyticsService {
     }
 
     // Check for budget inconsistencies
-    const [budgetInconsistencies] = await db.query(`
+    const budgetInconsistencies = await db.query(`
       SELECT a.id, a.name, a.budget_allocated, SUM(ae.amount) as total_spent
       FROM activities a
       JOIN project_components pc ON a.component_id = pc.id
@@ -539,7 +539,7 @@ class AIAnalyticsService {
     const insights = [];
 
     // Performance insights
-    const [performanceData] = await db.query(`
+    const performanceData = await db.query(`
       SELECT
         COUNT(DISTINCT a.id) as total_activities,
         COUNT(DISTINCT CASE WHEN a.status = 'completed' THEN a.id END) as completed,
@@ -575,7 +575,7 @@ class AIAnalyticsService {
     }
 
     // Budget insights
-    const [budgetData] = await db.query(`
+    const budgetData = await db.query(`
       SELECT
         SUM(a.budget_allocated) as total_budget,
         SUM(ae.amount) as total_spent
@@ -610,7 +610,7 @@ class AIAnalyticsService {
     }
 
     // Beneficiary reach insights
-    const [beneficiaryData] = await db.query(`
+    const beneficiaryData = await db.query(`
       SELECT
         COUNT(DISTINCT ab.beneficiary_id) as total_beneficiaries,
         COUNT(DISTINCT a.id) as total_activities

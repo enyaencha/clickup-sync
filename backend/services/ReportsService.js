@@ -1,4 +1,4 @@
-const db = require('../core/db');
+const db = require('../core/database/connection');
 
 class ReportsService {
   // ==================== PROGRAM PERFORMANCE REPORTS ====================
@@ -62,7 +62,7 @@ class ReportsService {
 
     query += ` GROUP BY pm.id, pm.name, pm.clickup_space_id ORDER BY pm.name`;
 
-    const [results] = await db.query(query, params);
+    const results = await db.query(query, params);
 
     // Calculate budget utilization and variance
     results.forEach(row => {
@@ -137,7 +137,7 @@ class ReportsService {
 
     query += ` GROUP BY a.id ORDER BY a.activity_date DESC`;
 
-    const [results] = await db.query(query, params);
+    const results = await db.query(query, params);
 
     // Calculate checklist completion percentage
     results.forEach(row => {
@@ -205,7 +205,7 @@ class ReportsService {
       query += ` GROUP BY pc.id, pc.name, sp.id, sp.name, pm.id, pm.name ORDER BY pm.name, sp.name, pc.name`;
     }
 
-    const [results] = await db.query(query, params);
+    const results = await db.query(query, params);
 
     // Calculate financial metrics
     results.forEach(row => {
@@ -266,7 +266,7 @@ class ReportsService {
 
     query += ` GROUP BY period, pm.name ORDER BY period, pm.name`;
 
-    const [results] = await db.query(query, params);
+    const results = await db.query(query, params);
     return results;
   }
 
@@ -309,7 +309,7 @@ class ReportsService {
 
     query += ` GROUP BY ae.expense_category, pm.name ORDER BY total_amount DESC`;
 
-    const [results] = await db.query(query, params);
+    const results = await db.query(query, params);
     return results;
   }
 
@@ -368,7 +368,7 @@ class ReportsService {
 
     query += ` GROUP BY pm.name, l.id, l.name, l.type ORDER BY pm.name`;
 
-    const [results] = await db.query(query, params);
+    const results = await db.query(query, params);
 
     // Calculate percentages
     results.forEach(row => {
@@ -424,7 +424,7 @@ class ReportsService {
 
     query += ` GROUP BY l.id, l.name, l.type ORDER BY activity_count DESC, beneficiary_count DESC`;
 
-    const [results] = await db.query(query, params);
+    const results = await db.query(query, params);
     return results;
   }
 
@@ -476,7 +476,7 @@ class ReportsService {
 
     query += ` GROUP BY i.id ORDER BY achievement_percentage DESC`;
 
-    const [results] = await db.query(query, params);
+    const results = await db.query(query, params);
 
     // Calculate status and variance
     results.forEach(row => {
@@ -541,7 +541,7 @@ class ReportsService {
 
     query += ` GROUP BY u.id, pm.id, te.user_type ORDER BY total_hours DESC`;
 
-    const [results] = await db.query(query, params);
+    const results = await db.query(query, params);
     return results;
   }
 
@@ -575,7 +575,7 @@ class ReportsService {
 
     query += ` GROUP BY r.id ORDER BY r.name`;
 
-    const [results] = await db.query(query, params);
+    const results = await db.query(query, params);
 
     // Calculate utilization
     results.forEach(row => {
@@ -638,7 +638,7 @@ class ReportsService {
       FIELD(a.risk_level, 'high', 'medium', 'low'),
       a.activity_date`;
 
-    const [results] = await db.query(query, params);
+    const results = await db.query(query, params);
 
     // Calculate risk indicators
     results.forEach(row => {
@@ -687,7 +687,7 @@ class ReportsService {
 
     query += ` GROUP BY pm.id, pm.name`;
 
-    const [results] = await db.query(query, params);
+    const results = await db.query(query, params);
 
     // Calculate data completeness percentages
     results.forEach(row => {
@@ -725,7 +725,7 @@ class ReportsService {
       ORDER BY sync_date DESC, operation, entity_type
     `;
 
-    const [results] = await db.query(query);
+    const results = await db.query(query);
 
     // Calculate success rates
     results.forEach(row => {
@@ -784,7 +784,7 @@ class ReportsService {
       WHERE pm.deleted_at IS NULL
     `;
 
-    const [overallResults] = await db.query(overallQuery, params);
+    const overallResults = await db.query(overallQuery, params);
     const summary = overallResults[0];
 
     // Calculate key metrics
