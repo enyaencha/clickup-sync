@@ -433,33 +433,38 @@ class ReportsService {
   async getIndicatorAchievementReport(filters = {}) {
     const { moduleId, goalId, startDate, endDate } = filters;
 
+    // Query both strategic goal indicators AND M&E indicators
     let query = `
       SELECT
+        'strategic_goal' as source,
         i.id as indicator_id,
         i.name as indicator_name,
-        i.type as indicator_type,
-        i.baseline_value,
+        i.indicator_type as indicator_type,
+        NULL as baseline_value,
         i.target_value,
         i.current_value,
         i.unit,
-        i.collection_frequency,
-        i.data_source,
+        NULL as collection_frequency,
+        NULL as data_source,
         sg.id as goal_id,
         sg.name as goal_name,
         pm.name as module_name,
         CASE
-          WHEN i.type = 'binary' THEN
-            CASE WHEN i.current_value = i.target_value THEN 100 ELSE 0 END
+          WHEN i.indicator_type = 'binary' THEN
+            CASE WHEN i.is_completed = 1 THEN 100 ELSE 0 END
+          WHEN i.indicator_type = 'activity_linked' THEN
+            CASE WHEN i.linked_activities_count > 0 THEN
+              ((i.completed_activities_count / i.linked_activities_count) * 100)
+            ELSE 0 END
           WHEN i.target_value > 0 THEN
             ((i.current_value / i.target_value) * 100)
           ELSE 0
         END as achievement_percentage,
-        COUNT(DISTINCT ial.activity_id) as linked_activities
+        i.linked_activities_count as linked_activities
       FROM indicators i
       LEFT JOIN strategic_goals sg ON i.goal_id = sg.id
       LEFT JOIN program_modules pm ON sg.module_id = pm.id
-      LEFT JOIN indicator_activity_links ial ON i.id = ial.indicator_id
-      WHERE 1=1
+      WHERE i.is_active = 1
     `;
 
     const params = [];
@@ -474,14 +479,42 @@ class ReportsService {
       params.push(goalId);
     }
 
-    query += ` GROUP BY i.id ORDER BY achievement_percentage DESC`;
+    query += `
+      UNION ALL
+      SELECT
+        'me_indicator' as source,
+        i.id as indicator_id,
+        i.name as indicator_name,
+        i.type as indicator_type,
+        i.baseline_value,
+        i.target_value,
+        i.current_value,
+        i.unit_of_measure as unit,
+        i.collection_frequency,
+        i.data_source,
+        NULL as goal_id,
+        NULL as goal_name,
+        pm.name as module_name,
+        i.achievement_percentage,
+        NULL as linked_activities
+      FROM me_indicators i
+      LEFT JOIN program_modules pm ON i.module_id = pm.id
+      WHERE i.deleted_at IS NULL AND i.is_active = 1
+    `;
+
+    if (moduleId) {
+      query += ` AND pm.id = ?`;
+      params.push(moduleId);
+    }
+
+    query += ` ORDER BY achievement_percentage DESC`;
 
     const results = await db.query(query, params);
 
     // Calculate status and variance
     results.forEach(row => {
-      row.achievement_percentage = parseFloat(row.achievement_percentage).toFixed(2);
-      row.variance = row.target_value - row.current_value;
+      row.achievement_percentage = parseFloat(row.achievement_percentage || 0).toFixed(2);
+      row.variance = (row.target_value || 0) - (row.current_value || 0);
       row.status = row.achievement_percentage >= 100 ? 'achieved' :
                    row.achievement_percentage >= 75 ? 'on-track' :
                    row.achievement_percentage >= 50 ? 'at-risk' : 'off-track';
@@ -770,8 +803,7 @@ class ReportsService {
         COUNT(DISTINCT b.id) as total_beneficiaries,
         SUM(COALESCE(a.budget_allocated, 0)) as total_budget,
         SUM(COALESCE(ae.amount, 0)) as total_spent,
-        COUNT(DISTINCT sg.id) as total_goals,
-        COUNT(DISTINCT i.id) as total_indicators
+        COUNT(DISTINCT sg.id) as total_goals
       FROM program_modules pm
       LEFT JOIN sub_programs sp ON pm.id = sp.module_id AND sp.deleted_at IS NULL
       LEFT JOIN project_components pc ON sp.id = pc.sub_program_id AND pc.deleted_at IS NULL
@@ -780,12 +812,20 @@ class ReportsService {
       LEFT JOIN beneficiaries b ON ab.beneficiary_id = b.id AND b.deleted_at IS NULL
       LEFT JOIN activity_expenses ae ON a.id = ae.activity_id
       LEFT JOIN strategic_goals sg ON pm.id = sg.module_id AND sg.deleted_at IS NULL
-      LEFT JOIN indicators i ON sg.id = i.goal_id
       WHERE pm.deleted_at IS NULL
     `;
 
     const overallResults = await db.query(overallQuery, params);
     const summary = overallResults[0];
+
+    // Count indicators separately (strategic goal indicators + ME indicators)
+    const indicatorsQuery = `
+      SELECT
+        (SELECT COUNT(*) FROM indicators WHERE is_active = 1) +
+        (SELECT COUNT(*) FROM me_indicators WHERE deleted_at IS NULL AND is_active = 1) as total_indicators
+    `;
+    const indicatorsResult = await db.query(indicatorsQuery);
+    summary.total_indicators = indicatorsResult[0].total_indicators;
 
     // Calculate key metrics
     summary.completion_rate = summary.total_activities > 0
