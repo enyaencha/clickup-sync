@@ -101,9 +101,557 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
+const ReportsAnalytics: React.FC = () => {
+  const [activeTab, setActiveTab] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [modules, setModules] = useState<ProgramModule[]>([]);
+  const [components, setComponents] = useState<ComponentOption[]>([]);
+  const [selectedModule, setSelectedModule] = useState<string>('all');
+  const [selectedComponent, setSelectedComponent] = useState<string>('all');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [reportData, setReportData] = useState<ReportData>({});
+  const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
+  const [showAIDialog, setShowAIDialog] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const { user } = useAuth();
 
-// ==================== MOVED PANEL COMPONENTS BEFORE MAIN ====================
-// Panel components must be defined before the main component that uses them
+  useEffect(() => {
+    fetchModules();
+    loadExecutiveSummary();
+  }, []);
+
+  const fetchModules = async () => {
+    try {
+      const response = await authFetch('/api/programs');
+      if (response.ok) {
+        const data = await response.json();
+        setModules(data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch modules:', error);
+    }
+  };
+
+  const fetchComponents = async (moduleId: string) => {
+    if (!moduleId || moduleId === 'all') {
+      setComponents([]);
+      return;
+    }
+    try {
+      const response = await authFetch(`/api/components?moduleId=${moduleId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setComponents(data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch components:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchComponents(selectedModule);
+  }, [selectedModule]);
+
+  const loadExecutiveSummary = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+
+      const response = await authFetch(`/api/reports/executive-summary?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setReportData(prev => ({ ...prev, executiveSummary: data.data }));
+      }
+    } catch (error) {
+      console.error('Failed to load executive summary:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadProgramPerformance = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (selectedModule !== 'all') params.append('moduleId', selectedModule);
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+
+      const response = await authFetch(`/api/reports/program-performance?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setReportData(prev => ({ ...prev, programPerformance: data.data }));
+      }
+    } catch (error) {
+      console.error('Failed to load program performance:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadFinancialReport = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (selectedModule !== 'all') params.append('moduleId', selectedModule);
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      params.append('groupBy', 'module');
+
+      const response = await authFetch(`/api/reports/financial?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setReportData(prev => ({ ...prev, financial: data.data }));
+      }
+    } catch (error) {
+      console.error('Failed to load financial report:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadBeneficiaryReport = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (selectedModule !== 'all') params.append('moduleId', selectedModule);
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+
+      const response = await authFetch(`/api/reports/beneficiaries?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setReportData(prev => ({ ...prev, beneficiaries: data.data }));
+      }
+    } catch (error) {
+      console.error('Failed to load beneficiary report:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadIndicatorReport = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (selectedModule !== 'all') params.append('moduleId', selectedModule);
+
+      const response = await authFetch(`/api/reports/indicator-achievement?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setReportData(prev => ({ ...prev, indicators: data.data }));
+      }
+    } catch (error) {
+      console.error('Failed to load indicator report:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadRiskReport = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (selectedModule !== 'all') params.append('moduleId', selectedModule);
+
+      const response = await authFetch(`/api/reports/risk?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setReportData(prev => ({ ...prev, risk: data.data }));
+      }
+    } catch (error) {
+      console.error('Failed to load risk report:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadDataQualityReport = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (selectedModule !== 'all') params.append('moduleId', selectedModule);
+
+      const response = await authFetch(`/api/reports/data-quality?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setReportData(prev => ({ ...prev, dataQuality: data.data }));
+      }
+    } catch (error) {
+      console.error('Failed to load data quality report:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAIInsights = async () => {
+    if (selectedModule === 'all') {
+      alert('Please select a specific program module for AI insights');
+      return;
+    }
+
+    try {
+      setAiLoading(true);
+      setShowAIDialog(true);
+
+      const response = await authFetch(`/api/reports/ai/smart-insights?moduleId=${selectedModule}`);
+      if (response.ok) {
+        const data = await response.json();
+        setAiInsights(data.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to load AI insights:', error);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const loadAIPredictions = async (type: 'budget' | 'activity' | 'beneficiary') => {
+    if (type === 'budget' && selectedModule === 'all') {
+      alert('Please select a specific program module for budget predictions');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      let endpoint = '';
+      const params = new URLSearchParams();
+
+      if (type === 'budget') {
+        endpoint = '/api/reports/ai/predict-budget-burn';
+        params.append('moduleId', selectedModule);
+        params.append('forecastDays', '90');
+      } else if (type === 'activity') {
+        if (selectedComponent === 'all') {
+          alert('Please select a specific component for activity predictions');
+          return;
+        }
+        endpoint = '/api/reports/ai/predict-activity-completion';
+        params.append('componentId', selectedComponent);
+      } else if (type === 'beneficiary') {
+        endpoint = '/api/reports/ai/predict-beneficiary-reach';
+        params.append('moduleId', selectedModule);
+        params.append('forecastMonths', '6');
+      }
+
+      const response = await authFetch(`${endpoint}?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setReportData(prev => ({ ...prev, [type + 'Prediction']: data.data }));
+      }
+    } catch (error) {
+      console.error(`Failed to load ${type} prediction:`, error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAnomalyDetection = async () => {
+    if (selectedModule === 'all') {
+      alert('Please select a specific program module for anomaly detection');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await authFetch(`/api/reports/ai/detect-spending-anomalies?moduleId=${selectedModule}`);
+      if (response.ok) {
+        const data = await response.json();
+        setReportData(prev => ({ ...prev, anomalies: data.data }));
+      }
+    } catch (error) {
+      console.error('Failed to detect anomalies:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    switch (activeTab) {
+      case 0:
+        loadExecutiveSummary();
+        break;
+      case 1:
+        loadProgramPerformance();
+        break;
+      case 2:
+        loadFinancialReport();
+        break;
+      case 3:
+        loadBeneficiaryReport();
+        break;
+      case 4:
+        loadIndicatorReport();
+        break;
+      case 5:
+        loadRiskReport();
+        break;
+      case 6:
+        loadDataQualityReport();
+        break;
+      default:
+        break;
+    }
+  }, [activeTab, selectedModule, startDate, endDate]);
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-KE', {
+      style: 'currency',
+      currency: 'KES',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const getStatusColor = (status: string) => {
+    const colors: { [key: string]: string } = {
+      'on-track': '#4caf50',
+      'at-risk': '#ff9800',
+      'delayed': '#f44336',
+      'off-track': '#f44336',
+      'completed': '#4caf50',
+      'achieved': '#4caf50',
+      'high': '#f44336',
+      'medium': '#ff9800',
+      'low': '#4caf50',
+    };
+    return colors[status.toLowerCase()] || '#757575';
+  };
+
+  const getInsightIcon = (category: string) => {
+    switch (category) {
+      case 'positive':
+        return <CheckCircleIcon sx={{ color: '#4caf50' }} />;
+      case 'warning':
+        return <WarningIcon sx={{ color: '#ff9800' }} />;
+      case 'alert':
+        return <ErrorIcon sx={{ color: '#f44336' }} />;
+      default:
+        return <InfoIcon sx={{ color: '#2196f3' }} />;
+    }
+  };
+
+  return (
+    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" component="h1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <AssessmentIcon fontSize="large" />
+          Reports & Analytics Dashboard
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AIIcon />}
+          onClick={loadAIInsights}
+          disabled={selectedModule === 'all'}
+          sx={{
+            background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+            color: 'white',
+          }}
+        >
+          AI Insights
+        </Button>
+      </Box>
+
+      {/* Filters */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Program Module</InputLabel>
+              <Select
+                value={selectedModule}
+                onChange={(e) => setSelectedModule(e.target.value)}
+                label="Program Module"
+              >
+                <MenuItem value="all">All Modules</MenuItem>
+                {modules.map((module) => (
+                  <MenuItem key={module.id} value={module.id.toString()}>
+                    {module.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Component</InputLabel>
+              <Select
+                value={selectedComponent}
+                onChange={(e) => setSelectedComponent(e.target.value)}
+                label="Component"
+                disabled={selectedModule === 'all' || components.length === 0}
+              >
+                <MenuItem value="all">All Components</MenuItem>
+                {components.map((comp) => (
+                  <MenuItem key={comp.id} value={comp.id.toString()}>
+                    {comp.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} md={2}>
+            <TextField
+              fullWidth
+              size="small"
+              type="date"
+              label="Start Date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={2}>
+            <TextField
+              fullWidth
+              size="small"
+              type="date"
+              label="End Date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+          <Grid item xs={12} sm={12} md={2}>
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={() => {
+                setSelectedModule('all');
+                setSelectedComponent('all');
+                setStartDate('');
+                setEndDate('');
+              }}
+            >
+              Reset
+            </Button>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Tabs */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+        <Tabs
+          value={activeTab}
+          onChange={handleTabChange}
+          variant="scrollable"
+          scrollButtons="auto"
+          aria-label="report tabs"
+        >
+          <Tab icon={<AssessmentIcon />} label="Executive Summary" />
+          <Tab icon={<TimelineIcon />} label="Program Performance" />
+          <Tab icon={<BarChartIcon />} label="Financial Reports" />
+          <Tab icon={<PieChartIcon />} label="Beneficiary Reports" />
+          <Tab icon={<TrendingUpIcon />} label="Indicator Achievement" />
+          <Tab icon={<WarningIcon />} label="Risk Analysis" />
+          <Tab icon={<InfoIcon />} label="Data Quality" />
+          <Tab icon={<AIIcon />} label="AI Predictions" />
+        </Tabs>
+      </Box>
+
+      {loading && <LinearProgress sx={{ mt: 2 }} />}
+
+      {/* Tab Panels */}
+      <TabPanel value={activeTab} index={0}>
+        <ExecutiveSummaryPanel data={reportData.executiveSummary} formatCurrency={formatCurrency} />
+      </TabPanel>
+
+      <TabPanel value={activeTab} index={1}>
+        <ProgramPerformancePanel data={reportData.programPerformance} formatCurrency={formatCurrency} getStatusColor={getStatusColor} />
+      </TabPanel>
+
+      <TabPanel value={activeTab} index={2}>
+        <FinancialReportPanel data={reportData.financial} formatCurrency={formatCurrency} getStatusColor={getStatusColor} />
+      </TabPanel>
+
+      <TabPanel value={activeTab} index={3}>
+        <BeneficiaryReportPanel data={reportData.beneficiaries} />
+      </TabPanel>
+
+      <TabPanel value={activeTab} index={4}>
+        <IndicatorReportPanel data={reportData.indicators} getStatusColor={getStatusColor} />
+      </TabPanel>
+
+      <TabPanel value={activeTab} index={5}>
+        <RiskReportPanel data={reportData.risk} formatCurrency={formatCurrency} getStatusColor={getStatusColor} />
+      </TabPanel>
+
+      <TabPanel value={activeTab} index={6}>
+        <DataQualityPanel data={reportData.dataQuality} />
+      </TabPanel>
+
+      <TabPanel value={activeTab} index={7}>
+        <AIPredictionsPanel
+          budgetPrediction={reportData.budgetPrediction}
+          activityPrediction={reportData.activityPrediction}
+          beneficiaryPrediction={reportData.beneficiaryPrediction}
+          anomalies={reportData.anomalies}
+          onLoadPrediction={loadAIPredictions}
+          onLoadAnomalies={loadAnomalyDetection}
+          formatCurrency={formatCurrency}
+          getStatusColor={getStatusColor}
+          selectedModule={selectedModule}
+          selectedComponent={selectedComponent}
+        />
+      </TabPanel>
+
+      {/* AI Insights Dialog */}
+      <Dialog open={showAIDialog} onClose={() => setShowAIDialog(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <AutoAwesomeIcon sx={{ color: '#2196F3' }} />
+          AI-Generated Insights
+        </DialogTitle>
+        <DialogContent>
+          {aiLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : aiInsights.length === 0 ? (
+            <Alert severity="info">
+              <AlertTitle>No Insights Available</AlertTitle>
+              There is not enough data to generate insights for this module.
+            </Alert>
+          ) : (
+            <Box>
+              {aiInsights.map((insight, index) => (
+                <Alert
+                  key={index}
+                  severity={insight.category === 'positive' ? 'success' : insight.category === 'alert' ? 'error' : insight.category === 'warning' ? 'warning' : 'info'}
+                  icon={getInsightIcon(insight.category)}
+                  sx={{ mb: 2 }}
+                >
+                  <AlertTitle sx={{ fontWeight: 'bold' }}>{insight.title}</AlertTitle>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    {insight.description}
+                  </Typography>
+                  {insight.recommendation && (
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mt: 1, p: 1, bgcolor: 'rgba(0,0,0,0.03)', borderRadius: 1 }}>
+                      <LightbulbIcon fontSize="small" sx={{ mt: 0.5 }} />
+                      <Typography variant="body2">
+                        <strong>Recommendation:</strong> {insight.recommendation}
+                      </Typography>
+                    </Box>
+                  )}
+                </Alert>
+              ))}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowAIDialog(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
+  );
+};
 
 // Sub-components for each report type
 const ExecutiveSummaryPanel: React.FC<{ data: any; formatCurrency: any }> = ({ data, formatCurrency }) => {
@@ -802,558 +1350,4 @@ const AIPredictionsPanel: React.FC<any> = ({
   );
 };
 
-
-// ==================== MAIN COMPONENT ====================
-
-const ReportsAnalytics: React.FC = () => {
-  const [activeTab, setActiveTab] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [modules, setModules] = useState<ProgramModule[]>([]);
-  const [components, setComponents] = useState<ComponentOption[]>([]);
-  const [selectedModule, setSelectedModule] = useState<string>('all');
-  const [selectedComponent, setSelectedComponent] = useState<string>('all');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
-  const [reportData, setReportData] = useState<ReportData>({});
-  const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
-  const [showAIDialog, setShowAIDialog] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
-  const { user } = useAuth();
-
-  useEffect(() => {
-    fetchModules();
-    loadExecutiveSummary();
-  }, []);
-
-  const fetchModules = async () => {
-    try {
-      const response = await authFetch('/api/programs');
-      if (response.ok) {
-        const data = await response.json();
-        setModules(data || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch modules:', error);
-    }
-  };
-
-  const fetchComponents = async (moduleId: string) => {
-    if (!moduleId || moduleId === 'all') {
-      setComponents([]);
-      return;
-    }
-    try {
-      const response = await authFetch(`/api/components?moduleId=${moduleId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setComponents(data || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch components:', error);
-    }
-  };
-
-  useEffect(() => {
-    fetchComponents(selectedModule);
-  }, [selectedModule]);
-
-  const loadExecutiveSummary = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (startDate) params.append('startDate', startDate);
-      if (endDate) params.append('endDate', endDate);
-
-      const response = await authFetch(`/api/reports/executive-summary?${params.toString()}`);
-      if (response.ok) {
-        const data = await response.json();
-        setReportData(prev => ({ ...prev, executiveSummary: data.data }));
-      }
-    } catch (error) {
-      console.error('Failed to load executive summary:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadProgramPerformance = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (selectedModule !== 'all') params.append('moduleId', selectedModule);
-      if (startDate) params.append('startDate', startDate);
-      if (endDate) params.append('endDate', endDate);
-
-      const response = await authFetch(`/api/reports/program-performance?${params.toString()}`);
-      if (response.ok) {
-        const data = await response.json();
-        setReportData(prev => ({ ...prev, programPerformance: data.data }));
-      }
-    } catch (error) {
-      console.error('Failed to load program performance:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadFinancialReport = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (selectedModule !== 'all') params.append('moduleId', selectedModule);
-      if (startDate) params.append('startDate', startDate);
-      if (endDate) params.append('endDate', endDate);
-      params.append('groupBy', 'module');
-
-      const response = await authFetch(`/api/reports/financial?${params.toString()}`);
-      if (response.ok) {
-        const data = await response.json();
-        setReportData(prev => ({ ...prev, financial: data.data }));
-      }
-    } catch (error) {
-      console.error('Failed to load financial report:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadBeneficiaryReport = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (selectedModule !== 'all') params.append('moduleId', selectedModule);
-      if (startDate) params.append('startDate', startDate);
-      if (endDate) params.append('endDate', endDate);
-
-      const response = await authFetch(`/api/reports/beneficiaries?${params.toString()}`);
-      if (response.ok) {
-        const data = await response.json();
-        setReportData(prev => ({ ...prev, beneficiaries: data.data }));
-      }
-    } catch (error) {
-      console.error('Failed to load beneficiary report:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadIndicatorReport = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (selectedModule !== 'all') params.append('moduleId', selectedModule);
-
-      const response = await authFetch(`/api/reports/indicator-achievement?${params.toString()}`);
-      if (response.ok) {
-        const data = await response.json();
-        setReportData(prev => ({ ...prev, indicators: data.data }));
-      }
-    } catch (error) {
-      console.error('Failed to load indicator report:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadRiskReport = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (selectedModule !== 'all') params.append('moduleId', selectedModule);
-
-      const response = await authFetch(`/api/reports/risk?${params.toString()}`);
-      if (response.ok) {
-        const data = await response.json();
-        setReportData(prev => ({ ...prev, risk: data.data }));
-      }
-    } catch (error) {
-      console.error('Failed to load risk report:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadDataQualityReport = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (selectedModule !== 'all') params.append('moduleId', selectedModule);
-
-      const response = await authFetch(`/api/reports/data-quality?${params.toString()}`);
-      if (response.ok) {
-        const data = await response.json();
-        setReportData(prev => ({ ...prev, dataQuality: data.data }));
-      }
-    } catch (error) {
-      console.error('Failed to load data quality report:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadAIInsights = async () => {
-    if (selectedModule === 'all') {
-      alert('Please select a specific program module for AI insights');
-      return;
-    }
-
-    try {
-      setAiLoading(true);
-      setShowAIDialog(true);
-
-      const response = await authFetch(`/api/reports/ai/smart-insights?moduleId=${selectedModule}`);
-      if (response.ok) {
-        const data = await response.json();
-        setAiInsights(data.data || []);
-      }
-    } catch (error) {
-      console.error('Failed to load AI insights:', error);
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
-  const loadAIPredictions = async (type: 'budget' | 'activity' | 'beneficiary') => {
-    if (type === 'budget' && selectedModule === 'all') {
-      alert('Please select a specific program module for budget predictions');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      let endpoint = '';
-      const params = new URLSearchParams();
-
-      if (type === 'budget') {
-        endpoint = '/api/reports/ai/predict-budget-burn';
-        params.append('moduleId', selectedModule);
-        params.append('forecastDays', '90');
-      } else if (type === 'activity') {
-        if (selectedComponent === 'all') {
-          alert('Please select a specific component for activity predictions');
-          return;
-        }
-        endpoint = '/api/reports/ai/predict-activity-completion';
-        params.append('componentId', selectedComponent);
-      } else if (type === 'beneficiary') {
-        endpoint = '/api/reports/ai/predict-beneficiary-reach';
-        params.append('moduleId', selectedModule);
-        params.append('forecastMonths', '6');
-      }
-
-      const response = await authFetch(`${endpoint}?${params.toString()}`);
-      if (response.ok) {
-        const data = await response.json();
-        setReportData(prev => ({ ...prev, [type + 'Prediction']: data.data }));
-      }
-    } catch (error) {
-      console.error(`Failed to load ${type} prediction:`, error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadAnomalyDetection = async () => {
-    if (selectedModule === 'all') {
-      alert('Please select a specific program module for anomaly detection');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const response = await authFetch(`/api/reports/ai/detect-spending-anomalies?moduleId=${selectedModule}`);
-      if (response.ok) {
-        const data = await response.json();
-        setReportData(prev => ({ ...prev, anomalies: data.data }));
-      }
-    } catch (error) {
-      console.error('Failed to detect anomalies:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    switch (activeTab) {
-      case 0:
-        loadExecutiveSummary();
-        break;
-      case 1:
-        loadProgramPerformance();
-        break;
-      case 2:
-        loadFinancialReport();
-        break;
-      case 3:
-        loadBeneficiaryReport();
-        break;
-      case 4:
-        loadIndicatorReport();
-        break;
-      case 5:
-        loadRiskReport();
-        break;
-      case 6:
-        loadDataQualityReport();
-        break;
-      default:
-        break;
-    }
-  }, [activeTab, selectedModule, startDate, endDate]);
-
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setActiveTab(newValue);
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-KE', {
-      style: 'currency',
-      currency: 'KES',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const getStatusColor = (status: string) => {
-    const colors: { [key: string]: string } = {
-      'on-track': '#4caf50',
-      'at-risk': '#ff9800',
-      'delayed': '#f44336',
-      'off-track': '#f44336',
-      'completed': '#4caf50',
-      'achieved': '#4caf50',
-      'high': '#f44336',
-      'medium': '#ff9800',
-      'low': '#4caf50',
-    };
-    return colors[status.toLowerCase()] || '#757575';
-  };
-
-  const getInsightIcon = (category: string) => {
-    switch (category) {
-      case 'positive':
-        return <CheckCircleIcon sx={{ color: '#4caf50' }} />;
-      case 'warning':
-        return <WarningIcon sx={{ color: '#ff9800' }} />;
-      case 'alert':
-        return <ErrorIcon sx={{ color: '#f44336' }} />;
-      default:
-        return <InfoIcon sx={{ color: '#2196f3' }} />;
-    }
-  };
-
-  return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <AssessmentIcon fontSize="large" />
-          Reports & Analytics Dashboard
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AIIcon />}
-          onClick={loadAIInsights}
-          disabled={selectedModule === 'all'}
-          sx={{
-            background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
-            color: 'white',
-          }}
-        >
-          AI Insights
-        </Button>
-      </Box>
-
-      {/* Filters */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Program Module</InputLabel>
-              <Select
-                value={selectedModule}
-                onChange={(e) => setSelectedModule(e.target.value)}
-                label="Program Module"
-              >
-                <MenuItem value="all">All Modules</MenuItem>
-                {modules.map((module) => (
-                  <MenuItem key={module.id} value={module.id.toString()}>
-                    {module.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Component</InputLabel>
-              <Select
-                value={selectedComponent}
-                onChange={(e) => setSelectedComponent(e.target.value)}
-                label="Component"
-                disabled={selectedModule === 'all' || components.length === 0}
-              >
-                <MenuItem value="all">All Components</MenuItem>
-                {components.map((comp) => (
-                  <MenuItem key={comp.id} value={comp.id.toString()}>
-                    {comp.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6} md={2}>
-            <TextField
-              fullWidth
-              size="small"
-              type="date"
-              label="Start Date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={2}>
-            <TextField
-              fullWidth
-              size="small"
-              type="date"
-              label="End Date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={12} md={2}>
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<RefreshIcon />}
-              onClick={() => {
-                setSelectedModule('all');
-                setSelectedComponent('all');
-                setStartDate('');
-                setEndDate('');
-              }}
-            >
-              Reset
-            </Button>
-          </Grid>
-        </Grid>
-      </Paper>
-
-      {/* Tabs */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Tabs
-          value={activeTab}
-          onChange={handleTabChange}
-          variant="scrollable"
-          scrollButtons="auto"
-          aria-label="report tabs"
-        >
-          <Tab icon={<AssessmentIcon />} label="Executive Summary" />
-          <Tab icon={<TimelineIcon />} label="Program Performance" />
-          <Tab icon={<BarChartIcon />} label="Financial Reports" />
-          <Tab icon={<PieChartIcon />} label="Beneficiary Reports" />
-          <Tab icon={<TrendingUpIcon />} label="Indicator Achievement" />
-          <Tab icon={<WarningIcon />} label="Risk Analysis" />
-          <Tab icon={<InfoIcon />} label="Data Quality" />
-          <Tab icon={<AIIcon />} label="AI Predictions" />
-        </Tabs>
-      </Box>
-
-      {loading && <LinearProgress sx={{ mt: 2 }} />}
-
-      {/* Tab Panels */}
-      <TabPanel value={activeTab} index={0}>
-        <ExecutiveSummaryPanel data={reportData.executiveSummary} formatCurrency={formatCurrency} />
-      </TabPanel>
-
-      <TabPanel value={activeTab} index={1}>
-        <ProgramPerformancePanel data={reportData.programPerformance} formatCurrency={formatCurrency} getStatusColor={getStatusColor} />
-      </TabPanel>
-
-      <TabPanel value={activeTab} index={2}>
-        <FinancialReportPanel data={reportData.financial} formatCurrency={formatCurrency} getStatusColor={getStatusColor} />
-      </TabPanel>
-
-      <TabPanel value={activeTab} index={3}>
-        <BeneficiaryReportPanel data={reportData.beneficiaries} />
-      </TabPanel>
-
-      <TabPanel value={activeTab} index={4}>
-        <IndicatorReportPanel data={reportData.indicators} getStatusColor={getStatusColor} />
-      </TabPanel>
-
-      <TabPanel value={activeTab} index={5}>
-        <RiskReportPanel data={reportData.risk} formatCurrency={formatCurrency} getStatusColor={getStatusColor} />
-      </TabPanel>
-
-      <TabPanel value={activeTab} index={6}>
-        <DataQualityPanel data={reportData.dataQuality} />
-      </TabPanel>
-
-      <TabPanel value={activeTab} index={7}>
-        <AIPredictionsPanel
-          budgetPrediction={reportData.budgetPrediction}
-          activityPrediction={reportData.activityPrediction}
-          beneficiaryPrediction={reportData.beneficiaryPrediction}
-          anomalies={reportData.anomalies}
-          onLoadPrediction={loadAIPredictions}
-          onLoadAnomalies={loadAnomalyDetection}
-          formatCurrency={formatCurrency}
-          getStatusColor={getStatusColor}
-          selectedModule={selectedModule}
-          selectedComponent={selectedComponent}
-        />
-      </TabPanel>
-
-      {/* AI Insights Dialog */}
-      <Dialog open={showAIDialog} onClose={() => setShowAIDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <AutoAwesomeIcon sx={{ color: '#2196F3' }} />
-          AI-Generated Insights
-        </DialogTitle>
-        <DialogContent>
-          {aiLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-              <CircularProgress />
-            </Box>
-          ) : aiInsights.length === 0 ? (
-            <Alert severity="info">
-              <AlertTitle>No Insights Available</AlertTitle>
-              There is not enough data to generate insights for this module.
-            </Alert>
-          ) : (
-            <Box>
-              {aiInsights.map((insight, index) => (
-                <Alert
-                  key={index}
-                  severity={insight.category === 'positive' ? 'success' : insight.category === 'alert' ? 'error' : insight.category === 'warning' ? 'warning' : 'info'}
-                  icon={getInsightIcon(insight.category)}
-                  sx={{ mb: 2 }}
-                >
-                  <AlertTitle sx={{ fontWeight: 'bold' }}>{insight.title}</AlertTitle>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    {insight.description}
-                  </Typography>
-                  {insight.recommendation && (
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mt: 1, p: 1, bgcolor: 'rgba(0,0,0,0.03)', borderRadius: 1 }}>
-                      <LightbulbIcon fontSize="small" sx={{ mt: 0.5 }} />
-                      <Typography variant="body2">
-                        <strong>Recommendation:</strong> {insight.recommendation}
-                      </Typography>
-                    </Box>
-                  )}
-                </Alert>
-              ))}
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowAIDialog(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
-    </Container>
-  );
-};
 export default ReportsAnalytics;
