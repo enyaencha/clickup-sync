@@ -87,7 +87,7 @@ class ReportsService {
         a.id,
         a.name as activity_name,
         a.activity_date,
-        a.duration,
+        a.duration_hours,
         a.status,
         a.approval_status,
         a.risk_level,
@@ -95,7 +95,7 @@ class ReportsService {
         COUNT(DISTINCT ab.beneficiary_id) as beneficiary_count,
         SUM(COALESCE(ae.amount, 0)) as total_spent,
         COUNT(DISTINCT ac.id) as total_checklist_items,
-        COUNT(DISTINCT CASE WHEN ac.is_checked = 1 THEN ac.id END) as completed_checklist_items,
+        COUNT(DISTINCT CASE WHEN ac.is_completed = 1 THEN ac.id END) as completed_checklist_items,
         COUNT(DISTINCT att.id) as attachment_count,
         SUM(COALESCE(te.hours, 0)) as total_hours,
         l.name as location_name,
@@ -325,11 +325,11 @@ class ReportsService {
         COUNT(DISTINCT CASE WHEN b.gender = 'male' THEN b.id END) as male_count,
         COUNT(DISTINCT CASE WHEN b.gender = 'female' THEN b.id END) as female_count,
         COUNT(DISTINCT CASE WHEN b.gender = 'other' THEN b.id END) as other_gender_count,
-        COUNT(DISTINCT CASE WHEN b.is_vulnerable = 1 THEN b.id END) as vulnerable_count,
-        COUNT(DISTINCT CASE WHEN b.beneficiary_type = 'individual' THEN b.id END) as individual_count,
-        COUNT(DISTINCT CASE WHEN b.beneficiary_type = 'household' THEN b.id END) as household_count,
-        COUNT(DISTINCT CASE WHEN b.beneficiary_type = 'group' THEN b.id END) as group_count,
-        COUNT(DISTINCT CASE WHEN b.beneficiary_type = 'organization' THEN b.id END) as organization_count,
+        COUNT(DISTINCT CASE WHEN b.vulnerability_category IS NOT NULL THEN b.id END) as vulnerable_count,
+        COUNT(DISTINCT CASE WHEN b.vulnerability_category = 'refugee' THEN b.id END) as refugee_count,
+        COUNT(DISTINCT CASE WHEN b.vulnerability_category = 'ovc' THEN b.id END) as ovc_count,
+        COUNT(DISTINCT CASE WHEN b.vulnerability_category = 'elderly' THEN b.id END) as elderly_count,
+        COUNT(DISTINCT CASE WHEN b.vulnerability_category = 'pwd' THEN b.id END) as pwd_count,
         AVG(YEAR(CURDATE()) - YEAR(b.date_of_birth)) as avg_age,
         COUNT(DISTINCT ab.activity_id) as activities_participated,
         l.name as location_name,
@@ -434,7 +434,8 @@ class ReportsService {
     const { moduleId, goalId, startDate, endDate } = filters;
 
     // Query both strategic goal indicators AND M&E indicators
-    let query = `
+    const params = [];
+    let strategicGoalQuery = `
       SELECT
         'strategic_goal' as source,
         i.id as indicator_id,
@@ -448,7 +449,7 @@ class ReportsService {
         NULL as data_source,
         sg.id as goal_id,
         sg.name as goal_name,
-        pm.name as module_name,
+        'Strategic Goals' as module_name,
         CASE
           WHEN i.indicator_type = 'binary' THEN
             CASE WHEN i.is_completed = 1 THEN 100 ELSE 0 END
@@ -463,21 +464,15 @@ class ReportsService {
         i.linked_activities_count as linked_activities
       FROM indicators i
       LEFT JOIN strategic_goals sg ON i.goal_id = sg.id
-      LEFT JOIN program_modules pm ON sg.module_id = pm.id
       WHERE i.is_active = 1
     `;
 
-    const params = [];
-
-    if (moduleId) {
-      query += ` AND pm.id = ?`;
-      params.push(moduleId);
-    }
-
     if (goalId) {
-      query += ` AND sg.id = ?`;
+      strategicGoalQuery += ` AND sg.id = ?`;
       params.push(goalId);
     }
+
+    let query = strategicGoalQuery;
 
     query += `
       UNION ALL
@@ -632,17 +627,18 @@ class ReportsService {
         a.name as activity_name,
         a.status,
         a.risk_level,
-        a.activity_date,
-        a.duration,
+        a.start_date,
+        a.end_date,
+        a.duration_hours,
         pm.name as module_name,
         sp.name as subprogram_name,
         pc.name as component_name,
         a.budget_allocated,
         SUM(COALESCE(ae.amount, 0)) as total_spent,
         COUNT(DISTINCT ab.beneficiary_id) as beneficiary_count,
-        DATEDIFF(DATE_ADD(a.activity_date, INTERVAL a.duration DAY), CURDATE()) as days_remaining,
+        DATEDIFF(a.end_date, CURDATE()) as days_remaining,
         COUNT(DISTINCT ac.id) as total_checklist_items,
-        COUNT(DISTINCT CASE WHEN ac.is_checked = 1 THEN ac.id END) as completed_checklist_items
+        COUNT(DISTINCT CASE WHEN ac.is_completed = 1 THEN ac.id END) as completed_checklist_items
       FROM activities a
       JOIN project_components pc ON a.component_id = pc.id
       JOIN sub_programs sp ON pc.sub_program_id = sp.id
