@@ -12,7 +12,7 @@ class AIAnalyticsService {
     // Get historical spending data
     const query = `
       SELECT
-        DATE_FORMAT(a.activity_date, '%Y-%m-%d') as date,
+        DATE_FORMAT(a.start_date, '%Y-%m-%d') as date,
         SUM(COALESCE(ae.amount, 0)) as daily_spending,
         SUM(COALESCE(a.budget_allocated, 0)) as daily_budget
       FROM activities a
@@ -22,8 +22,8 @@ class AIAnalyticsService {
       LEFT JOIN activity_expenses ae ON a.id = ae.activity_id
       WHERE pm.id = ?
         AND a.deleted_at IS NULL
-        AND a.activity_date >= DATE_SUB(CURDATE(), INTERVAL 180 DAY)
-      GROUP BY DATE_FORMAT(a.activity_date, '%Y-%m-%d')
+        AND a.start_date >= DATE_SUB(CURDATE(), INTERVAL 180 DAY)
+      GROUP BY DATE_FORMAT(a.start_date, '%Y-%m-%d')
       ORDER BY date
     `;
 
@@ -95,9 +95,17 @@ class AIAnalyticsService {
     }
 
     // Calculate when budget will be exhausted
-    const daysUntilExhaustion = remainingBudget / recentAvg;
-    const exhaustionDate = new Date();
-    exhaustionDate.setDate(exhaustionDate.getDate() + Math.ceil(daysUntilExhaustion));
+    let daysUntilExhaustion = remainingBudget / recentAvg;
+    let exhaustionDate = null;
+
+    // Handle edge cases
+    if (!isFinite(daysUntilExhaustion) || daysUntilExhaustion < 0 || recentAvg === 0) {
+      daysUntilExhaustion = null;
+      exhaustionDate = null;
+    } else {
+      exhaustionDate = new Date();
+      exhaustionDate.setDate(exhaustionDate.getDate() + Math.ceil(daysUntilExhaustion));
+    }
 
     return {
       current_status: {
@@ -115,8 +123,8 @@ class AIAnalyticsService {
         trend: recentAvg > avgDailySpending ? 'increasing' : 'decreasing'
       },
       predictions: {
-        days_until_budget_exhaustion: Math.ceil(daysUntilExhaustion),
-        estimated_exhaustion_date: exhaustionDate.toISOString().split('T')[0],
+        days_until_budget_exhaustion: daysUntilExhaustion !== null ? Math.ceil(daysUntilExhaustion) : null,
+        estimated_exhaustion_date: exhaustionDate ? exhaustionDate.toISOString().split('T')[0] : null,
         forecast_period_days: forecastDays,
         forecast: forecast
       },
@@ -134,11 +142,12 @@ class AIAnalyticsService {
         a.id,
         a.name,
         a.status,
-        a.activity_date,
-        a.duration,
+        a.start_date,
+        a.end_date,
+        a.duration_hours,
         DATEDIFF(a.updated_at, a.created_at) as actual_duration,
         COUNT(DISTINCT ac.id) as total_checklist_items,
-        COUNT(DISTINCT CASE WHEN ac.is_checked = 1 THEN ac.id END) as completed_checklist_items,
+        COUNT(DISTINCT CASE WHEN ac.is_completed = 1 THEN ac.id END) as completed_checklist_items,
         COUNT(DISTINCT ab.beneficiary_id) as beneficiary_count,
         a.budget_allocated,
         SUM(COALESCE(ae.amount, 0)) as total_spent
@@ -148,7 +157,7 @@ class AIAnalyticsService {
       LEFT JOIN activity_expenses ae ON a.id = ae.activity_id
       WHERE a.component_id = ? AND a.deleted_at IS NULL
       GROUP BY a.id
-      ORDER BY a.activity_date DESC
+      ORDER BY a.start_date DESC
     `;
 
     const activities = await db.query(query, [componentId]);
@@ -185,8 +194,13 @@ class AIAnalyticsService {
         ? (activity.total_spent / activity.budget_allocated)
         : 0;
 
-      const daysSinceStart = Math.floor((Date.now() - new Date(activity.activity_date)) / (1000 * 60 * 60 * 24));
-      const timeProgress = activity.duration > 0 ? (daysSinceStart / activity.duration) : 0;
+      const daysSinceStart = activity.start_date
+        ? Math.floor((Date.now() - new Date(activity.start_date)) / (1000 * 60 * 60 * 24))
+        : 0;
+      const totalDuration = (activity.start_date && activity.end_date)
+        ? Math.floor((new Date(activity.end_date) - new Date(activity.start_date)) / (1000 * 60 * 60 * 24))
+        : 0;
+      const timeProgress = totalDuration > 0 ? (daysSinceStart / totalDuration) : 0;
 
       // Weighted completion score
       const completionScore = (checklistProgress * 0.4) + (budgetProgress * 0.3) + (timeProgress * 0.3);
@@ -239,7 +253,7 @@ class AIAnalyticsService {
     // Get historical beneficiary data by month
     const query = `
       SELECT
-        DATE_FORMAT(a.activity_date, '%Y-%m') as month,
+        DATE_FORMAT(a.start_date, '%Y-%m') as month,
         COUNT(DISTINCT ab.beneficiary_id) as beneficiary_count,
         COUNT(DISTINCT a.id) as activity_count
       FROM activities a
@@ -249,8 +263,8 @@ class AIAnalyticsService {
       LEFT JOIN activity_beneficiaries ab ON a.id = ab.activity_id
       WHERE pm.id = ?
         AND a.deleted_at IS NULL
-        AND a.activity_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
-      GROUP BY DATE_FORMAT(a.activity_date, '%Y-%m')
+        AND a.start_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+      GROUP BY DATE_FORMAT(a.start_date, '%Y-%m')
       ORDER BY month
     `;
 
@@ -321,7 +335,7 @@ class AIAnalyticsService {
       SELECT
         a.id,
         a.name as activity_name,
-        a.activity_date,
+        a.start_date,
         a.budget_allocated,
         SUM(COALESCE(ae.amount, 0)) as total_spent,
         COUNT(DISTINCT ab.beneficiary_id) as beneficiary_count,
@@ -335,7 +349,7 @@ class AIAnalyticsService {
       LEFT JOIN activity_beneficiaries ab ON a.id = ab.activity_id
       WHERE pm.id = ?
         AND a.deleted_at IS NULL
-        AND a.activity_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+        AND a.start_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
       GROUP BY a.id
       HAVING total_spent > 0
     `;
@@ -428,7 +442,7 @@ class AIAnalyticsService {
 
     // Check for activities without beneficiaries
     const activitiesWithoutBeneficiaries = await db.query(`
-      SELECT a.id, a.name, a.activity_date
+      SELECT a.id, a.name, a.start_date
       FROM activities a
       JOIN project_components pc ON a.component_id = pc.id
       JOIN sub_programs sp ON pc.sub_program_id = sp.id
@@ -453,7 +467,7 @@ class AIAnalyticsService {
 
     // Check for activities without location
     const activitiesWithoutLocation = await db.query(`
-      SELECT a.id, a.name, a.activity_date
+      SELECT a.id, a.name, a.start_date
       FROM activities a
       JOIN project_components pc ON a.component_id = pc.id
       JOIN sub_programs sp ON pc.sub_program_id = sp.id
@@ -475,7 +489,7 @@ class AIAnalyticsService {
 
     // Check for activities without evidence/attachments
     const activitiesWithoutEvidence = await db.query(`
-      SELECT a.id, a.name, a.activity_date
+      SELECT a.id, a.name, a.start_date
       FROM activities a
       JOIN project_components pc ON a.component_id = pc.id
       JOIN sub_programs sp ON pc.sub_program_id = sp.id
