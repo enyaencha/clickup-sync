@@ -2,10 +2,8 @@ const express = require('express');
 const router = express.Router();
 const ReportsService = require('../services/ReportsService');
 const AIAnalyticsService = require('../services/AIAnalyticsService');
-const { authenticateToken } = require('../middleware/auth');
 
-// Apply authentication to all routes
-router.use(authenticateToken);
+// Note: Authentication middleware is applied at the app level in server-me.js
 
 // ==================== STANDARD REPORTS ====================
 
