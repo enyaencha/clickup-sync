@@ -101,710 +101,6 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
-
-// ==================== MOVED PANEL COMPONENTS BEFORE MAIN ====================
-// Panel components must be defined before the main component that uses them
-
-// Sub-components for each report type
-const ExecutiveSummaryPanel: React.FC<{ data: any; formatCurrency: any }> = ({ data, formatCurrency }) => {
-  if (!data) return <Typography>Loading...</Typography>;
-
-  return (
-    <Grid container spacing={3}>
-      <Grid item xs={12} sm={6} md={3}>
-        <Card>
-          <CardContent>
-            <Typography color="textSecondary" gutterBottom>Total Modules</Typography>
-            <Typography variant="h4">{data.total_modules || 0}</Typography>
-          </CardContent>
-        </Card>
-      </Grid>
-      <Grid item xs={12} sm={6} md={3}>
-        <Card>
-          <CardContent>
-            <Typography color="textSecondary" gutterBottom>Total Activities</Typography>
-            <Typography variant="h4">{data.total_activities || 0}</Typography>
-            <Typography variant="caption" color="success.main">
-              {data.completed_activities || 0} completed ({data.completion_rate || 0}%)
-            </Typography>
-          </CardContent>
-        </Card>
-      </Grid>
-      <Grid item xs={12} sm={6} md={3}>
-        <Card>
-          <CardContent>
-            <Typography color="textSecondary" gutterBottom>Total Beneficiaries</Typography>
-            <Typography variant="h4">{data.total_beneficiaries || 0}</Typography>
-          </CardContent>
-        </Card>
-      </Grid>
-      <Grid item xs={12} sm={6} md={3}>
-        <Card>
-          <CardContent>
-            <Typography color="textSecondary" gutterBottom>Budget Utilization</Typography>
-            <Typography variant="h4">{data.budget_utilization || 0}%</Typography>
-            <Typography variant="caption">
-              {formatCurrency(data.total_spent || 0)} / {formatCurrency(data.total_budget || 0)}
-            </Typography>
-          </CardContent>
-        </Card>
-      </Grid>
-      <Grid item xs={12} sm={6} md={4}>
-        <Card>
-          <CardContent>
-            <Typography color="textSecondary" gutterBottom>Budget Remaining</Typography>
-            <Typography variant="h5" color="primary">{formatCurrency(data.budget_remaining || 0)}</Typography>
-          </CardContent>
-        </Card>
-      </Grid>
-      <Grid item xs={12} sm={6} md={4}>
-        <Card>
-          <CardContent>
-            <Typography color="textSecondary" gutterBottom>Strategic Goals</Typography>
-            <Typography variant="h5">{data.total_goals || 0}</Typography>
-          </CardContent>
-        </Card>
-      </Grid>
-      <Grid item xs={12} sm={6} md={4}>
-        <Card>
-          <CardContent>
-            <Typography color="textSecondary" gutterBottom>Indicators Tracked</Typography>
-            <Typography variant="h5">{data.total_indicators || 0}</Typography>
-          </CardContent>
-        </Card>
-      </Grid>
-    </Grid>
-  );
-};
-
-const ProgramPerformancePanel: React.FC<{ data: any[]; formatCurrency: any; getStatusColor: any }> = ({ data, formatCurrency, getStatusColor }) => {
-  if (!data || data.length === 0) {
-    return <Alert severity="info">No data available</Alert>;
-  }
-
-  return (
-    <TableContainer component={Paper}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell><strong>Module</strong></TableCell>
-            <TableCell align="right"><strong>Activities</strong></TableCell>
-            <TableCell align="right"><strong>Completion %</strong></TableCell>
-            <TableCell align="right"><strong>Beneficiaries</strong></TableCell>
-            <TableCell align="right"><strong>Budget</strong></TableCell>
-            <TableCell align="right"><strong>Spent</strong></TableCell>
-            <TableCell align="right"><strong>Utilization %</strong></TableCell>
-            <TableCell align="right"><strong>High Risk</strong></TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {data.map((row, index) => (
-            <TableRow key={index}>
-              <TableCell>{row.module_name}</TableCell>
-              <TableCell align="right">
-                {row.total_activities} ({row.completed_activities} completed)
-              </TableCell>
-              <TableCell align="right">
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <LinearProgress
-                    variant="determinate"
-                    value={parseFloat(row.completion_percentage)}
-                    sx={{ flexGrow: 1, height: 8, borderRadius: 1 }}
-                  />
-                  {row.completion_percentage}%
-                </Box>
-              </TableCell>
-              <TableCell align="right">{row.total_beneficiaries}</TableCell>
-              <TableCell align="right">{formatCurrency(row.total_budget)}</TableCell>
-              <TableCell align="right">{formatCurrency(row.total_spent)}</TableCell>
-              <TableCell align="right">
-                <Chip
-                  label={`${row.budget_utilization}%`}
-                  size="small"
-                  color={parseFloat(row.budget_utilization) > 90 ? 'error' : parseFloat(row.budget_utilization) > 75 ? 'warning' : 'success'}
-                />
-              </TableCell>
-              <TableCell align="right">
-                {row.high_risk_activities > 0 ? (
-                  <Chip label={row.high_risk_activities} size="small" color="error" />
-                ) : (
-                  <Chip label="0" size="small" color="success" />
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
-};
-
-const FinancialReportPanel: React.FC<{ data: any[]; formatCurrency: any; getStatusColor: any }> = ({ data, formatCurrency, getStatusColor }) => {
-  if (!data || data.length === 0) {
-    return <Alert severity="info">No financial data available</Alert>;
-  }
-
-  return (
-    <TableContainer component={Paper}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell><strong>Program/Sub-program</strong></TableCell>
-            <TableCell align="right"><strong>Budget Allocated</strong></TableCell>
-            <TableCell align="right"><strong>Amount Spent</strong></TableCell>
-            <TableCell align="right"><strong>Remaining</strong></TableCell>
-            <TableCell align="right"><strong>Utilization</strong></TableCell>
-            <TableCell align="right"><strong>Activities</strong></TableCell>
-            <TableCell align="right"><strong>Cost/Beneficiary</strong></TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {data.map((row, index) => (
-            <TableRow key={index}>
-              <TableCell>{row.module_name || row.subprogram_name || row.component_name}</TableCell>
-              <TableCell align="right">{formatCurrency(row.total_budget)}</TableCell>
-              <TableCell align="right">{formatCurrency(row.total_spent)}</TableCell>
-              <TableCell align="right">
-                <Typography color={row.budget_remaining < 0 ? 'error' : 'inherit'}>
-                  {formatCurrency(row.budget_remaining)}
-                </Typography>
-              </TableCell>
-              <TableCell align="right">
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'flex-end' }}>
-                  <LinearProgress
-                    variant="determinate"
-                    value={Math.min(parseFloat(row.budget_utilization), 100)}
-                    sx={{ width: 60, height: 8, borderRadius: 1 }}
-                    color={parseFloat(row.budget_utilization) > 100 ? 'error' : 'primary'}
-                  />
-                  {row.budget_utilization}%
-                </Box>
-              </TableCell>
-              <TableCell align="right">{row.activity_count}</TableCell>
-              <TableCell align="right">{formatCurrency(row.cost_per_beneficiary)}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
-};
-
-const BeneficiaryReportPanel: React.FC<{ data: any[] }> = ({ data }) => {
-  if (!data || data.length === 0) {
-    return <Alert severity="info">No beneficiary data available</Alert>;
-  }
-
-  return (
-    <TableContainer component={Paper}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell><strong>Module/Location</strong></TableCell>
-            <TableCell align="right"><strong>Total</strong></TableCell>
-            <TableCell align="right"><strong>Male</strong></TableCell>
-            <TableCell align="right"><strong>Female</strong></TableCell>
-            <TableCell align="right"><strong>Vulnerable</strong></TableCell>
-            <TableCell align="right"><strong>Avg Age</strong></TableCell>
-            <TableCell align="right"><strong>Activities</strong></TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {data.map((row, index) => (
-            <TableRow key={index}>
-              <TableCell>
-                {row.module_name}
-                {row.location_name && <Typography variant="caption" display="block" color="textSecondary">
-                  {row.location_name}
-                </Typography>}
-              </TableCell>
-              <TableCell align="right"><strong>{row.total_beneficiaries}</strong></TableCell>
-              <TableCell align="right">{row.male_count} ({row.male_percentage}%)</TableCell>
-              <TableCell align="right">{row.female_count} ({row.female_percentage}%)</TableCell>
-              <TableCell align="right">
-                <Chip
-                  label={`${row.vulnerable_count} (${row.vulnerable_percentage}%)`}
-                  size="small"
-                  color={parseFloat(row.vulnerable_percentage) > 50 ? 'warning' : 'default'}
-                />
-              </TableCell>
-              <TableCell align="right">{row.avg_age || 'N/A'}</TableCell>
-              <TableCell align="right">{row.activities_participated}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
-};
-
-const IndicatorReportPanel: React.FC<{ data: any[]; getStatusColor: any }> = ({ data, getStatusColor }) => {
-  if (!data || data.length === 0) {
-    return <Alert severity="info">No indicator data available</Alert>;
-  }
-
-  return (
-    <TableContainer component={Paper}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell><strong>Indicator</strong></TableCell>
-            <TableCell><strong>Goal</strong></TableCell>
-            <TableCell align="right"><strong>Baseline</strong></TableCell>
-            <TableCell align="right"><strong>Target</strong></TableCell>
-            <TableCell align="right"><strong>Current</strong></TableCell>
-            <TableCell align="right"><strong>Achievement</strong></TableCell>
-            <TableCell><strong>Status</strong></TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {data.map((row, index) => (
-            <TableRow key={index}>
-              <TableCell>
-                {row.indicator_name}
-                <Typography variant="caption" display="block" color="textSecondary">
-                  {row.indicator_type} | {row.unit}
-                </Typography>
-              </TableCell>
-              <TableCell>{row.goal_name}</TableCell>
-              <TableCell align="right">{row.baseline_value}</TableCell>
-              <TableCell align="right">{row.target_value}</TableCell>
-              <TableCell align="right">{row.current_value}</TableCell>
-              <TableCell align="right">
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <LinearProgress
-                    variant="determinate"
-                    value={Math.min(parseFloat(row.achievement_percentage), 100)}
-                    sx={{ flexGrow: 1, height: 8, borderRadius: 1 }}
-                  />
-                  {row.achievement_percentage}%
-                </Box>
-              </TableCell>
-              <TableCell>
-                <Chip
-                  label={row.status}
-                  size="small"
-                  sx={{ bgcolor: getStatusColor(row.status), color: 'white' }}
-                />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
-};
-
-const RiskReportPanel: React.FC<{ data: any[]; formatCurrency: any; getStatusColor: any }> = ({ data, formatCurrency, getStatusColor }) => {
-  if (!data || data.length === 0) {
-    return <Alert severity="success">No high-risk activities found!</Alert>;
-  }
-
-  return (
-    <TableContainer component={Paper}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell><strong>Activity</strong></TableCell>
-            <TableCell><strong>Risk Level</strong></TableCell>
-            <TableCell><strong>Status</strong></TableCell>
-            <TableCell align="right"><strong>Days Remaining</strong></TableCell>
-            <TableCell align="right"><strong>Budget Variance</strong></TableCell>
-            <TableCell align="right"><strong>Checklist Progress</strong></TableCell>
-            <TableCell align="right"><strong>Beneficiaries</strong></TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {data.map((row, index) => (
-            <TableRow key={index}>
-              <TableCell>
-                {row.activity_name}
-                <Typography variant="caption" display="block" color="textSecondary">
-                  {row.subprogram_name} / {row.component_name}
-                </Typography>
-              </TableCell>
-              <TableCell>
-                <Chip
-                  label={row.risk_level}
-                  size="small"
-                  sx={{ bgcolor: getStatusColor(row.risk_level), color: 'white' }}
-                />
-              </TableCell>
-              <TableCell>{row.status}</TableCell>
-              <TableCell align="right">
-                <Typography color={row.days_remaining < 0 ? 'error' : 'inherit'}>
-                  {row.days_remaining}
-                  {row.is_delayed && <WarningIcon fontSize="small" color="error" sx={{ ml: 1 }} />}
-                </Typography>
-              </TableCell>
-              <TableCell align="right">
-                <Typography color={row.budget_overrun ? 'error' : 'inherit'}>
-                  {formatCurrency(row.budget_variance)}
-                </Typography>
-              </TableCell>
-              <TableCell align="right">{row.checklist_completion}%</TableCell>
-              <TableCell align="right">{row.beneficiary_count}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
-};
-
-const DataQualityPanel: React.FC<{ data: any[] }> = ({ data }) => {
-  if (!data || data.length === 0) {
-    return <Alert severity="info">No data quality information available</Alert>;
-  }
-
-  return (
-    <TableContainer component={Paper}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell><strong>Module</strong></TableCell>
-            <TableCell align="right"><strong>Total Activities</strong></TableCell>
-            <TableCell align="right"><strong>Location</strong></TableCell>
-            <TableCell align="right"><strong>Budget</strong></TableCell>
-            <TableCell align="right"><strong>Beneficiaries</strong></TableCell>
-            <TableCell align="right"><strong>Attachments</strong></TableCell>
-            <TableCell align="right"><strong>Time Entries</strong></TableCell>
-            <TableCell align="right"><strong>Overall</strong></TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {data.map((row, index) => (
-            <TableRow key={index}>
-              <TableCell>{row.module_name}</TableCell>
-              <TableCell align="right">{row.total_activities}</TableCell>
-              <TableCell align="right">
-                <Chip
-                  label={`${row.location_completeness}%`}
-                  size="small"
-                  color={parseFloat(row.location_completeness) > 80 ? 'success' : parseFloat(row.location_completeness) > 50 ? 'warning' : 'error'}
-                />
-              </TableCell>
-              <TableCell align="right">
-                <Chip
-                  label={`${row.budget_completeness}%`}
-                  size="small"
-                  color={parseFloat(row.budget_completeness) > 80 ? 'success' : parseFloat(row.budget_completeness) > 50 ? 'warning' : 'error'}
-                />
-              </TableCell>
-              <TableCell align="right">
-                <Chip
-                  label={`${row.beneficiary_completeness}%`}
-                  size="small"
-                  color={parseFloat(row.beneficiary_completeness) > 80 ? 'success' : parseFloat(row.beneficiary_completeness) > 50 ? 'warning' : 'error'}
-                />
-              </TableCell>
-              <TableCell align="right">
-                <Chip
-                  label={`${row.attachment_completeness}%`}
-                  size="small"
-                  color={parseFloat(row.attachment_completeness) > 80 ? 'success' : parseFloat(row.attachment_completeness) > 50 ? 'warning' : 'error'}
-                />
-              </TableCell>
-              <TableCell align="right">
-                <Chip
-                  label={`${row.time_entry_completeness}%`}
-                  size="small"
-                  color={parseFloat(row.time_entry_completeness) > 80 ? 'success' : parseFloat(row.time_entry_completeness) > 50 ? 'warning' : 'error'}
-                />
-              </TableCell>
-              <TableCell align="right">
-                <Chip
-                  label={`${row.overall_completeness}%`}
-                  size="small"
-                  color={parseFloat(row.overall_completeness) > 80 ? 'success' : parseFloat(row.overall_completeness) > 50 ? 'warning' : 'error'}
-                />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
-};
-
-const AIPredictionsPanel: React.FC<any> = ({
-  budgetPrediction,
-  activityPrediction,
-  beneficiaryPrediction,
-  anomalies,
-  onLoadPrediction,
-  onLoadAnomalies,
-  formatCurrency,
-  getStatusColor,
-  selectedModule,
-  selectedComponent,
-}) => {
-  return (
-    <Grid container spacing={3}>
-      {/* Budget Burn Rate Prediction */}
-      <Grid item xs={12}>
-        <Card>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <TrendingUpIcon />
-                Budget Burn Rate Prediction
-              </Typography>
-              <Button
-                variant="contained"
-                onClick={() => onLoadPrediction('budget')}
-                disabled={selectedModule === 'all'}
-              >
-                Generate Prediction
-              </Button>
-            </Box>
-            {budgetPrediction && budgetPrediction.current_status && (
-              <Box>
-                <Grid container spacing={2} sx={{ mb: 2 }}>
-                  <Grid item xs={12} sm={3}>
-                    <Paper sx={{ p: 2 }}>
-                      <Typography color="textSecondary" variant="caption">Total Budget</Typography>
-                      <Typography variant="h6">{formatCurrency(budgetPrediction.current_status.total_budget)}</Typography>
-                    </Paper>
-                  </Grid>
-                  <Grid item xs={12} sm={3}>
-                    <Paper sx={{ p: 2 }}>
-                      <Typography color="textSecondary" variant="caption">Spent</Typography>
-                      <Typography variant="h6">{formatCurrency(budgetPrediction.current_status.total_spent)}</Typography>
-                    </Paper>
-                  </Grid>
-                  <Grid item xs={12} sm={3}>
-                    <Paper sx={{ p: 2 }}>
-                      <Typography color="textSecondary" variant="caption">Remaining</Typography>
-                      <Typography variant="h6">{formatCurrency(budgetPrediction.current_status.remaining_budget)}</Typography>
-                    </Paper>
-                  </Grid>
-                  <Grid item xs={12} sm={3}>
-                    <Paper sx={{ p: 2 }}>
-                      <Typography color="textSecondary" variant="caption">Utilization</Typography>
-                      <Typography variant="h6">{budgetPrediction.current_status.utilization_percentage}%</Typography>
-                    </Paper>
-                  </Grid>
-                </Grid>
-                {budgetPrediction.predictions && (
-                  <Alert severity="info" sx={{ mb: 2 }}>
-                    <AlertTitle>Prediction</AlertTitle>
-                    Budget will be exhausted in approximately <strong>{budgetPrediction.predictions.days_until_budget_exhaustion} days</strong>
-                    {' '}(Estimated date: {budgetPrediction.predictions.estimated_exhaustion_date})
-                    <br />
-                    Avg daily spending: {formatCurrency(budgetPrediction.spending_statistics.avg_daily_spending)}
-                    {' '}| Recent trend: {budgetPrediction.spending_statistics.trend}
-                  </Alert>
-                )}
-                {budgetPrediction.recommendations && budgetPrediction.recommendations.length > 0 && (
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ mb: 1 }}>Recommendations:</Typography>
-                    {budgetPrediction.recommendations.map((rec: string, i: number) => (
-                      <Alert key={i} severity="warning" sx={{ mb: 1 }}>
-                        {rec}
-                      </Alert>
-                    ))}
-                  </Box>
-                )}
-              </Box>
-            )}
-          </CardContent>
-        </Card>
-      </Grid>
-
-      {/* Activity Completion Prediction */}
-      <Grid item xs={12}>
-        <Card>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <TimelineIcon />
-                Activity Completion Prediction
-              </Typography>
-              <Button
-                variant="contained"
-                onClick={() => onLoadPrediction('activity')}
-                disabled={selectedComponent === 'all'}
-              >
-                Generate Prediction
-              </Button>
-            </Box>
-            {activityPrediction && activityPrediction.predictions && (
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Activity</TableCell>
-                      <TableCell align="right">Completion %</TableCell>
-                      <TableCell align="right">Est. Completion Date</TableCell>
-                      <TableCell align="right">Days Remaining</TableCell>
-                      <TableCell>Risk Level</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {activityPrediction.predictions.map((pred: any, i: number) => (
-                      <TableRow key={i}>
-                        <TableCell>{pred.activity_name}</TableCell>
-                        <TableCell align="right">{pred.current_completion_percentage}%</TableCell>
-                        <TableCell align="right">{pred.estimated_completion_date}</TableCell>
-                        <TableCell align="right">{pred.estimated_remaining_days}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={pred.risk_level}
-                            size="small"
-                            sx={{ bgcolor: getStatusColor(pred.risk_level), color: 'white' }}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </CardContent>
-        </Card>
-      </Grid>
-
-      {/* Beneficiary Reach Prediction */}
-      <Grid item xs={12}>
-        <Card>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <PieChartIcon />
-                Beneficiary Reach Forecast
-              </Typography>
-              <Button
-                variant="contained"
-                onClick={() => onLoadPrediction('beneficiary')}
-                disabled={selectedModule === 'all'}
-              >
-                Generate Forecast
-              </Button>
-            </Box>
-            {beneficiaryPrediction && beneficiaryPrediction.forecast && (
-              <Box>
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  <AlertTitle>Forecast Summary</AlertTitle>
-                  Expected to reach <strong>{beneficiaryPrediction.summary.total_predicted_beneficiaries}</strong> beneficiaries
-                  {' '}over the next {beneficiaryPrediction.summary.forecast_period_months} months.
-                  <br />
-                  Monthly average: {beneficiaryPrediction.statistics.avg_monthly_beneficiaries} beneficiaries
-                  {' '}| Trend: {beneficiaryPrediction.statistics.trend}
-                </Alert>
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Month</TableCell>
-                        <TableCell align="right">Predicted Beneficiaries</TableCell>
-                        <TableCell>Trend</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {beneficiaryPrediction.forecast.map((item: any, i: number) => (
-                        <TableRow key={i}>
-                          <TableCell>{item.month}</TableCell>
-                          <TableCell align="right">{item.predicted_beneficiaries}</TableCell>
-                          <TableCell>
-                            {item.trend === 'increasing' ? (
-                              <TrendingUpIcon color="success" fontSize="small" />
-                            ) : item.trend === 'decreasing' ? (
-                              <TrendingDownIcon color="error" fontSize="small" />
-                            ) : (
-                              '→'
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Box>
-            )}
-          </CardContent>
-        </Card>
-      </Grid>
-
-      {/* Anomaly Detection */}
-      <Grid item xs={12}>
-        <Card>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <WarningIcon />
-                Spending Anomalies Detection
-              </Typography>
-              <Button
-                variant="contained"
-                color="warning"
-                onClick={onLoadAnomalies}
-                disabled={selectedModule === 'all'}
-              >
-                Detect Anomalies
-              </Button>
-            </Box>
-            {anomalies && anomalies.anomalies && (
-              <Box>
-                {anomalies.anomalies.length === 0 ? (
-                  <Alert severity="success">
-                    <AlertTitle>No Anomalies Detected</AlertTitle>
-                    All spending patterns appear normal.
-                  </Alert>
-                ) : (
-                  <Box>
-                    <Alert severity="warning" sx={{ mb: 2 }}>
-                      <AlertTitle>Anomalies Found</AlertTitle>
-                      Detected {anomalies.anomaly_count} anomalies ({anomalies.anomaly_percentage}% of activities)
-                    </Alert>
-                    <TableContainer>
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>Activity</TableCell>
-                            <TableCell align="right">Amount Spent</TableCell>
-                            <TableCell>Anomaly Types</TableCell>
-                            <TableCell align="right">Z-Score</TableCell>
-                            <TableCell>Severity</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {anomalies.anomalies.map((item: any, i: number) => (
-                            <TableRow key={i}>
-                              <TableCell>{item.activity_name}</TableCell>
-                              <TableCell align="right">{formatCurrency(item.total_spent)}</TableCell>
-                              <TableCell>
-                                {item.anomaly_types.map((type: string, j: number) => (
-                                  <Chip key={j} label={type.replace(/_/g, ' ')} size="small" sx={{ mr: 0.5, mb: 0.5 }} />
-                                ))}
-                              </TableCell>
-                              <TableCell align="right">{item.z_score}</TableCell>
-                              <TableCell>
-                                <Chip
-                                  label={item.severity}
-                                  size="small"
-                                  color={item.severity === 'high' ? 'error' : item.severity === 'medium' ? 'warning' : 'info'}
-                                />
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </Box>
-                )}
-              </Box>
-            )}
-          </CardContent>
-        </Card>
-      </Grid>
-    </Grid>
-  );
-};
-
-
-// ==================== MAIN COMPONENT ====================
-
 const ReportsAnalytics: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -1356,4 +652,702 @@ const ReportsAnalytics: React.FC = () => {
     </Container>
   );
 };
+
+// Sub-components for each report type
+function ExecutiveSummaryPanel({ data, formatCurrency }: { data: any; formatCurrency: any }) {
+  if (!data) return <Typography>Loading...</Typography>;
+
+  return (
+    <Grid container spacing={3}>
+      <Grid item xs={12} sm={6} md={3}>
+        <Card>
+          <CardContent>
+            <Typography color="textSecondary" gutterBottom>Total Modules</Typography>
+            <Typography variant="h4">{data.total_modules || 0}</Typography>
+          </CardContent>
+        </Card>
+      </Grid>
+      <Grid item xs={12} sm={6} md={3}>
+        <Card>
+          <CardContent>
+            <Typography color="textSecondary" gutterBottom>Total Activities</Typography>
+            <Typography variant="h4">{data.total_activities || 0}</Typography>
+            <Typography variant="caption" color="success.main">
+              {data.completed_activities || 0} completed ({data.completion_rate || 0}%)
+            </Typography>
+          </CardContent>
+        </Card>
+      </Grid>
+      <Grid item xs={12} sm={6} md={3}>
+        <Card>
+          <CardContent>
+            <Typography color="textSecondary" gutterBottom>Total Beneficiaries</Typography>
+            <Typography variant="h4">{data.total_beneficiaries || 0}</Typography>
+          </CardContent>
+        </Card>
+      </Grid>
+      <Grid item xs={12} sm={6} md={3}>
+        <Card>
+          <CardContent>
+            <Typography color="textSecondary" gutterBottom>Budget Utilization</Typography>
+            <Typography variant="h4">{data.budget_utilization || 0}%</Typography>
+            <Typography variant="caption">
+              {formatCurrency(data.total_spent || 0)} / {formatCurrency(data.total_budget || 0)}
+            </Typography>
+          </CardContent>
+        </Card>
+      </Grid>
+      <Grid item xs={12} sm={6} md={4}>
+        <Card>
+          <CardContent>
+            <Typography color="textSecondary" gutterBottom>Budget Remaining</Typography>
+            <Typography variant="h5" color="primary">{formatCurrency(data.budget_remaining || 0)}</Typography>
+          </CardContent>
+        </Card>
+      </Grid>
+      <Grid item xs={12} sm={6} md={4}>
+        <Card>
+          <CardContent>
+            <Typography color="textSecondary" gutterBottom>Strategic Goals</Typography>
+            <Typography variant="h5">{data.total_goals || 0}</Typography>
+          </CardContent>
+        </Card>
+      </Grid>
+      <Grid item xs={12} sm={6} md={4}>
+        <Card>
+          <CardContent>
+            <Typography color="textSecondary" gutterBottom>Indicators Tracked</Typography>
+            <Typography variant="h5">{data.total_indicators || 0}</Typography>
+          </CardContent>
+        </Card>
+      </Grid>
+    </Grid>
+  );
+};
+
+function ProgramPerformancePanel({ data, formatCurrency, getStatusColor }: { data: any[]; formatCurrency: any; getStatusColor: any }) {
+  if (!data || data.length === 0) {
+    return <Alert severity="info">No data available</Alert>;
+  }
+
+  return (
+    <TableContainer component={Paper}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell><strong>Module</strong></TableCell>
+            <TableCell align="right"><strong>Activities</strong></TableCell>
+            <TableCell align="right"><strong>Completion %</strong></TableCell>
+            <TableCell align="right"><strong>Beneficiaries</strong></TableCell>
+            <TableCell align="right"><strong>Budget</strong></TableCell>
+            <TableCell align="right"><strong>Spent</strong></TableCell>
+            <TableCell align="right"><strong>Utilization %</strong></TableCell>
+            <TableCell align="right"><strong>High Risk</strong></TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {data.map((row, index) => (
+            <TableRow key={index}>
+              <TableCell>{row.module_name}</TableCell>
+              <TableCell align="right">
+                {row.total_activities} ({row.completed_activities} completed)
+              </TableCell>
+              <TableCell align="right">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <LinearProgress
+                    variant="determinate"
+                    value={parseFloat(row.completion_percentage)}
+                    sx={{ flexGrow: 1, height: 8, borderRadius: 1 }}
+                  />
+                  {row.completion_percentage}%
+                </Box>
+              </TableCell>
+              <TableCell align="right">{row.total_beneficiaries}</TableCell>
+              <TableCell align="right">{formatCurrency(row.total_budget)}</TableCell>
+              <TableCell align="right">{formatCurrency(row.total_spent)}</TableCell>
+              <TableCell align="right">
+                <Chip
+                  label={`${row.budget_utilization}%`}
+                  size="small"
+                  color={parseFloat(row.budget_utilization) > 90 ? 'error' : parseFloat(row.budget_utilization) > 75 ? 'warning' : 'success'}
+                />
+              </TableCell>
+              <TableCell align="right">
+                {row.high_risk_activities > 0 ? (
+                  <Chip label={row.high_risk_activities} size="small" color="error" />
+                ) : (
+                  <Chip label="0" size="small" color="success" />
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+};
+
+function FinancialReportPanel({ data, formatCurrency, getStatusColor }: { data: any[]; formatCurrency: any; getStatusColor: any }) {
+  if (!data || data.length === 0) {
+    return <Alert severity="info">No financial data available</Alert>;
+  }
+
+  return (
+    <TableContainer component={Paper}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell><strong>Program/Sub-program</strong></TableCell>
+            <TableCell align="right"><strong>Budget Allocated</strong></TableCell>
+            <TableCell align="right"><strong>Amount Spent</strong></TableCell>
+            <TableCell align="right"><strong>Remaining</strong></TableCell>
+            <TableCell align="right"><strong>Utilization</strong></TableCell>
+            <TableCell align="right"><strong>Activities</strong></TableCell>
+            <TableCell align="right"><strong>Cost/Beneficiary</strong></TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {data.map((row, index) => (
+            <TableRow key={index}>
+              <TableCell>{row.module_name || row.subprogram_name || row.component_name}</TableCell>
+              <TableCell align="right">{formatCurrency(row.total_budget)}</TableCell>
+              <TableCell align="right">{formatCurrency(row.total_spent)}</TableCell>
+              <TableCell align="right">
+                <Typography color={row.budget_remaining < 0 ? 'error' : 'inherit'}>
+                  {formatCurrency(row.budget_remaining)}
+                </Typography>
+              </TableCell>
+              <TableCell align="right">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'flex-end' }}>
+                  <LinearProgress
+                    variant="determinate"
+                    value={Math.min(parseFloat(row.budget_utilization), 100)}
+                    sx={{ width: 60, height: 8, borderRadius: 1 }}
+                    color={parseFloat(row.budget_utilization) > 100 ? 'error' : 'primary'}
+                  />
+                  {row.budget_utilization}%
+                </Box>
+              </TableCell>
+              <TableCell align="right">{row.activity_count}</TableCell>
+              <TableCell align="right">{formatCurrency(row.cost_per_beneficiary)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+};
+
+function BeneficiaryReportPanel({ data }: { data: any[] }) {
+  if (!data || data.length === 0) {
+    return <Alert severity="info">No beneficiary data available</Alert>;
+  }
+
+  return (
+    <TableContainer component={Paper}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell><strong>Module/Location</strong></TableCell>
+            <TableCell align="right"><strong>Total</strong></TableCell>
+            <TableCell align="right"><strong>Male</strong></TableCell>
+            <TableCell align="right"><strong>Female</strong></TableCell>
+            <TableCell align="right"><strong>Vulnerable</strong></TableCell>
+            <TableCell align="right"><strong>Avg Age</strong></TableCell>
+            <TableCell align="right"><strong>Activities</strong></TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {data.map((row, index) => (
+            <TableRow key={index}>
+              <TableCell>
+                {row.module_name}
+                {row.location_name && <Typography variant="caption" display="block" color="textSecondary">
+                  {row.location_name}
+                </Typography>}
+              </TableCell>
+              <TableCell align="right"><strong>{row.total_beneficiaries}</strong></TableCell>
+              <TableCell align="right">{row.male_count} ({row.male_percentage}%)</TableCell>
+              <TableCell align="right">{row.female_count} ({row.female_percentage}%)</TableCell>
+              <TableCell align="right">
+                <Chip
+                  label={`${row.vulnerable_count} (${row.vulnerable_percentage}%)`}
+                  size="small"
+                  color={parseFloat(row.vulnerable_percentage) > 50 ? 'warning' : 'default'}
+                />
+              </TableCell>
+              <TableCell align="right">{row.avg_age || 'N/A'}</TableCell>
+              <TableCell align="right">{row.activities_participated}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+};
+
+function IndicatorReportPanel({ data, getStatusColor }: { data: any[]; getStatusColor: any }) {
+  if (!data || data.length === 0) {
+    return <Alert severity="info">No indicator data available</Alert>;
+  }
+
+  return (
+    <TableContainer component={Paper}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell><strong>Indicator</strong></TableCell>
+            <TableCell><strong>Goal</strong></TableCell>
+            <TableCell align="right"><strong>Baseline</strong></TableCell>
+            <TableCell align="right"><strong>Target</strong></TableCell>
+            <TableCell align="right"><strong>Current</strong></TableCell>
+            <TableCell align="right"><strong>Achievement</strong></TableCell>
+            <TableCell><strong>Status</strong></TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {data.map((row, index) => (
+            <TableRow key={index}>
+              <TableCell>
+                {row.indicator_name}
+                <Typography variant="caption" display="block" color="textSecondary">
+                  {row.indicator_type} | {row.unit}
+                </Typography>
+              </TableCell>
+              <TableCell>{row.goal_name}</TableCell>
+              <TableCell align="right">{row.baseline_value}</TableCell>
+              <TableCell align="right">{row.target_value}</TableCell>
+              <TableCell align="right">{row.current_value}</TableCell>
+              <TableCell align="right">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <LinearProgress
+                    variant="determinate"
+                    value={Math.min(parseFloat(row.achievement_percentage), 100)}
+                    sx={{ flexGrow: 1, height: 8, borderRadius: 1 }}
+                  />
+                  {row.achievement_percentage}%
+                </Box>
+              </TableCell>
+              <TableCell>
+                <Chip
+                  label={row.status}
+                  size="small"
+                  sx={{ bgcolor: getStatusColor(row.status), color: 'white' }}
+                />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+};
+
+function RiskReportPanel({ data, formatCurrency, getStatusColor }: { data: any[]; formatCurrency: any; getStatusColor: any }) {
+  if (!data || data.length === 0) {
+    return <Alert severity="success">No high-risk activities found!</Alert>;
+  }
+
+  return (
+    <TableContainer component={Paper}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell><strong>Activity</strong></TableCell>
+            <TableCell><strong>Risk Level</strong></TableCell>
+            <TableCell><strong>Status</strong></TableCell>
+            <TableCell align="right"><strong>Days Remaining</strong></TableCell>
+            <TableCell align="right"><strong>Budget Variance</strong></TableCell>
+            <TableCell align="right"><strong>Checklist Progress</strong></TableCell>
+            <TableCell align="right"><strong>Beneficiaries</strong></TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {data.map((row, index) => (
+            <TableRow key={index}>
+              <TableCell>
+                {row.activity_name}
+                <Typography variant="caption" display="block" color="textSecondary">
+                  {row.subprogram_name} / {row.component_name}
+                </Typography>
+              </TableCell>
+              <TableCell>
+                <Chip
+                  label={row.risk_level}
+                  size="small"
+                  sx={{ bgcolor: getStatusColor(row.risk_level), color: 'white' }}
+                />
+              </TableCell>
+              <TableCell>{row.status}</TableCell>
+              <TableCell align="right">
+                <Typography color={row.days_remaining < 0 ? 'error' : 'inherit'}>
+                  {row.days_remaining}
+                  {row.is_delayed && <WarningIcon fontSize="small" color="error" sx={{ ml: 1 }} />}
+                </Typography>
+              </TableCell>
+              <TableCell align="right">
+                <Typography color={row.budget_overrun ? 'error' : 'inherit'}>
+                  {formatCurrency(row.budget_variance)}
+                </Typography>
+              </TableCell>
+              <TableCell align="right">{row.checklist_completion}%</TableCell>
+              <TableCell align="right">{row.beneficiary_count}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+};
+
+function DataQualityPanel({ data }: { data: any[] }) {
+  if (!data || data.length === 0) {
+    return <Alert severity="info">No data quality information available</Alert>;
+  }
+
+  return (
+    <TableContainer component={Paper}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell><strong>Module</strong></TableCell>
+            <TableCell align="right"><strong>Total Activities</strong></TableCell>
+            <TableCell align="right"><strong>Location</strong></TableCell>
+            <TableCell align="right"><strong>Budget</strong></TableCell>
+            <TableCell align="right"><strong>Beneficiaries</strong></TableCell>
+            <TableCell align="right"><strong>Attachments</strong></TableCell>
+            <TableCell align="right"><strong>Time Entries</strong></TableCell>
+            <TableCell align="right"><strong>Overall</strong></TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {data.map((row, index) => (
+            <TableRow key={index}>
+              <TableCell>{row.module_name}</TableCell>
+              <TableCell align="right">{row.total_activities}</TableCell>
+              <TableCell align="right">
+                <Chip
+                  label={`${row.location_completeness}%`}
+                  size="small"
+                  color={parseFloat(row.location_completeness) > 80 ? 'success' : parseFloat(row.location_completeness) > 50 ? 'warning' : 'error'}
+                />
+              </TableCell>
+              <TableCell align="right">
+                <Chip
+                  label={`${row.budget_completeness}%`}
+                  size="small"
+                  color={parseFloat(row.budget_completeness) > 80 ? 'success' : parseFloat(row.budget_completeness) > 50 ? 'warning' : 'error'}
+                />
+              </TableCell>
+              <TableCell align="right">
+                <Chip
+                  label={`${row.beneficiary_completeness}%`}
+                  size="small"
+                  color={parseFloat(row.beneficiary_completeness) > 80 ? 'success' : parseFloat(row.beneficiary_completeness) > 50 ? 'warning' : 'error'}
+                />
+              </TableCell>
+              <TableCell align="right">
+                <Chip
+                  label={`${row.attachment_completeness}%`}
+                  size="small"
+                  color={parseFloat(row.attachment_completeness) > 80 ? 'success' : parseFloat(row.attachment_completeness) > 50 ? 'warning' : 'error'}
+                />
+              </TableCell>
+              <TableCell align="right">
+                <Chip
+                  label={`${row.time_entry_completeness}%`}
+                  size="small"
+                  color={parseFloat(row.time_entry_completeness) > 80 ? 'success' : parseFloat(row.time_entry_completeness) > 50 ? 'warning' : 'error'}
+                />
+              </TableCell>
+              <TableCell align="right">
+                <Chip
+                  label={`${row.overall_completeness}%`}
+                  size="small"
+                  color={parseFloat(row.overall_completeness) > 80 ? 'success' : parseFloat(row.overall_completeness) > 50 ? 'warning' : 'error'}
+                />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+};
+
+function AIPredictionsPanel({
+  budgetPrediction,
+  activityPrediction,
+  beneficiaryPrediction,
+  anomalies,
+  onLoadPrediction,
+  onLoadAnomalies,
+  formatCurrency,
+  getStatusColor,
+  selectedModule,
+  selectedComponent,
+}: any) {
+  return (
+    <Grid container spacing={3}>
+      {/* Budget Burn Rate Prediction */}
+      <Grid item xs={12}>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <TrendingUpIcon />
+                Budget Burn Rate Prediction
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={() => onLoadPrediction('budget')}
+                disabled={selectedModule === 'all'}
+              >
+                Generate Prediction
+              </Button>
+            </Box>
+            {budgetPrediction && budgetPrediction.current_status && (
+              <Box>
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  <Grid item xs={12} sm={3}>
+                    <Paper sx={{ p: 2 }}>
+                      <Typography color="textSecondary" variant="caption">Total Budget</Typography>
+                      <Typography variant="h6">{formatCurrency(budgetPrediction.current_status.total_budget)}</Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={12} sm={3}>
+                    <Paper sx={{ p: 2 }}>
+                      <Typography color="textSecondary" variant="caption">Spent</Typography>
+                      <Typography variant="h6">{formatCurrency(budgetPrediction.current_status.total_spent)}</Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={12} sm={3}>
+                    <Paper sx={{ p: 2 }}>
+                      <Typography color="textSecondary" variant="caption">Remaining</Typography>
+                      <Typography variant="h6">{formatCurrency(budgetPrediction.current_status.remaining_budget)}</Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={12} sm={3}>
+                    <Paper sx={{ p: 2 }}>
+                      <Typography color="textSecondary" variant="caption">Utilization</Typography>
+                      <Typography variant="h6">{budgetPrediction.current_status.utilization_percentage}%</Typography>
+                    </Paper>
+                  </Grid>
+                </Grid>
+                {budgetPrediction.predictions && (
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    <AlertTitle>Prediction</AlertTitle>
+                    Budget will be exhausted in approximately <strong>{budgetPrediction.predictions.days_until_budget_exhaustion} days</strong>
+                    {' '}(Estimated date: {budgetPrediction.predictions.estimated_exhaustion_date})
+                    <br />
+                    Avg daily spending: {formatCurrency(budgetPrediction.spending_statistics.avg_daily_spending)}
+                    {' '}| Recent trend: {budgetPrediction.spending_statistics.trend}
+                  </Alert>
+                )}
+                {budgetPrediction.recommendations && budgetPrediction.recommendations.length > 0 && (
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ mb: 1 }}>Recommendations:</Typography>
+                    {budgetPrediction.recommendations.map((rec: string, i: number) => (
+                      <Alert key={i} severity="warning" sx={{ mb: 1 }}>
+                        {rec}
+                      </Alert>
+                    ))}
+                  </Box>
+                )}
+              </Box>
+            )}
+          </CardContent>
+        </Card>
+      </Grid>
+
+      {/* Activity Completion Prediction */}
+      <Grid item xs={12}>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <TimelineIcon />
+                Activity Completion Prediction
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={() => onLoadPrediction('activity')}
+                disabled={selectedComponent === 'all'}
+              >
+                Generate Prediction
+              </Button>
+            </Box>
+            {activityPrediction && activityPrediction.predictions && (
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Activity</TableCell>
+                      <TableCell align="right">Completion %</TableCell>
+                      <TableCell align="right">Est. Completion Date</TableCell>
+                      <TableCell align="right">Days Remaining</TableCell>
+                      <TableCell>Risk Level</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {activityPrediction.predictions.map((pred: any, i: number) => (
+                      <TableRow key={i}>
+                        <TableCell>{pred.activity_name}</TableCell>
+                        <TableCell align="right">{pred.current_completion_percentage}%</TableCell>
+                        <TableCell align="right">{pred.estimated_completion_date}</TableCell>
+                        <TableCell align="right">{pred.estimated_remaining_days}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={pred.risk_level}
+                            size="small"
+                            sx={{ bgcolor: getStatusColor(pred.risk_level), color: 'white' }}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </CardContent>
+        </Card>
+      </Grid>
+
+      {/* Beneficiary Reach Prediction */}
+      <Grid item xs={12}>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <PieChartIcon />
+                Beneficiary Reach Forecast
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={() => onLoadPrediction('beneficiary')}
+                disabled={selectedModule === 'all'}
+              >
+                Generate Forecast
+              </Button>
+            </Box>
+            {beneficiaryPrediction && beneficiaryPrediction.forecast && (
+              <Box>
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  <AlertTitle>Forecast Summary</AlertTitle>
+                  Expected to reach <strong>{beneficiaryPrediction.summary.total_predicted_beneficiaries}</strong> beneficiaries
+                  {' '}over the next {beneficiaryPrediction.summary.forecast_period_months} months.
+                  <br />
+                  Monthly average: {beneficiaryPrediction.statistics.avg_monthly_beneficiaries} beneficiaries
+                  {' '}| Trend: {beneficiaryPrediction.statistics.trend}
+                </Alert>
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Month</TableCell>
+                        <TableCell align="right">Predicted Beneficiaries</TableCell>
+                        <TableCell>Trend</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {beneficiaryPrediction.forecast.map((item: any, i: number) => (
+                        <TableRow key={i}>
+                          <TableCell>{item.month}</TableCell>
+                          <TableCell align="right">{item.predicted_beneficiaries}</TableCell>
+                          <TableCell>
+                            {item.trend === 'increasing' ? (
+                              <TrendingUpIcon color="success" fontSize="small" />
+                            ) : item.trend === 'decreasing' ? (
+                              <TrendingDownIcon color="error" fontSize="small" />
+                            ) : (
+                              '→'
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )}
+          </CardContent>
+        </Card>
+      </Grid>
+
+      {/* Anomaly Detection */}
+      <Grid item xs={12}>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <WarningIcon />
+                Spending Anomalies Detection
+              </Typography>
+              <Button
+                variant="contained"
+                color="warning"
+                onClick={onLoadAnomalies}
+                disabled={selectedModule === 'all'}
+              >
+                Detect Anomalies
+              </Button>
+            </Box>
+            {anomalies && anomalies.anomalies && (
+              <Box>
+                {anomalies.anomalies.length === 0 ? (
+                  <Alert severity="success">
+                    <AlertTitle>No Anomalies Detected</AlertTitle>
+                    All spending patterns appear normal.
+                  </Alert>
+                ) : (
+                  <Box>
+                    <Alert severity="warning" sx={{ mb: 2 }}>
+                      <AlertTitle>Anomalies Found</AlertTitle>
+                      Detected {anomalies.anomaly_count} anomalies ({anomalies.anomaly_percentage}% of activities)
+                    </Alert>
+                    <TableContainer>
+                      <Table>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Activity</TableCell>
+                            <TableCell align="right">Amount Spent</TableCell>
+                            <TableCell>Anomaly Types</TableCell>
+                            <TableCell align="right">Z-Score</TableCell>
+                            <TableCell>Severity</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {anomalies.anomalies.map((item: any, i: number) => (
+                            <TableRow key={i}>
+                              <TableCell>{item.activity_name}</TableCell>
+                              <TableCell align="right">{formatCurrency(item.total_spent)}</TableCell>
+                              <TableCell>
+                                {item.anomaly_types.map((type: string, j: number) => (
+                                  <Chip key={j} label={type.replace(/_/g, ' ')} size="small" sx={{ mr: 0.5, mb: 0.5 }} />
+                                ))}
+                              </TableCell>
+                              <TableCell align="right">{item.z_score}</TableCell>
+                              <TableCell>
+                                <Chip
+                                  label={item.severity}
+                                  size="small"
+                                  color={item.severity === 'high' ? 'error' : item.severity === 'medium' ? 'warning' : 'info'}
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Box>
+                )}
+              </Box>
+            )}
+          </CardContent>
+        </Card>
+      </Grid>
+    </Grid>
+  );
+};
+
 export default ReportsAnalytics;
