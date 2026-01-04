@@ -137,11 +137,13 @@ const ReportsAnalytics: React.FC = () => {
     try {
       const response = await authFetch('/api/programs');
       if (response.ok) {
-        const data = await response.json();
-        setModules(data || []);
+        const result = await response.json();
+        // API returns paginated response: { success, data: [...], pagination }
+        setModules(Array.isArray(result.data) ? result.data : []);
       }
     } catch (error) {
       console.error('Failed to fetch modules:', error);
+      setModules([]); // Ensure modules is always an array
     }
   };
 
@@ -153,11 +155,13 @@ const ReportsAnalytics: React.FC = () => {
     try {
       const response = await authFetch(`/api/components?moduleId=${moduleId}`);
       if (response.ok) {
-        const data = await response.json();
-        setComponents(data || []);
+        const result = await response.json();
+        // Handle both array response and paginated response
+        setComponents(Array.isArray(result) ? result : (Array.isArray(result.data) ? result.data : []));
       }
     } catch (error) {
       console.error('Failed to fetch components:', error);
+      setComponents([]); // Ensure components is always an array
     }
   };
 
