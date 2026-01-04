@@ -104,6 +104,7 @@ function TabPanel(props: TabPanelProps) {
 const ReportsAnalytics: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [modules, setModules] = useState<ProgramModule[]>([]);
   const [components, setComponents] = useState<ComponentOption[]>([]);
   const [selectedModule, setSelectedModule] = useState<string>('all');
@@ -114,11 +115,27 @@ const ReportsAnalytics: React.FC = () => {
   const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
   const [showAIDialog, setShowAIDialog] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
-  const { user } = useAuth();
+
+  // Safely get auth context
+  let user;
+  try {
+    const authContext = useAuth();
+    user = authContext?.user;
+  } catch (e) {
+    console.error('Auth context error:', e);
+  }
 
   useEffect(() => {
-    fetchModules();
-    loadExecutiveSummary();
+    const init = async () => {
+      try {
+        await fetchModules();
+      } catch (err) {
+        console.error('Initialization error:', err);
+        setError('Failed to load modules. Please refresh the page.');
+      }
+    };
+    init();
+    // Note: loadExecutiveSummary is called by the tab change useEffect below
   }, []);
 
   const fetchModules = async () => {
@@ -440,6 +457,13 @@ const ReportsAnalytics: React.FC = () => {
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+          <AlertTitle>Error</AlertTitle>
+          {error}
+        </Alert>
+      )}
+
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <AssessmentIcon fontSize="large" />
