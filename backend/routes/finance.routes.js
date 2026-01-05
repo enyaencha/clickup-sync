@@ -15,6 +15,16 @@ module.exports = (db) => {
      */
     router.get('/budget-summary', async (req, res) => {
         try {
+            // RBAC: Filter by user's assigned modules
+            let moduleFilter = '';
+            const params = [];
+
+            if (!req.user.is_system_admin && req.user.module_assignments && req.user.module_assignments.length > 0) {
+                const assignedModuleIds = req.user.module_assignments.map(m => m.module_id);
+                moduleFilter = ` AND pb.program_module_id IN (${assignedModuleIds.map(() => '?').join(',')})`;
+                params.push(...assignedModuleIds);
+            }
+
             const query = `
                 SELECT
                     pb.program_module_id,
@@ -28,11 +38,12 @@ module.exports = (db) => {
                 LEFT JOIN program_modules pm ON pb.program_module_id = pm.id
                 WHERE pb.deleted_at IS NULL
                 AND pb.status IN ('approved', 'active')
+                ${moduleFilter}
                 GROUP BY pb.program_module_id, pm.name
                 ORDER BY pm.name
             `;
 
-            const results = await db.query(query);
+            const results = await db.query(query, params);
 
             res.json({
                 success: true,
@@ -227,6 +238,13 @@ module.exports = (db) => {
 
             const params = [];
 
+            // RBAC: Filter by user's assigned modules
+            if (!req.user.is_system_admin && req.user.module_assignments && req.user.module_assignments.length > 0) {
+                const assignedModuleIds = req.user.module_assignments.map(m => m.module_id);
+                query += ` AND pb.program_module_id IN (${assignedModuleIds.map(() => '?').join(',')})`;
+                params.push(...assignedModuleIds);
+            }
+
             if (program_budget_id) {
                 query += ` AND ft.program_budget_id = ?`;
                 params.push(program_budget_id);
@@ -372,6 +390,13 @@ module.exports = (db) => {
             `;
 
             const params = [];
+
+            // RBAC: Filter by user's assigned modules
+            if (!req.user.is_system_admin && req.user.module_assignments && req.user.module_assignments.length > 0) {
+                const assignedModuleIds = req.user.module_assignments.map(m => m.module_id);
+                query += ` AND pb.program_module_id IN (${assignedModuleIds.map(() => '?').join(',')})`;
+                params.push(...assignedModuleIds);
+            }
 
             if (status) {
                 query += ` AND fa.status = ?`;
