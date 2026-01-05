@@ -3,6 +3,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { authFetch } from '../config/api';
 import AddResourceModal from './AddResourceModal';
 import AddResourceRequestModal from './AddResourceRequestModal';
+import EditResourceModal from './EditResourceModal';
+import ResourceTypeModal from './ResourceTypeModal';
 
 interface Resource {
   id: number;
@@ -48,6 +50,9 @@ const ResourceManagement: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showResourceModal, setShowResourceModal] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showTypeModal, setShowTypeModal] = useState(false);
+  const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -178,6 +183,16 @@ const ResourceManagement: React.FC = () => {
     }
   };
 
+  const handleEditResource = (resource: Resource) => {
+    setEditingResource(resource);
+    setShowEditModal(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setEditingResource(null);
+  };
+
   const filteredResources = resources.filter(resource => {
     const matchesSearch = resource.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          resource.resource_code.toLowerCase().includes(searchTerm.toLowerCase());
@@ -216,6 +231,16 @@ const ResourceManagement: React.FC = () => {
               <p className="mt-1 text-sm text-gray-600">Equipment, Vehicles, Facilities & Materials Management</p>
             </div>
             <div className="flex gap-2">
+              <button
+                onClick={() => setShowTypeModal(true)}
+                className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Manage Types
+              </button>
               <button
                 onClick={() => setShowResourceModal(true)}
                 className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
@@ -410,11 +435,17 @@ const ResourceManagement: React.FC = () => {
                       </div>
 
                       <div className="mt-4 flex gap-2">
-                        <button className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
-                          View Details
+                        <button
+                          onClick={() => handleEditResource(resource)}
+                          className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+                        >
+                          Edit
                         </button>
                         {resource.availability_status === 'available' && (
-                          <button className="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">
+                          <button
+                            onClick={() => setShowRequestModal(true)}
+                            className="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700"
+                          >
                             Request
                           </button>
                         )}
@@ -532,6 +563,17 @@ const ResourceManagement: React.FC = () => {
       <AddResourceRequestModal
         isOpen={showRequestModal}
         onClose={() => setShowRequestModal(false)}
+        onSuccess={fetchResourceData}
+      />
+      <EditResourceModal
+        isOpen={showEditModal}
+        onClose={handleCloseEditModal}
+        onSuccess={fetchResourceData}
+        resource={editingResource}
+      />
+      <ResourceTypeModal
+        isOpen={showTypeModal}
+        onClose={() => setShowTypeModal(false)}
         onSuccess={fetchResourceData}
       />
     </div>
