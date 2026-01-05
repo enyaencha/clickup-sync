@@ -589,6 +589,12 @@ module.exports = (db) => {
                 notes
             } = req.body;
 
+            // Convert empty strings to null for database
+            const sanitize = (value) => {
+                if (value === '' || value === undefined) return null;
+                return value;
+            };
+
             const query = `
                 UPDATE resources
                 SET
@@ -607,8 +613,17 @@ module.exports = (db) => {
             `;
 
             await db.query(query, [
-                name, description, condition_status, availability_status, current_location,
-                assigned_to_user, assigned_to_program, quantity, current_value, notes, id
+                sanitize(name),
+                sanitize(description),
+                sanitize(condition_status),
+                sanitize(availability_status),
+                sanitize(current_location),
+                sanitize(assigned_to_user),
+                sanitize(assigned_to_program),
+                sanitize(quantity),
+                sanitize(current_value),
+                sanitize(notes),
+                id
             ]);
 
             res.json({
