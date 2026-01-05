@@ -61,6 +61,93 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
     }
 
     return false;
+  // Check if user can access a menu item
+  const canAccessMenuItem = (item: any): boolean => {
+    // If no permission specified, accessible to all authenticated users
+    if (!item.resource || !item.action) return true;
+
+    // Defensive check: if user is not fully loaded, don't show items
+    if (!user) return false;
+
+    // System admins have access to everything
+    if (user.is_system_admin) return true;
+
+    // Check if user has module assignments - users with modules can access module-related features
+    const hasModuleAssignments = user.module_assignments && user.module_assignments.length > 0;
+
+    if (hasModuleAssignments) {
+      // Module-related menu items that should be accessible to users with module assignments
+      const moduleRelatedResources = ['modules', 'activities', 'reports', 'settings'];
+
+      if (moduleRelatedResources.includes(item.resource)) {
+        // Check if user has appropriate permission in their module assignments
+        const hasModulePermission = user.module_assignments.some((assignment: any) => {
+          // Map actions to module permission flags
+          if (item.action === 'read') return assignment.can_view;
+          if (item.action === 'create') return assignment.can_create;
+          if (item.action === 'update') return assignment.can_edit;
+          if (item.action === 'delete') return assignment.can_delete;
+          if (item.action === 'approve') return assignment.can_approve;
+          return false;
+        });
+
+        if (hasModulePermission) return true;
+      }
+    }
+
+    // Check role-based access - map roles to resources they can access
+    if (user.roles && Array.isArray(user.roles)) {
+      // Role-based menu access mapping
+      const roleResourceMap: Record<string, string[]> = {
+        // Level 1: System Administration
+        'system_admin': ['modules', 'activities', 'reports', 'settings'],
+
+        // Level 2: Directors & Senior Management
+        'me_director': ['modules', 'activities', 'reports', 'settings'],
+        'program_director': ['modules', 'activities', 'reports'],
+        'module_manager': ['modules', 'activities', 'reports'],
+
+        // Level 3: Managers & Coordinators
+        'me_manager': ['modules', 'activities', 'reports'],
+        'program_manager': ['modules', 'activities', 'reports'],
+        'finance_manager': ['modules', 'activities', 'reports'],
+        'logistics_manager': ['modules', 'activities', 'reports'],
+        'relief_coordinator': ['modules', 'activities', 'reports'],
+        'seep_coordinator': ['modules', 'activities', 'reports'],
+
+        // Level 4: Officers & Specialists
+        'me_officer': ['modules', 'activities', 'reports'],
+        'data_analyst': ['modules', 'activities', 'reports'],
+        'finance_officer': ['activities', 'reports'],
+        'procurement_officer': ['activities', 'reports'],
+        'program_officer': ['modules', 'activities', 'reports'],
+        'technical_advisor': ['modules', 'activities', 'reports'],
+        'gbv_specialist': ['activities', 'reports'],
+        'nutrition_specialist': ['activities', 'reports'],
+        'agriculture_specialist': ['activities', 'reports'],
+
+        // Level 5: Field Staff
+        'field_officer': ['modules', 'activities'],
+        'community_mobilizer': ['modules', 'activities'],
+        'data_entry_officer': ['modules', 'activities'],
+        'enumerator': ['modules', 'activities'],
+
+        // Level 6: Specialized & Restricted Roles
+        'approver': ['activities', 'reports'],
+        'report_viewer': ['reports'],
+        'external_auditor': ['modules', 'activities', 'reports'],
+      };
+
+      for (const userRole of user.roles) {
+        const allowedResources = roleResourceMap[userRole.name];
+        if (allowedResources && allowedResources.includes(item.resource)) {
+          return true;
+        }
+      }
+    }
+
+    // Finally, check specific permission from role_permissions table
+    return hasPermission(item.resource, item.action);
   };
 
   const menuItems = [
@@ -73,6 +160,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           path: '/dashboard',
           description: 'Overview & Analytics',
           permission: 'reports.read'
+          resource: 'reports',
+          action: 'read'
         },
         {
           icon: '📊',
@@ -80,6 +169,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           path: '/',
           description: 'Program Modules',
           permission: 'modules.read'
+          resource: 'modules',
+          action: 'read'
         }
       ]
     },
@@ -92,6 +183,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           path: '/activities',
           description: 'Field Activities',
           permission: 'activities.read'
+          resource: 'activities',
+          action: 'read'
         },
         {
           icon: '👥',
@@ -99,6 +192,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           path: '/beneficiaries',
           description: 'Beneficiary Registry',
           permission: 'activities.read'
+          resource: 'activities',
+          action: 'read'
         },
         {
           icon: '👪',
@@ -106,6 +201,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           path: '/shg',
           description: 'Self-Help Groups',
           permission: 'activities.read'
+          resource: 'activities',
+          action: 'read'
         },
         {
           icon: '💰',
@@ -113,6 +210,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           path: '/loans',
           description: 'Loan Management',
           permission: 'activities.read'
+          resource: 'activities',
+          action: 'read'
         },
         {
           icon: '⚖️',
@@ -120,6 +219,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           path: '/gbv',
           description: 'GBV Case Management',
           permission: 'activities.read'
+          resource: 'activities',
+          action: 'read'
         },
         {
           icon: '🎁',
@@ -127,6 +228,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           path: '/relief',
           description: 'Relief Distribution',
           permission: 'activities.read'
+          resource: 'activities',
+          action: 'read'
         },
         {
           icon: '🥗',
@@ -134,6 +237,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           path: '/nutrition',
           description: 'Nutrition Assessment',
           permission: 'activities.read'
+          resource: 'activities',
+          action: 'read'
         }
       ]
     },
@@ -146,6 +251,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           path: '/finance',
           description: 'Budget & Expenditure',
           permission: 'reports.read'
+          resource: 'reports',
+          action: 'read'
         },
         {
           icon: '🏗️',
@@ -153,6 +260,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           path: '/resources',
           description: 'Asset Management',
           permission: 'activities.read'
+          resource: 'activities',
+          action: 'read'
         }
       ]
     },
@@ -165,6 +274,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           path: '/logframe',
           description: 'RBM Overview',
           permission: 'modules.read'
+          resource: 'modules',
+          action: 'read'
         },
         {
           icon: '📊',
@@ -172,6 +283,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           path: '/logframe/indicators',
           description: 'SMART Indicators',
           permission: 'modules.read'
+          resource: 'modules',
+          action: 'read'
         },
         {
           icon: '🔗',
@@ -179,6 +292,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           path: '/logframe/results-chain',
           description: 'Contribution Links',
           permission: 'modules.read'
+          resource: 'modules',
+          action: 'read'
         },
         {
           icon: '📋',
@@ -186,6 +301,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           path: '/logframe/verification',
           description: 'Evidence & MoV',
           permission: 'modules.read'
+          resource: 'modules',
+          action: 'read'
         },
         {
           icon: '⚠️',
@@ -193,6 +310,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           path: '/logframe/assumptions',
           description: 'Risk Management',
           permission: 'modules.read'
+          resource: 'modules',
+          action: 'read'
         },
         {
           icon: '✅',
@@ -200,6 +319,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           path: '/approvals',
           description: 'Review Activities',
           permission: 'activities.approve'
+          resource: 'activities',
+          action: 'approve'
         }
       ]
     },
@@ -212,6 +333,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           path: '/reports',
           description: 'AI-Powered Insights',
           permission: 'reports.read'
+          resource: 'reports',
+          action: 'read'
         }
       ]
     },
@@ -224,6 +347,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           path: '/settings',
           description: 'System Settings',
           permission: 'settings.read'
+          resource: 'settings',
+          action: 'read'
         }
       ]
     }
@@ -236,6 +361,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
       items: section.items.filter(item => canSeeMenuItem(item))
     }))
     .filter(section => section.items.length > 0); // Remove empty sections
+  const filteredMenuItems = menuItems.map(section => ({
+    ...section,
+    items: section.items.filter(item => canAccessMenuItem(item))
+  })).filter(section => section.items.length > 0); // Remove empty sections
 
   return (
     <>
@@ -314,6 +443,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
         {/* Navigation Menu */}
         <nav className="overflow-y-auto h-[calc(100vh-180px)] lg:h-[calc(100vh-140px)] py-4 custom-scrollbar">
           {filteredMenuSections.map((section, idx) => (
+          {filteredMenuItems.map((section, idx) => (
             <div key={idx} className="mb-6">
               {isExpanded && (
                 <h3 className="px-6 text-xs font-semibold uppercase tracking-wider mb-2 opacity-60">
