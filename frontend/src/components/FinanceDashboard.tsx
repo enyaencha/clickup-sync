@@ -117,6 +117,62 @@ const FinanceDashboard: React.FC = () => {
     return colors[priority.toLowerCase()] || 'text-gray-600';
   };
 
+  const handleApproveFinanceApproval = async (approvalId: number, requestedAmount: number) => {
+    const notes = prompt('Add approval notes (optional):');
+    if (notes === null) return; // User cancelled
+
+    try {
+      const response = await authFetch(`/api/finance/approvals/${approvalId}/approve`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          approved_amount: requestedAmount,
+          finance_notes: notes
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to approve');
+      }
+
+      alert('Approval approved successfully!');
+      await fetchFinanceData();
+    } catch (error) {
+      console.error('Error approving finance approval:', error);
+      alert(error instanceof Error ? error.message : 'Failed to approve');
+    }
+  };
+
+  const handleRejectFinanceApproval = async (approvalId: number) => {
+    const reason = prompt('Reason for rejection (required):');
+    if (!reason || reason.trim() === '') {
+      alert('Rejection reason is required');
+      return;
+    }
+
+    try {
+      const response = await authFetch(`/api/finance/approvals/${approvalId}/reject`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rejection_reason: reason
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to reject');
+      }
+
+      alert('Approval rejected');
+      await fetchFinanceData();
+    } catch (error) {
+      console.error('Error rejecting finance approval:', error);
+      alert(error instanceof Error ? error.message : 'Failed to reject');
+    }
+  };
+
   const filteredTransactions = recentTransactions.filter(transaction => {
     const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          transaction.payee_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -422,10 +478,16 @@ const FinanceDashboard: React.FC = () => {
                         <div className="text-right">
                           <p className="text-2xl font-bold text-gray-900">{formatCurrency(approval.requested_amount)}</p>
                           <div className="flex gap-2 mt-3">
-                            <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm">
+                            <button
+                              onClick={() => handleApproveFinanceApproval(approval.id, approval.requested_amount)}
+                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                            >
                               Approve
                             </button>
-                            <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm">
+                            <button
+                              onClick={() => handleRejectFinanceApproval(approval.id)}
+                              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                            >
                               Reject
                             </button>
                             <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm">

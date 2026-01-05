@@ -37,13 +37,30 @@ module.exports = (db) => {
                 FROM program_budgets pb
                 LEFT JOIN program_modules pm ON pb.program_module_id = pm.id
                 WHERE pb.deleted_at IS NULL
-                AND pb.status IN ('approved', 'active')
+                AND pb.status IN ('submitted', 'approved', 'active')
                 ${moduleFilter}
                 GROUP BY pb.program_module_id, pm.name
                 ORDER BY pm.name
             `;
 
+            console.log('📊 Budget Summary Query:', query);
+            console.log('📊 Query Params:', params);
+            console.log('📊 User Info:', {
+                id: req.user.id,
+                is_system_admin: req.user.is_system_admin,
+                module_assignments: req.user.module_assignments
+            });
+
             const results = await db.query(query, params);
+
+            console.log(`📊 Budget Summary returned ${results.length} programs`);
+            if (results.length > 0) {
+                console.log('📊 Sample budget:', JSON.stringify(results[0], null, 2));
+            } else {
+                console.log('📊 No budget data found. Check:');
+                console.log('   1. Are there budgets with status submitted/approved/active?');
+                console.log('   2. Does user have module assignments?');
+            }
 
             res.json({
                 success: true,
