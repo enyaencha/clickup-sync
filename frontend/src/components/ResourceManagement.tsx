@@ -125,6 +125,59 @@ const ResourceManagement: React.FC = () => {
     return icons[category.toLowerCase()] || '📋';
   };
 
+  const handleApproveRequest = async (requestId: number) => {
+    if (!window.confirm('Are you sure you want to approve this resource request?')) {
+      return;
+    }
+
+    try {
+      const response = await authFetch(`/api/resources/requests/${requestId}/approve`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to approve request');
+      }
+
+      alert('Resource request approved successfully!');
+      await fetchResourceData();
+    } catch (error) {
+      console.error('Error approving resource request:', error);
+      alert(error instanceof Error ? error.message : 'Failed to approve request');
+    }
+  };
+
+  const handleRejectRequest = async (requestId: number) => {
+    const reason = prompt('Please provide a reason for rejection:');
+    if (!reason || reason.trim() === '') {
+      alert('Rejection reason is required');
+      return;
+    }
+
+    try {
+      const response = await authFetch(`/api/resources/requests/${requestId}/reject`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rejection_reason: reason
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to reject request');
+      }
+
+      alert('Resource request rejected');
+      await fetchResourceData();
+    } catch (error) {
+      console.error('Error rejecting resource request:', error);
+      alert(error instanceof Error ? error.message : 'Failed to reject request');
+    }
+  };
+
   const filteredResources = resources.filter(resource => {
     const matchesSearch = resource.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          resource.resource_code.toLowerCase().includes(searchTerm.toLowerCase());
@@ -409,10 +462,16 @@ const ResourceManagement: React.FC = () => {
                           <p className="text-lg font-bold text-gray-900">Qty: {request.quantity_requested}</p>
                           {request.status === 'pending' && (
                             <div className="flex gap-2 mt-3">
-                              <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm">
+                              <button
+                                onClick={() => handleApproveRequest(request.id)}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                              >
                                 Approve
                               </button>
-                              <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm">
+                              <button
+                                onClick={() => handleRejectRequest(request.id)}
+                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                              >
                                 Reject
                               </button>
                             </div>
