@@ -65,6 +65,65 @@ module.exports = (db) => {
         }
     });
 
+    /**
+     * PUT /api/resources/types/:id
+     * Update a resource type
+     */
+    router.put('/types/:id', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { name, category, description } = req.body;
+
+            const query = `
+                UPDATE resource_types
+                SET name = ?, category = ?, description = ?
+                WHERE id = ?
+            `;
+
+            await db.query(query, [name, category, description, id]);
+
+            res.json({
+                success: true,
+                message: 'Resource type updated successfully'
+            });
+        } catch (error) {
+            console.error('Error updating resource type:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to update resource type'
+            });
+        }
+    });
+
+    /**
+     * DELETE /api/resources/types/:id
+     * Soft delete a resource type (set is_active to FALSE)
+     */
+    router.delete('/types/:id', async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            const query = `
+                UPDATE resource_types
+                SET is_active = FALSE
+                WHERE id = ?
+            `;
+
+            await db.query(query, [id]);
+
+            res.json({
+                success: true,
+                message: 'Resource type deleted successfully'
+            });
+        } catch (error) {
+            console.error('Error deleting resource type:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to delete resource type'
+            });
+        }
+    });
+
     // ==================== RESOURCE REQUESTS ====================
 
     /**
@@ -142,7 +201,7 @@ module.exports = (db) => {
 
     /**
      * POST /api/resources/requests
-     * Create a new resource request
+     * Create a new resource request with conflict detection
      */
     router.post('/requests', async (req, res) => {
         try {
@@ -158,6 +217,44 @@ module.exports = (db) => {
                 end_date,
                 priority
             } = req.body;
+
+            // Check for date conflicts with approved requests
+            let hasConflict = false;
+            let conflictDetails = null;
+
+            if (resource_id && start_date && end_date) {
+                const conflictQuery = `
+                    SELECT
+                        rr.id,
+                        rr.request_number,
+                        rr.start_date,
+                        rr.end_date,
+                        u.full_name as requester_name
+                    FROM resource_requests rr
+                    LEFT JOIN users u ON rr.requested_by = u.id
+                    WHERE rr.resource_id = ?
+                    AND rr.status IN ('approved', 'fulfilled')
+                    AND rr.deleted_at IS NULL
+                    AND (
+                        (rr.start_date <= ? AND rr.end_date >= ?)
+                        OR (rr.start_date <= ? AND rr.end_date >= ?)
+                        OR (rr.start_date >= ? AND rr.end_date <= ?)
+                    )
+                    LIMIT 1
+                `;
+
+                const conflicts = await db.query(conflictQuery, [
+                    resource_id,
+                    start_date, start_date,  // Check if new request starts during existing
+                    end_date, end_date,      // Check if new request ends during existing
+                    start_date, end_date     // Check if new request contains existing
+                ]);
+
+                if (conflicts.length > 0) {
+                    hasConflict = true;
+                    conflictDetails = conflicts[0];
+                }
+            }
 
             // Generate request number
             const requestNumber = `REQ-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
@@ -198,8 +295,15 @@ module.exports = (db) => {
 
             res.status(201).json({
                 success: true,
-                data: { id: result.insertId, request_number: requestNumber },
-                message: 'Resource request created successfully'
+                data: {
+                    id: result.insertId,
+                    request_number: requestNumber,
+                    has_conflict: hasConflict,
+                    conflict_details: conflictDetails
+                },
+                message: hasConflict
+                    ? '⚠️ Request created but conflicts with an existing approved booking. Review required.'
+                    : 'Resource request created successfully'
             });
         } catch (error) {
             console.error('Error creating resource request:', error);
