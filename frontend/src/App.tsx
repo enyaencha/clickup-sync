@@ -49,10 +49,7 @@ const App: React.FC = () => {
                     <Route
                       path="/"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'modules', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
                           <Programs />
                         </ProtectedRoute>
                       }
@@ -62,10 +59,7 @@ const App: React.FC = () => {
                     <Route
                       path="/program/:programId"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'modules', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
                           <SubPrograms />
                         </ProtectedRoute>
                       }
@@ -75,10 +69,7 @@ const App: React.FC = () => {
                     <Route
                       path="/program/:programId/project/:projectId"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'modules', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
                           <ProjectComponents />
                         </ProtectedRoute>
                       }
@@ -88,10 +79,7 @@ const App: React.FC = () => {
                     <Route
                       path="/program/:programId/project/:projectId/component/:componentId"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'activities', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
                           <Activities />
                         </ProtectedRoute>
                       }
@@ -101,10 +89,7 @@ const App: React.FC = () => {
                     <Route
                       path="/activities"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'activities', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
                           <AllActivities />
                         </ProtectedRoute>
                       }
@@ -114,10 +99,7 @@ const App: React.FC = () => {
                     <Route
                       path="/approvals"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'activities', action: 'approve' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'approve' }}>
                           <Approvals />
                         </ProtectedRoute>
                       }
@@ -137,10 +119,7 @@ const App: React.FC = () => {
                     <Route
                       path="/logframe"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'modules', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
                           <LogframeDashboard />
                         </ProtectedRoute>
                       }
@@ -148,10 +127,7 @@ const App: React.FC = () => {
                     <Route
                       path="/logframe/dashboard"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'modules', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
                           <LogframeDashboard />
                         </ProtectedRoute>
                       }
@@ -159,10 +135,7 @@ const App: React.FC = () => {
                     <Route
                       path="/logframe/template/:moduleId"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'modules', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
                           <LogframeTemplateView />
                         </ProtectedRoute>
                       }
@@ -170,10 +143,7 @@ const App: React.FC = () => {
                     <Route
                       path="/logframe/indicators"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'modules', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
                           <IndicatorsManagement />
                         </ProtectedRoute>
                       }
@@ -181,10 +151,7 @@ const App: React.FC = () => {
                     <Route
                       path="/logframe/indicators/:entityType/:entityId"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'modules', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
                           <IndicatorsManagement />
                         </ProtectedRoute>
                       }
@@ -192,10 +159,7 @@ const App: React.FC = () => {
                     <Route
                       path="/logframe/assumptions"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'modules', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
                           <AssumptionsManagement />
                         </ProtectedRoute>
                       }
@@ -203,10 +167,7 @@ const App: React.FC = () => {
                     <Route
                       path="/logframe/assumptions/:entityType/:entityId"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'modules', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
                           <AssumptionsManagement />
                         </ProtectedRoute>
                       }
@@ -214,10 +175,7 @@ const App: React.FC = () => {
                     <Route
                       path="/logframe/verification"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'modules', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
                           <MeansOfVerificationManagement />
                         </ProtectedRoute>
                       }
@@ -225,10 +183,7 @@ const App: React.FC = () => {
                     <Route
                       path="/logframe/verification/:entityType/:entityId"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'modules', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
                           <MeansOfVerificationManagement />
                         </ProtectedRoute>
                       }
@@ -236,10 +191,7 @@ const App: React.FC = () => {
                     <Route
                       path="/logframe/results-chain"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'modules', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
                           <ResultsChainManagement />
                         </ProtectedRoute>
                       }
@@ -247,10 +199,7 @@ const App: React.FC = () => {
                     <Route
                       path="/logframe/results-chain/module/:moduleId"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'modules', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
                           <ResultsChainManagement />
                         </ProtectedRoute>
                       }
@@ -260,10 +209,7 @@ const App: React.FC = () => {
                     <Route
                       path="/beneficiaries"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'activities', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
                           <Beneficiaries />
                         </ProtectedRoute>
                       }
@@ -271,10 +217,7 @@ const App: React.FC = () => {
                     <Route
                       path="/shg"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'activities', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
                           <SHGManagement />
                         </ProtectedRoute>
                       }
@@ -282,10 +225,7 @@ const App: React.FC = () => {
                     <Route
                       path="/loans"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'activities', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
                           <LoansManagement />
                         </ProtectedRoute>
                       }
@@ -295,10 +235,7 @@ const App: React.FC = () => {
                     <Route
                       path="/gbv"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'activities', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
                           <GBVCaseManagement />
                         </ProtectedRoute>
                       }
@@ -306,10 +243,7 @@ const App: React.FC = () => {
                     <Route
                       path="/relief"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'activities', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
                           <ReliefDistribution />
                         </ProtectedRoute>
                       }
@@ -317,10 +251,7 @@ const App: React.FC = () => {
                     <Route
                       path="/nutrition"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'activities', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
                           <NutritionAssessment />
                         </ProtectedRoute>
                       }
@@ -328,10 +259,7 @@ const App: React.FC = () => {
                     <Route
                       path="/agriculture"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'activities', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
                           <AgricultureMonitoring />
                         </ProtectedRoute>
                       }
@@ -341,10 +269,7 @@ const App: React.FC = () => {
                     <Route
                       path="/finance"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'reports', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'reports', action: 'read' }}>
                           <FinanceDashboard />
                         </ProtectedRoute>
                       }
@@ -352,10 +277,7 @@ const App: React.FC = () => {
                     <Route
                       path="/finance/dashboard"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'reports', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'reports', action: 'read' }}>
                           <FinanceDashboard />
                         </ProtectedRoute>
                       }
@@ -365,10 +287,7 @@ const App: React.FC = () => {
                     <Route
                       path="/resources"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'activities', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
                           <ResourceManagement />
                         </ProtectedRoute>
                       }
@@ -376,10 +295,7 @@ const App: React.FC = () => {
                     <Route
                       path="/resources/inventory"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'activities', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
                           <ResourceManagement />
                         </ProtectedRoute>
                       }
@@ -389,10 +305,7 @@ const App: React.FC = () => {
                     <Route
                       path="/reports"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'reports', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'reports', action: 'read' }}>
                           <ReportsAnalytics />
                         </ProtectedRoute>
                       }
@@ -400,10 +313,7 @@ const App: React.FC = () => {
                     <Route
                       path="/reports/analytics"
                       element={
-                        <ProtectedRoute
-                          requirePermission={{ resource: 'reports', action: 'read' }}
-                          allowWithModuleAccess={true}
-                        >
+                        <ProtectedRoute requirePermission={{ resource: 'reports', action: 'read' }}>
                           <ReportsAnalytics />
                         </ProtectedRoute>
                       }

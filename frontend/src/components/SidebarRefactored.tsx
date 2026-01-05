@@ -196,17 +196,15 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
 
     if (hasModuleAssignments) {
       // Module-related menu items that should be accessible to users with module assignments
-      const moduleRelatedResources = ['programs', 'activities', 'logframe', 'indicators',
-                                       'results_chain', 'means_of_verification', 'assumptions',
-                                       'reports', 'beneficiaries', 'locations'];
+      const moduleRelatedResources = ['modules', 'activities', 'reports', 'settings'];
 
       if (moduleRelatedResources.includes(item.resource)) {
         // Check if user has appropriate permission in their module assignments
         const hasModulePermission = user.module_assignments.some(assignment => {
           // Map actions to module permission flags
-          if (item.action === 'view') return assignment.can_view;
+          if (item.action === 'read') return assignment.can_view;
           if (item.action === 'create') return assignment.can_create;
-          if (item.action === 'edit') return assignment.can_edit;
+          if (item.action === 'update') return assignment.can_edit;
           if (item.action === 'delete') return assignment.can_delete;
           if (item.action === 'approve') return assignment.can_approve;
           return false;
@@ -293,16 +291,16 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Dashboard',
           path: '/dashboard',
           description: 'Overview & Analytics',
-          resource: 'dashboard',
-          action: 'view',
+          resource: 'reports',
+          action: 'read',
         },
         {
           icon: ProgramIcon,
           label: 'Programs',
           path: '/',
           description: 'Program Modules',
-          resource: 'programs',
-          action: 'view',
+          resource: 'modules',
+          action: 'read',
         }
       ]
     },
@@ -315,71 +313,71 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           path: '/activities',
           description: 'Field Activities',
           resource: 'activities',
-          action: 'view',
+          action: 'read',
         },
         {
           icon: UsersIcon,
           label: 'Beneficiaries',
           path: '/beneficiaries',
           description: 'Beneficiary Registry',
-          resource: 'beneficiaries',
-          action: 'view',
+          resource: 'activities',
+          action: 'read',
         },
         {
           icon: GroupIcon,
           label: 'SHG Groups',
           path: '/shg',
           description: 'Self-Help Groups',
-          resource: 'beneficiaries',
-          action: 'view',
+          resource: 'activities',
+          action: 'read',
         },
         {
           icon: MoneyIcon,
           label: 'Loans',
           path: '/loans',
           description: 'Loan Management',
-          resource: 'beneficiaries',
-          action: 'view',
+          resource: 'activities',
+          action: 'read',
         },
         {
           icon: ShieldIcon,
           label: 'GBV Cases',
           path: '/gbv',
           description: 'GBV Case Management',
-          resource: 'beneficiaries',
-          action: 'view',
+          resource: 'activities',
+          action: 'read',
         },
         {
           icon: TruckIcon,
           label: 'Relief',
           path: '/relief',
           description: 'Relief Distribution',
-          resource: 'beneficiaries',
-          action: 'view',
+          resource: 'activities',
+          action: 'read',
         },
         {
           icon: NutritionIcon,
           label: 'Nutrition',
           path: '/nutrition',
           description: 'Nutrition Assessment',
-          resource: 'beneficiaries',
-          action: 'view',
+          resource: 'activities',
+          action: 'read',
         },
         {
           icon: AgricultureIcon,
           label: 'Agriculture',
           path: '/agriculture',
           description: 'Agriculture Monitoring',
-          resource: 'beneficiaries',
-          action: 'view',
+          resource: 'activities',
+          action: 'read',
         },
         {
           icon: LocationIcon,
           label: 'Locations',
           path: '/locations',
           description: 'Geographic Areas',
-          resource: 'locations',
-          action: 'view',
+          resource: 'modules',
+          action: 'read',
         }
       ]
     },
@@ -391,48 +389,48 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Logframe Dashboard',
           path: '/logframe',
           description: 'RBM Overview',
-          resource: 'logframe',
-          action: 'view',
+          resource: 'modules',
+          action: 'read',
         },
         {
           icon: IndicatorIcon,
           label: 'Indicators',
           path: '/logframe/indicators',
           description: 'SMART Indicators',
-          resource: 'indicators',
-          action: 'view',
+          resource: 'modules',
+          action: 'read',
         },
         {
           icon: LinkIcon,
           label: 'Results Chain',
           path: '/logframe/results-chain',
           description: 'Contribution Links',
-          resource: 'results_chain',
-          action: 'view',
+          resource: 'modules',
+          action: 'read',
         },
         {
           icon: DocumentIcon,
           label: 'Verification',
           path: '/logframe/verification',
           description: 'Evidence & MoV',
-          resource: 'means_of_verification',
-          action: 'view',
+          resource: 'modules',
+          action: 'read',
         },
         {
           icon: WarningIcon,
           label: 'Assumptions',
           path: '/logframe/assumptions',
           description: 'Risk Management',
-          resource: 'assumptions',
-          action: 'view',
+          resource: 'modules',
+          action: 'read',
         },
         {
           icon: CheckIcon,
           label: 'Approvals',
           path: '/approvals',
           description: 'Review Activities',
-          resource: 'approvals',
-          action: 'view',
+          resource: 'activities',
+          action: 'approve',
         }
       ]
     },
@@ -445,7 +443,7 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           path: '/reports',
           description: 'Analytics & Reports',
           resource: 'reports',
-          action: 'view',
+          action: 'read',
         }
       ]
     },
@@ -458,15 +456,15 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           path: '/settings',
           description: 'System Settings',
           resource: 'settings',
-          action: 'manage',
+          action: 'read',
         },
         {
           icon: SyncIcon,
           label: 'Sync Status',
           path: '/sync',
           description: 'ClickUp Integration',
-          resource: 'sync',
-          action: 'view',
+          resource: 'settings',
+          action: 'read',
         }
       ]
     }
