@@ -41,6 +41,26 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
     return user.username.substring(0, 2).toUpperCase();
   };
 
+  // Check if user can see a menu item
+  const canSeeMenuItem = (item: any): boolean => {
+    // If no permission specified, show to all authenticated users
+    if (!item.permission) return true;
+
+    const [resource, action] = item.permission.split('.');
+
+    // System admins see everything
+    if (user?.is_system_admin) return true;
+
+    // Check if user has explicit permission
+    if (hasPermission(resource, action)) return true;
+
+    // For module-related items, users with module assignments can access
+    const moduleRelatedResources = ['modules', 'activities', 'reports'];
+    if (moduleRelatedResources.includes(resource)) {
+      return !!(user?.module_assignments && user.module_assignments.length > 0);
+    }
+
+    return false;
   // Check if user can access a menu item
   const canAccessMenuItem = (item: any): boolean => {
     // If no permission specified, accessible to all authenticated users
@@ -139,6 +159,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           label: 'Dashboard',
           path: '/dashboard',
           description: 'Overview & Analytics',
+          permission: 'reports.read'
           resource: 'reports',
           action: 'read'
         },
@@ -147,6 +168,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           label: 'Programs',
           path: '/',
           description: 'Program Modules',
+          permission: 'modules.read'
           resource: 'modules',
           action: 'read'
         }
@@ -160,6 +182,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           label: 'Activities',
           path: '/activities',
           description: 'Field Activities',
+          permission: 'activities.read'
           resource: 'activities',
           action: 'read'
         },
@@ -168,6 +191,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           label: 'Beneficiaries',
           path: '/beneficiaries',
           description: 'Beneficiary Registry',
+          permission: 'activities.read'
           resource: 'activities',
           action: 'read'
         },
@@ -176,6 +200,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           label: 'SHG Groups',
           path: '/shg',
           description: 'Self-Help Groups',
+          permission: 'activities.read'
           resource: 'activities',
           action: 'read'
         },
@@ -184,6 +209,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           label: 'Loans',
           path: '/loans',
           description: 'Loan Management',
+          permission: 'activities.read'
           resource: 'activities',
           action: 'read'
         },
@@ -192,6 +218,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           label: 'GBV Cases',
           path: '/gbv',
           description: 'GBV Case Management',
+          permission: 'activities.read'
           resource: 'activities',
           action: 'read'
         },
@@ -200,6 +227,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           label: 'Relief',
           path: '/relief',
           description: 'Relief Distribution',
+          permission: 'activities.read'
           resource: 'activities',
           action: 'read'
         },
@@ -208,6 +236,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           label: 'Nutrition',
           path: '/nutrition',
           description: 'Nutrition Assessment',
+          permission: 'activities.read'
           resource: 'activities',
           action: 'read'
         }
@@ -221,6 +250,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           label: 'Finance',
           path: '/finance',
           description: 'Budget & Expenditure',
+          permission: 'reports.read'
           resource: 'reports',
           action: 'read'
         },
@@ -229,6 +259,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           label: 'Resources',
           path: '/resources',
           description: 'Asset Management',
+          permission: 'activities.read'
           resource: 'activities',
           action: 'read'
         }
@@ -242,6 +273,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           label: 'Logframe Dashboard',
           path: '/logframe',
           description: 'RBM Overview',
+          permission: 'modules.read'
           resource: 'modules',
           action: 'read'
         },
@@ -250,6 +282,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           label: 'Indicators',
           path: '/logframe/indicators',
           description: 'SMART Indicators',
+          permission: 'modules.read'
           resource: 'modules',
           action: 'read'
         },
@@ -258,6 +291,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           label: 'Results Chain',
           path: '/logframe/results-chain',
           description: 'Contribution Links',
+          permission: 'modules.read'
           resource: 'modules',
           action: 'read'
         },
@@ -266,6 +300,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           label: 'Verification',
           path: '/logframe/verification',
           description: 'Evidence & MoV',
+          permission: 'modules.read'
           resource: 'modules',
           action: 'read'
         },
@@ -274,6 +309,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           label: 'Assumptions',
           path: '/logframe/assumptions',
           description: 'Risk Management',
+          permission: 'modules.read'
           resource: 'modules',
           action: 'read'
         },
@@ -282,6 +318,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           label: 'Approvals',
           path: '/approvals',
           description: 'Review Activities',
+          permission: 'activities.approve'
           resource: 'activities',
           action: 'approve'
         }
@@ -295,6 +332,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           label: 'Reports & Analytics',
           path: '/reports',
           description: 'AI-Powered Insights',
+          permission: 'reports.read'
           resource: 'reports',
           action: 'read'
         }
@@ -308,6 +346,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           label: 'Settings',
           path: '/settings',
           description: 'System Settings',
+          permission: 'settings.read'
           resource: 'settings',
           action: 'read'
         }
@@ -316,6 +355,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
   ];
 
   // Filter menu items based on permissions
+  const filteredMenuSections = menuItems
+    .map(section => ({
+      ...section,
+      items: section.items.filter(item => canSeeMenuItem(item))
+    }))
+    .filter(section => section.items.length > 0); // Remove empty sections
   const filteredMenuItems = menuItems.map(section => ({
     ...section,
     items: section.items.filter(item => canAccessMenuItem(item))
@@ -397,6 +442,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
 
         {/* Navigation Menu */}
         <nav className="overflow-y-auto h-[calc(100vh-180px)] lg:h-[calc(100vh-140px)] py-4 custom-scrollbar">
+          {filteredMenuSections.map((section, idx) => (
           {filteredMenuItems.map((section, idx) => (
             <div key={idx} className="mb-6">
               {isExpanded && (
