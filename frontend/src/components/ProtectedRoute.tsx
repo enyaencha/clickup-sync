@@ -9,14 +9,16 @@ interface ProtectedRouteProps {
     action: string;
   };
   requireRole?: string;
+  allowWithModuleAccess?: boolean; // Allow access if user has module assignments
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requirePermission,
   requireRole,
+  allowWithModuleAccess = false,
 }) => {
-  const { isAuthenticated, isLoading, hasPermission, hasRole } = useAuth();
+  const { isAuthenticated, isLoading, user, hasPermission, hasRole } = useAuth();
   const location = useLocation();
 
   // Show loading state while checking authentication
@@ -39,7 +41,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // Check for required permission
   if (requirePermission) {
     const { resource, action } = requirePermission;
-    if (!hasPermission(resource, action)) {
+    let hasAccess = hasPermission(resource, action);
+
+    // If permission check fails but allowWithModuleAccess is true,
+    // check if user has module assignments
+    if (!hasAccess && allowWithModuleAccess) {
+      hasAccess = user?.module_assignments && user.module_assignments.length > 0;
+    }
+
+    if (!hasAccess) {
       return (
         <div className="min-h-screen flex items-center justify-center">
           <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-8 text-center">
