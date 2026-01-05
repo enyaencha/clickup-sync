@@ -10,7 +10,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
   const [isExpanded, setIsExpanded] = useState(true);
 
   const isActive = (path: string) => location.pathname === path;
@@ -41,6 +41,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
     return user.username.substring(0, 2).toUpperCase();
   };
 
+  // Check if user can access a menu item
+  const canAccessMenuItem = (item: any): boolean => {
+    // If no permission specified, accessible to all authenticated users
+    if (!item.resource || !item.action) return true;
+
+    // System admins have access to everything
+    if (user?.is_system_admin) return true;
+
+    // Check permission
+    return hasPermission(item.resource, item.action);
+  };
+
   const menuItems = [
     {
       section: 'MAIN',
@@ -49,13 +61,17 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           icon: '🏠',
           label: 'Dashboard',
           path: '/dashboard',
-          description: 'Overview & Analytics'
+          description: 'Overview & Analytics',
+          resource: 'reports',
+          action: 'read'
         },
         {
           icon: '📊',
           label: 'Programs',
           path: '/',
-          description: 'Program Modules'
+          description: 'Program Modules',
+          resource: 'modules',
+          action: 'read'
         }
       ]
     },
@@ -66,43 +82,57 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           icon: '✓',
           label: 'Activities',
           path: '/activities',
-          description: 'Field Activities'
+          description: 'Field Activities',
+          resource: 'activities',
+          action: 'read'
         },
         {
           icon: '👥',
           label: 'Beneficiaries',
           path: '/beneficiaries',
-          description: 'Beneficiary Registry'
+          description: 'Beneficiary Registry',
+          resource: 'activities',
+          action: 'read'
         },
         {
           icon: '👪',
           label: 'SHG Groups',
           path: '/shg',
-          description: 'Self-Help Groups'
+          description: 'Self-Help Groups',
+          resource: 'activities',
+          action: 'read'
         },
         {
           icon: '💰',
           label: 'Loans',
           path: '/loans',
-          description: 'Loan Management'
+          description: 'Loan Management',
+          resource: 'activities',
+          action: 'read'
         },
         {
           icon: '⚖️',
           label: 'GBV Cases',
           path: '/gbv',
-          description: 'GBV Case Management'
+          description: 'GBV Case Management',
+          resource: 'activities',
+          action: 'read'
         },
         {
           icon: '🎁',
           label: 'Relief',
           path: '/relief',
-          description: 'Relief Distribution'
+          description: 'Relief Distribution',
+          resource: 'activities',
+          action: 'read'
         },
         {
           icon: '🥗',
           label: 'Nutrition',
           path: '/nutrition',
-          description: 'Nutrition Assessment'
+          description: 'Nutrition Assessment',
+          resource: 'activities',
+          action: 'read'
         }
       ]
     },
@@ -113,13 +143,17 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           icon: '💰',
           label: 'Finance',
           path: '/finance',
-          description: 'Budget & Expenditure'
+          description: 'Budget & Expenditure',
+          resource: 'reports',
+          action: 'read'
         },
         {
           icon: '🏗️',
           label: 'Resources',
           path: '/resources',
-          description: 'Asset Management'
+          description: 'Asset Management',
+          resource: 'activities',
+          action: 'read'
         }
       ]
     },
@@ -130,37 +164,49 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           icon: '📐',
           label: 'Logframe Dashboard',
           path: '/logframe',
-          description: 'RBM Overview'
+          description: 'RBM Overview',
+          resource: 'modules',
+          action: 'read'
         },
         {
           icon: '📊',
           label: 'Indicators',
           path: '/logframe/indicators',
-          description: 'SMART Indicators'
+          description: 'SMART Indicators',
+          resource: 'modules',
+          action: 'read'
         },
         {
           icon: '🔗',
           label: 'Results Chain',
           path: '/logframe/results-chain',
-          description: 'Contribution Links'
+          description: 'Contribution Links',
+          resource: 'modules',
+          action: 'read'
         },
         {
           icon: '📋',
           label: 'Verification',
           path: '/logframe/verification',
-          description: 'Evidence & MoV'
+          description: 'Evidence & MoV',
+          resource: 'modules',
+          action: 'read'
         },
         {
           icon: '⚠️',
           label: 'Assumptions',
           path: '/logframe/assumptions',
-          description: 'Risk Management'
+          description: 'Risk Management',
+          resource: 'modules',
+          action: 'read'
         },
         {
           icon: '✅',
           label: 'Approvals',
           path: '/approvals',
-          description: 'Review Activities'
+          description: 'Review Activities',
+          resource: 'activities',
+          action: 'approve'
         }
       ]
     },
@@ -171,7 +217,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           icon: '📈',
           label: 'Reports & Analytics',
           path: '/reports',
-          description: 'AI-Powered Insights'
+          description: 'AI-Powered Insights',
+          resource: 'reports',
+          action: 'read'
         }
       ]
     },
@@ -182,11 +230,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           icon: '⚙️',
           label: 'Settings',
           path: '/settings',
-          description: 'System Settings'
+          description: 'System Settings',
+          resource: 'settings',
+          action: 'read'
         }
       ]
     }
   ];
+
+  // Filter menu items based on permissions
+  const filteredMenuItems = menuItems.map(section => ({
+    ...section,
+    items: section.items.filter(item => canAccessMenuItem(item))
+  })).filter(section => section.items.length > 0); // Remove empty sections
 
   return (
     <>
@@ -264,7 +320,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
 
         {/* Navigation Menu */}
         <nav className="overflow-y-auto h-[calc(100vh-180px)] lg:h-[calc(100vh-140px)] py-4 custom-scrollbar">
-          {menuItems.map((section, idx) => (
+          {filteredMenuItems.map((section, idx) => (
             <div key={idx} className="mb-6">
               {isExpanded && (
                 <h3 className="px-6 text-xs font-semibold uppercase tracking-wider mb-2 opacity-60">
