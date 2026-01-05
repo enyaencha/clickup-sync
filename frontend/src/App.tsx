@@ -46,61 +46,278 @@ const App: React.FC = () => {
                 <Layout>
                   <Routes>
                     {/* Level 1: Program Modules (ClickUp Space) */}
-                    <Route path="/" element={<Programs />} />
+                    <Route
+                      path="/"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
+                          <Programs />
+                        </ProtectedRoute>
+                      }
+                    />
 
                     {/* Level 2: Sub-Programs/Projects (ClickUp Folder) */}
-                    <Route path="/program/:programId" element={<SubPrograms />} />
+                    <Route
+                      path="/program/:programId"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
+                          <SubPrograms />
+                        </ProtectedRoute>
+                      }
+                    />
 
                     {/* Level 3: Project Components (ClickUp List) */}
-                    <Route path="/program/:programId/project/:projectId" element={<ProjectComponents />} />
+                    <Route
+                      path="/program/:programId/project/:projectId"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
+                          <ProjectComponents />
+                        </ProtectedRoute>
+                      }
+                    />
 
                     {/* Level 4: Activities (ClickUp Task) */}
-                    <Route path="/program/:programId/project/:projectId/component/:componentId" element={<Activities />} />
+                    <Route
+                      path="/program/:programId/project/:projectId/component/:componentId"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
+                          <Activities />
+                        </ProtectedRoute>
+                      }
+                    />
 
                     {/* All Activities Page (with filters) */}
-                    <Route path="/activities" element={<AllActivities />} />
+                    <Route
+                      path="/activities"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
+                          <AllActivities />
+                        </ProtectedRoute>
+                      }
+                    />
 
                     {/* Approvals Page */}
-                    <Route path="/approvals" element={<Approvals />} />
+                    <Route
+                      path="/approvals"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'approve' }}>
+                          <Approvals />
+                        </ProtectedRoute>
+                      }
+                    />
 
                     {/* Settings Page */}
-                    <Route path="/settings" element={<Settings />} />
+                    <Route
+                      path="/settings"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'settings', action: 'read' }}>
+                          <Settings />
+                        </ProtectedRoute>
+                      }
+                    />
 
                     {/* Logframe Routes */}
-                    <Route path="/logframe" element={<LogframeDashboard />} />
-                    <Route path="/logframe/dashboard" element={<LogframeDashboard />} />
-                    <Route path="/logframe/template/:moduleId" element={<LogframeTemplateView />} />
-                    <Route path="/logframe/indicators" element={<IndicatorsManagement />} />
-                    <Route path="/logframe/indicators/:entityType/:entityId" element={<IndicatorsManagement />} />
-                    <Route path="/logframe/assumptions" element={<AssumptionsManagement />} />
-                    <Route path="/logframe/assumptions/:entityType/:entityId" element={<AssumptionsManagement />} />
-                    <Route path="/logframe/verification" element={<MeansOfVerificationManagement />} />
-                    <Route path="/logframe/verification/:entityType/:entityId" element={<MeansOfVerificationManagement />} />
-                    <Route path="/logframe/results-chain" element={<ResultsChainManagement />} />
-                    <Route path="/logframe/results-chain/module/:moduleId" element={<ResultsChainManagement />} />
+                    <Route
+                      path="/logframe"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
+                          <LogframeDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/logframe/dashboard"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
+                          <LogframeDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/logframe/template/:moduleId"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
+                          <LogframeTemplateView />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/logframe/indicators"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
+                          <IndicatorsManagement />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/logframe/indicators/:entityType/:entityId"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
+                          <IndicatorsManagement />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/logframe/assumptions"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
+                          <AssumptionsManagement />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/logframe/assumptions/:entityType/:entityId"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
+                          <AssumptionsManagement />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/logframe/verification"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
+                          <MeansOfVerificationManagement />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/logframe/verification/:entityType/:entityId"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
+                          <MeansOfVerificationManagement />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/logframe/results-chain"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
+                          <ResultsChainManagement />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/logframe/results-chain/module/:moduleId"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'modules', action: 'read' }}>
+                          <ResultsChainManagement />
+                        </ProtectedRoute>
+                      }
+                    />
 
                     {/* SEEP Program Module Routes */}
-                    <Route path="/beneficiaries" element={<Beneficiaries />} />
-                    <Route path="/shg" element={<SHGManagement />} />
-                    <Route path="/loans" element={<LoansManagement />} />
+                    <Route
+                      path="/beneficiaries"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
+                          <Beneficiaries />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/shg"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
+                          <SHGManagement />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/loans"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
+                          <LoansManagement />
+                        </ProtectedRoute>
+                      }
+                    />
 
                     {/* Additional Program Module Routes */}
-                    <Route path="/gbv" element={<GBVCaseManagement />} />
-                    <Route path="/relief" element={<ReliefDistribution />} />
-                    <Route path="/nutrition" element={<NutritionAssessment />} />
-                    <Route path="/agriculture" element={<AgricultureMonitoring />} />
+                    <Route
+                      path="/gbv"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
+                          <GBVCaseManagement />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/relief"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
+                          <ReliefDistribution />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/nutrition"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
+                          <NutritionAssessment />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/agriculture"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
+                          <AgricultureMonitoring />
+                        </ProtectedRoute>
+                      }
+                    />
 
                     {/* Finance Management Module Routes */}
-                    <Route path="/finance" element={<FinanceDashboard />} />
-                    <Route path="/finance/dashboard" element={<FinanceDashboard />} />
+                    <Route
+                      path="/finance"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'reports', action: 'read' }}>
+                          <FinanceDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/finance/dashboard"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'reports', action: 'read' }}>
+                          <FinanceDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
 
                     {/* Resource Management Module Routes */}
-                    <Route path="/resources" element={<ResourceManagement />} />
-                    <Route path="/resources/inventory" element={<ResourceManagement />} />
+                    <Route
+                      path="/resources"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
+                          <ResourceManagement />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/resources/inventory"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'activities', action: 'read' }}>
+                          <ResourceManagement />
+                        </ProtectedRoute>
+                      }
+                    />
 
                     {/* Reports & Analytics Module Routes */}
-                    <Route path="/reports" element={<ReportsAnalytics />} />
-                    <Route path="/reports/analytics" element={<ReportsAnalytics />} />
+                    <Route
+                      path="/reports"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'reports', action: 'read' }}>
+                          <ReportsAnalytics />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/reports/analytics"
+                      element={
+                        <ProtectedRoute requirePermission={{ resource: 'reports', action: 'read' }}>
+                          <ReportsAnalytics />
+                        </ProtectedRoute>
+                      }
+                    />
                   </Routes>
                 </Layout>
               </ProtectedRoute>
