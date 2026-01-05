@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Sidebar from './SidebarRefactored';
+import Sidebar from './Sidebar';
 
 interface LayoutProps {
   children: React.ReactNode;
