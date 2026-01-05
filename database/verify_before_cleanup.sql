@@ -1,13 +1,16 @@
 -- ============================================================================
--- VERIFICATION SCRIPT - Run BEFORE cleanup to see what will be preserved
+-- VERIFICATION SCRIPT - Run BEFORE cleanup to see what will be deleted
+-- ============================================================================
+-- This script shows you what USER DATA will be deleted
+-- ALL OTHER DATA (activities, budgets, resources) will be PRESERVED
 -- ============================================================================
 
 USE me_clickup_system;
 
 SELECT '
 ╔════════════════════════════════════════════════════════════════╗
-║              DATA PRESERVATION VERIFICATION                     ║
-║  The following data will be KEPT after cleanup:                ║
+║              USER CLEANUP VERIFICATION                          ║
+║  Only USER data will be deleted. Everything else is kept!      ║
 ╚════════════════════════════════════════════════════════════════╝
 ' as header;
 
@@ -58,19 +61,35 @@ SELECT '=== SYSTEM SETTINGS (PRESERVED) ===' as section;
 SELECT * FROM settings LIMIT 1;
 
 -- ============================================================================
--- SHOW CURRENT DATA TO BE DELETED
+-- SHOW USER DATA TO BE DELETED
 -- ============================================================================
 SELECT '
 ╔════════════════════════════════════════════════════════════════╗
-║  The following data will be DELETED:                           ║
+║  ONLY THE FOLLOWING USER DATA WILL BE DELETED:                ║
 ╚════════════════════════════════════════════════════════════════╝
 ' as divider;
 
-SELECT '=== DATA TO BE REMOVED ===' as section;
+SELECT '=== USER DATA TO BE REMOVED ===' as section;
 
 SELECT 'Users' as table_name, COUNT(*) as record_count FROM users
 UNION ALL
-SELECT 'Programs (Sub-Programs)', COUNT(*) FROM programs
+SELECT 'User Module Assignments', COUNT(*) FROM user_module_assignments
+UNION ALL
+SELECT 'User Roles', COUNT(*) FROM user_roles
+ORDER BY record_count DESC;
+
+-- ============================================================================
+-- SHOW OTHER DATA THAT WILL BE PRESERVED
+-- ============================================================================
+SELECT '
+╔════════════════════════════════════════════════════════════════╗
+║  ALL OTHER DATA WILL BE KEPT (NOT DELETED):                   ║
+╚════════════════════════════════════════════════════════════════╝
+' as kept_header;
+
+SELECT '=== DATA TO BE PRESERVED ===' as section;
+
+SELECT 'Programs (Sub-Programs)' as table_name, COUNT(*) as record_count FROM programs
 UNION ALL
 SELECT 'Components', COUNT(*) FROM components
 UNION ALL
@@ -92,15 +111,11 @@ SELECT 'Loans', COUNT(*) FROM loans
 UNION ALL
 SELECT 'Indicators', COUNT(*) FROM indicators
 UNION ALL
-SELECT 'Means of Verification', COUNT(*) FROM means_of_verification
-UNION ALL
 SELECT 'Attachments', COUNT(*) FROM attachments
-UNION ALL
-SELECT 'Audit Logs', COUNT(*) FROM access_audit_log
 ORDER BY record_count DESC;
 
 -- ============================================================================
--- SHOW SAMPLE DATA THAT WILL BE DELETED
+-- SHOW SAMPLE USER DATA THAT WILL BE DELETED
 -- ============================================================================
 SELECT '=== SAMPLE USERS TO BE DELETED ===' as section;
 SELECT id, email, full_name, is_system_admin, is_active
@@ -108,16 +123,12 @@ FROM users
 ORDER BY id
 LIMIT 10;
 
-SELECT '=== SAMPLE ACTIVITIES TO BE DELETED ===' as section;
-SELECT id, name, status, approval_status, created_at
-FROM activities
-ORDER BY id DESC
-LIMIT 10;
-
-SELECT '=== SAMPLE BUDGET ENTRIES TO BE DELETED ===' as section;
-SELECT id, fiscal_year, total_budget, status, created_at
-FROM program_budgets
-ORDER BY id DESC
+SELECT '=== USER MODULE ASSIGNMENTS TO BE DELETED ===' as section;
+SELECT uma.id, u.email, pm.name as module_name, uma.role
+FROM user_module_assignments uma
+LEFT JOIN users u ON uma.user_id = u.id
+LEFT JOIN program_modules pm ON uma.module_id = pm.id
+ORDER BY uma.id
 LIMIT 10;
 
 SELECT '
@@ -126,7 +137,9 @@ SELECT '
 ╠════════════════════════════════════════════════════════════════╣
 ║  1. Backup your database before running cleanup!              ║
 ║  2. Review the above data carefully                           ║
-║  3. Run clean_for_production.sql when ready                   ║
+║  3. ONLY user accounts will be deleted                        ║
+║  4. All activities, budgets, resources will be KEPT           ║
+║  5. Run clean_for_production.sql when ready                   ║
 ║                                                                 ║
 ║  To backup:                                                    ║
 ║  mysqldump -u root -p me_clickup_system > backup.sql         ║

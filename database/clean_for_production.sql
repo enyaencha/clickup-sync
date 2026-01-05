@@ -1,8 +1,8 @@
 -- ============================================================================
 -- PRODUCTION DATABASE CLEANUP SCRIPT
 -- ============================================================================
--- This script removes all dummy/test data while preserving essential system data
--- Run this BEFORE deploying to production
+-- This script removes ONLY user accounts while preserving ALL other data
+-- Use this to clear user accounts before deployment while keeping test data
 -- ============================================================================
 
 USE me_clickup_system;
@@ -13,135 +13,33 @@ USE me_clickup_system;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- ============================================================================
--- STEP 2: CLEAR AUDIT AND LOG TABLES
--- ============================================================================
-TRUNCATE TABLE access_audit_log;
-TRUNCATE TABLE activity_logs;
-
--- ============================================================================
--- STEP 3: CLEAR USER-GENERATED DATA
--- ============================================================================
-
--- Clear Activities and Related Data
-TRUNCATE TABLE activity_attachments;
-TRUNCATE TABLE activity_checklists;
-TRUNCATE TABLE activity_verification;
-DELETE FROM activities WHERE id > 0;
-
--- Clear Means of Verification
-TRUNCATE TABLE means_of_verification;
-
--- Clear Attachments
-TRUNCATE TABLE attachments;
-
--- Clear Components
-DELETE FROM components WHERE id > 0;
-
--- Clear Sub-Programs (programs table)
-DELETE FROM programs WHERE id > 0;
-
--- Clear Projects
-DELETE FROM projects WHERE id > 0;
-
--- Clear Indicators
-TRUNCATE TABLE indicator_data;
-TRUNCATE TABLE indicator_targets;
-DELETE FROM indicators WHERE id > 0;
-
--- Clear Logframe Data
-TRUNCATE TABLE logframe_assumptions;
-TRUNCATE TABLE results_chain;
-
--- ============================================================================
--- STEP 4: CLEAR FINANCE DATA
--- ============================================================================
-
--- Clear Financial Transactions
-DELETE FROM financial_transactions WHERE id > 0;
-
--- Clear Finance Approvals
-DELETE FROM finance_approvals WHERE id > 0;
-
--- Clear Program Budgets
-DELETE FROM program_budgets WHERE id > 0;
-
--- Clear Loans
-DELETE FROM loan_guarantors WHERE id > 0;
-DELETE FROM loan_repayments WHERE id > 0;
-DELETE FROM loans WHERE id > 0;
-
--- ============================================================================
--- STEP 5: CLEAR RESOURCE MANAGEMENT DATA
--- ============================================================================
-
--- Clear Resource Requests
-DELETE FROM resource_requests WHERE id > 0;
-
--- Clear Resource Maintenance
-DELETE FROM resource_maintenance WHERE id > 0;
-
--- Clear Resources Inventory
-DELETE FROM resources WHERE id > 0;
-
--- Note: We keep resource_types as they are reference data
-
--- ============================================================================
--- STEP 6: CLEAR USER DATA (Keep structure but remove test users)
+-- STEP 2: CLEAR USER-RELATED DATA ONLY
 -- ============================================================================
 
 -- Clear user module assignments
 DELETE FROM user_module_assignments WHERE id > 0;
 
--- Clear user role assignments
+-- Clear user role assignments (if exists)
 DELETE FROM user_roles WHERE id > 0;
 
--- Delete all users EXCEPT system admin (user id 1)
--- WARNING: Adjust this if you want to keep a specific admin user
--- DELETE FROM users WHERE id > 1;
-
--- OR: Delete ALL users and create a fresh admin later
+-- Delete ALL users
 DELETE FROM users WHERE id > 0;
 
 -- ============================================================================
--- STEP 7: RESET AUTO_INCREMENT VALUES
+-- STEP 3: RESET AUTO_INCREMENT VALUES FOR USER TABLES
 -- ============================================================================
 
-ALTER TABLE access_audit_log AUTO_INCREMENT = 1;
-ALTER TABLE activities AUTO_INCREMENT = 1;
-ALTER TABLE activity_attachments AUTO_INCREMENT = 1;
-ALTER TABLE activity_checklists AUTO_INCREMENT = 1;
-ALTER TABLE activity_logs AUTO_INCREMENT = 1;
-ALTER TABLE activity_verification AUTO_INCREMENT = 1;
-ALTER TABLE attachments AUTO_INCREMENT = 1;
-ALTER TABLE components AUTO_INCREMENT = 1;
-ALTER TABLE finance_approvals AUTO_INCREMENT = 1;
-ALTER TABLE financial_transactions AUTO_INCREMENT = 1;
-ALTER TABLE indicator_data AUTO_INCREMENT = 1;
-ALTER TABLE indicator_targets AUTO_INCREMENT = 1;
-ALTER TABLE indicators AUTO_INCREMENT = 1;
-ALTER TABLE loan_guarantors AUTO_INCREMENT = 1;
-ALTER TABLE loan_repayments AUTO_INCREMENT = 1;
-ALTER TABLE loans AUTO_INCREMENT = 1;
-ALTER TABLE logframe_assumptions AUTO_INCREMENT = 1;
-ALTER TABLE means_of_verification AUTO_INCREMENT = 1;
-ALTER TABLE program_budgets AUTO_INCREMENT = 1;
-ALTER TABLE programs AUTO_INCREMENT = 1;
-ALTER TABLE projects AUTO_INCREMENT = 1;
-ALTER TABLE resource_maintenance AUTO_INCREMENT = 1;
-ALTER TABLE resource_requests AUTO_INCREMENT = 1;
-ALTER TABLE resources AUTO_INCREMENT = 1;
-ALTER TABLE results_chain AUTO_INCREMENT = 1;
 ALTER TABLE user_module_assignments AUTO_INCREMENT = 1;
 ALTER TABLE user_roles AUTO_INCREMENT = 1;
 ALTER TABLE users AUTO_INCREMENT = 1;
 
 -- ============================================================================
--- STEP 8: RE-ENABLE FOREIGN KEY CHECKS
+-- STEP 4: RE-ENABLE FOREIGN KEY CHECKS
 -- ============================================================================
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================================================
--- STEP 9: CREATE DEFAULT ADMIN USER
+-- STEP 5: CREATE DEFAULT ADMIN USER
 -- ============================================================================
 -- Default password: 'Admin@123' (CHANGE THIS IMMEDIATELY after first login!)
 -- Password hash generated with bcrypt rounds=10
@@ -163,24 +61,26 @@ INSERT INTO users (
 );
 
 -- ============================================================================
--- VERIFICATION: Check what data remains
+-- VERIFICATION: Check user data was cleared
 -- ============================================================================
 
-SELECT '=== VERIFICATION: Remaining Data Counts ===' as status;
+SELECT '=== VERIFICATION: Data Status After Cleanup ===' as status;
 
-SELECT 'Organizations' as table_name, COUNT(*) as count FROM organizations
+SELECT 'Users' as table_name, COUNT(*) as count FROM users
+UNION ALL
+SELECT 'User Module Assignments', COUNT(*) FROM user_module_assignments
+UNION ALL
+SELECT 'User Roles', COUNT(*) FROM user_roles
+UNION ALL
+SELECT '--- PRESERVED DATA ---', NULL
+UNION ALL
+SELECT 'Organizations', COUNT(*) FROM organizations
 UNION ALL
 SELECT 'Program Modules', COUNT(*) FROM program_modules
 UNION ALL
 SELECT 'Roles', COUNT(*) FROM roles
 UNION ALL
 SELECT 'Permissions', COUNT(*) FROM permissions
-UNION ALL
-SELECT 'Role Permissions', COUNT(*) FROM role_permissions
-UNION ALL
-SELECT 'Resource Types', COUNT(*) FROM resource_types
-UNION ALL
-SELECT 'Users', COUNT(*) FROM users
 UNION ALL
 SELECT 'Programs (Sub-Programs)', COUNT(*) FROM programs
 UNION ALL
@@ -192,24 +92,31 @@ SELECT 'Financial Transactions', COUNT(*) FROM financial_transactions
 UNION ALL
 SELECT 'Program Budgets', COUNT(*) FROM program_budgets
 UNION ALL
-SELECT 'Resources', COUNT(*) FROM resources;
+SELECT 'Resources', COUNT(*) FROM resources
+UNION ALL
+SELECT 'Resource Requests', COUNT(*) FROM resource_requests;
 
 -- ============================================================================
 -- COMPLETION MESSAGE
 -- ============================================================================
 SELECT '
 ╔════════════════════════════════════════════════════════════════╗
-║                DATABASE CLEANUP COMPLETED                       ║
+║              USER ACCOUNTS CLEANUP COMPLETED                    ║
 ╠════════════════════════════════════════════════════════════════╣
-║  ✓ All test/dummy data has been removed                       ║
-║  ✓ System configuration data preserved                        ║
+║  ✓ All user accounts have been removed                        ║
+║  ✓ User module assignments cleared                            ║
+║  ✓ User role assignments cleared                              ║
 ║  ✓ Default admin user created                                 ║
+║  ✓ ALL OTHER DATA PRESERVED (activities, budgets, etc.)       ║
 ║                                                                 ║
 ║  NEXT STEPS:                                                   ║
 ║  1. Login with: admin@caritas.org / Admin@123                 ║
 ║  2. CHANGE THE DEFAULT PASSWORD IMMEDIATELY!                  ║
 ║  3. Create your organization users and assign roles           ║
 ║  4. Configure module assignments for users                    ║
+║                                                                 ║
+║  NOTE: All test data (activities, budgets, resources) has     ║
+║        been kept intact. Only user accounts were cleared.     ║
 ║                                                                 ║
 ╚════════════════════════════════════════════════════════════════╝
 ' as completion_message;
