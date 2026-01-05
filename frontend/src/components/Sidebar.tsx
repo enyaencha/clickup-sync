@@ -46,10 +46,87 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
     // If no permission specified, accessible to all authenticated users
     if (!item.resource || !item.action) return true;
 
-    // System admins have access to everything
-    if (user?.is_system_admin) return true;
+    // Defensive check: if user is not fully loaded, don't show items
+    if (!user) return false;
 
-    // Check permission
+    // System admins have access to everything
+    if (user.is_system_admin) return true;
+
+    // Check if user has module assignments - users with modules can access module-related features
+    const hasModuleAssignments = user.module_assignments && user.module_assignments.length > 0;
+
+    if (hasModuleAssignments) {
+      // Module-related menu items that should be accessible to users with module assignments
+      const moduleRelatedResources = ['modules', 'activities', 'reports', 'settings'];
+
+      if (moduleRelatedResources.includes(item.resource)) {
+        // Check if user has appropriate permission in their module assignments
+        const hasModulePermission = user.module_assignments.some((assignment: any) => {
+          // Map actions to module permission flags
+          if (item.action === 'read') return assignment.can_view;
+          if (item.action === 'create') return assignment.can_create;
+          if (item.action === 'update') return assignment.can_edit;
+          if (item.action === 'delete') return assignment.can_delete;
+          if (item.action === 'approve') return assignment.can_approve;
+          return false;
+        });
+
+        if (hasModulePermission) return true;
+      }
+    }
+
+    // Check role-based access - map roles to resources they can access
+    if (user.roles && Array.isArray(user.roles)) {
+      // Role-based menu access mapping
+      const roleResourceMap: Record<string, string[]> = {
+        // Level 1: System Administration
+        'system_admin': ['modules', 'activities', 'reports', 'settings'],
+
+        // Level 2: Directors & Senior Management
+        'me_director': ['modules', 'activities', 'reports', 'settings'],
+        'program_director': ['modules', 'activities', 'reports'],
+        'module_manager': ['modules', 'activities', 'reports'],
+
+        // Level 3: Managers & Coordinators
+        'me_manager': ['modules', 'activities', 'reports'],
+        'program_manager': ['modules', 'activities', 'reports'],
+        'finance_manager': ['modules', 'activities', 'reports'],
+        'logistics_manager': ['modules', 'activities', 'reports'],
+        'relief_coordinator': ['modules', 'activities', 'reports'],
+        'seep_coordinator': ['modules', 'activities', 'reports'],
+
+        // Level 4: Officers & Specialists
+        'me_officer': ['modules', 'activities', 'reports'],
+        'data_analyst': ['modules', 'activities', 'reports'],
+        'finance_officer': ['activities', 'reports'],
+        'procurement_officer': ['activities', 'reports'],
+        'program_officer': ['modules', 'activities', 'reports'],
+        'technical_advisor': ['modules', 'activities', 'reports'],
+        'gbv_specialist': ['activities', 'reports'],
+        'nutrition_specialist': ['activities', 'reports'],
+        'agriculture_specialist': ['activities', 'reports'],
+
+        // Level 5: Field Staff
+        'field_officer': ['modules', 'activities'],
+        'community_mobilizer': ['modules', 'activities'],
+        'data_entry_officer': ['modules', 'activities'],
+        'enumerator': ['modules', 'activities'],
+
+        // Level 6: Specialized & Restricted Roles
+        'approver': ['activities', 'reports'],
+        'report_viewer': ['reports'],
+        'external_auditor': ['modules', 'activities', 'reports'],
+      };
+
+      for (const userRole of user.roles) {
+        const allowedResources = roleResourceMap[userRole.name];
+        if (allowedResources && allowedResources.includes(item.resource)) {
+          return true;
+        }
+      }
+    }
+
+    // Finally, check specific permission from role_permissions table
     return hasPermission(item.resource, item.action);
   };
 
