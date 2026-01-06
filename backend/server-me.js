@@ -455,6 +455,13 @@ async function initializeServices() {
             console.log('✅ Finance routes registered at /api/finance');
             logger.info('✅ Finance routes registered');
 
+            // ==================== BUDGET REQUEST WORKFLOW MODULE ====================
+            console.log('\n💰 Registering Budget Request Workflow routes...');
+            const budgetRequestsRouter = require('./routes/budget-requests.routes')(dbManager);
+            app.use('/api/budget-requests', authMW(authSvc), budgetRequestsRouter);
+            console.log('✅ Budget Requests routes registered at /api/budget-requests');
+            logger.info('✅ Budget Requests routes registered');
+
             // ==================== RESOURCE MANAGEMENT MODULE ====================
             console.log('\n🏗️  Registering Resource Management routes...');
             const resourcesRouter = require('./routes/resources.routes')(dbManager);
