@@ -1,6 +1,6 @@
-# Production User Cleanup Guide
+# Production Database Cleanup Guide
 
-This guide will help you prepare your database for production by removing all user accounts while **preserving ALL test data** (activities, budgets, resources, etc.).
+This guide helps you prepare your database for production by removing all test/dummy data while preserving system configuration and your existing admin account (user ID 1).
 
 ## ⚠️ CRITICAL: Backup First!
 
@@ -10,21 +10,11 @@ This guide will help you prepare your database for production by removing all us
 # Create backup
 mysqldump -u root -p me_clickup_system > backup_$(date +%Y%m%d_%H%M%S).sql
 
-# Or if you have password in command
+# Or with password in command
 mysqldump -u root -proot me_clickup_system > backup_$(date +%Y%m%d_%H%M%S).sql
 ```
 
-## 🗑️ What Will Be Deleted
-
-The cleanup script **ONLY REMOVES** user account data:
-
-- ❌ All users
-- ❌ User module assignments
-- ❌ User role assignments
-
-## ✅ What Will Be Preserved
-
-**EVERYTHING ELSE** is kept intact:
+## ✅ What Will Be PRESERVED
 
 ### System Configuration
 - ✅ Organizations
@@ -32,194 +22,230 @@ The cleanup script **ONLY REMOVES** user account data:
 - ✅ Roles (Admin, Manager, Officer, etc.)
 - ✅ Permissions
 - ✅ Role Permissions
-- ✅ Settings
 - ✅ Resource Types
+- ✅ Locations
+- ✅ Goal Categories
+- ✅ Strategic Goals
+- ✅ ME Indicators (templates)
 
-### Test/Demo Data
-- ✅ **All programs (sub-programs)**
-- ✅ **All components**
-- ✅ **All activities**
-- ✅ **All activity checklists and verification**
-- ✅ **All financial transactions**
-- ✅ **All finance approvals**
-- ✅ **All program budgets**
-- ✅ **All loans and repayments**
-- ✅ **All resources inventory**
-- ✅ **All resource requests**
-- ✅ **All indicators and logframe data**
-- ✅ **All attachments**
-- ✅ **All projects**
+### User Account
+- ✅ **User ID 1** (your existing admin account)
+- ✅ User ID 1's module assignments
+- ✅ User ID 1's role assignments
 
-## 🎯 Why Use This Approach?
+## 🗑️ What Will Be DELETED
 
-This cleanup is perfect when you:
-- Want to keep all your test/demo data for training purposes
-- Need to show the system with sample data to stakeholders
-- Want users to start with example data to learn from
-- Are setting up a demo/staging environment
-- Need to clear user accounts before handing over to production team
+### User Data
+- ❌ All test users (ID > 1)
+- ❌ Their module assignments
+- ❌ Their role assignments
+- ❌ Their sessions
+
+### Program Data
+- ❌ All activities
+- ❌ All programs (sub-programs)
+- ❌ All sub-programs
+- ❌ All projects
+- ❌ All components
+- ❌ Activity checklists, expenses, risks
+- ❌ Sub-activities
+
+### Finance Data
+- ❌ All financial transactions
+- ❌ Finance approvals
+- ❌ Program budgets
+- ❌ Budget revisions
+- ❌ Component budgets
+- ❌ Loans and repayments
+
+### Resource Data
+- ❌ All resource inventory
+- ❌ Resource requests
+- ❌ Resource maintenance records
+
+### Logframe & M&E Data
+- ❌ Indicators (activity-specific)
+- ❌ Indicator values
+- ❌ Indicator-activity links
+- ❌ Means of verification
+- ❌ Results chain
+- ❌ Assumptions
+- ❌ ME Reports
+- ❌ ME Results
+
+### Beneficiary Data
+- ❌ All beneficiaries
+- ❌ Relief beneficiaries
+- ❌ Relief distributions
+- ❌ Activity beneficiaries
+
+### Sector-Specific Data
+- ❌ Businesses
+- ❌ Agricultural plots
+- ❌ Crop production
+- ❌ SHG members
+- ❌ Nutrition assessments
+- ❌ GBV cases and case notes
+- ❌ Capacity building programs and participants
+- ❌ Trainings and training participants
+
+### Other Data
+- ❌ All attachments
+- ❌ All comments
+- ❌ Audit logs
+- ❌ Status history
+- ❌ Performance comments
+- ❌ Tasks and time entries
 
 ## 📖 Step-by-Step Cleanup Process
 
-### Step 1: Verify What Will Be Deleted
-
-Run the verification script to preview the cleanup:
+### Step 1: Verify What Will Happen
 
 ```bash
 mysql -u root -p me_clickup_system < database/verify_before_cleanup.sql
 ```
 
-This shows you:
-- How many users will be deleted
-- Sample user accounts that will be removed
-- What data will be PRESERVED (activities, budgets, etc.)
+This shows:
+- User ID 1 details (will be kept)
+- System data counts (will be preserved)
+- Test data counts (will be deleted)
+- Sample records that will be removed
 
 **Review the output carefully!**
 
-### Step 2: Create a Backup
+### Step 2: Create Backup
 
 ```bash
-# Create backup with timestamp
+# Create timestamped backup
 mysqldump -u root -p me_clickup_system > backup_before_cleanup_$(date +%Y%m%d_%H%M%S).sql
 
 # Verify backup was created
 ls -lh backup_before_cleanup_*.sql
 ```
 
-### Step 3: Run the Cleanup Script
+### Step 3: Run Cleanup Script
 
 ```bash
 mysql -u root -p me_clickup_system < database/clean_for_production.sql
 ```
 
 The script will:
-1. Disable foreign key checks
-2. Delete all users
-3. Clear user module assignments
-4. Clear user role assignments
-5. Reset auto-increment counters for user tables
-6. Create a default admin user
-7. Re-enable foreign key checks
-8. Show verification summary
+1. Show a warning message (5 second pause)
+2. Disable foreign key checks
+3. Delete test users (keep user ID 1)
+4. Delete all test data
+5. Reset auto-increment counters
+6. Re-enable foreign key checks
+7. Show verification results
 
-### Step 4: Verify the Cleanup
-
-After running the cleanup, verify the results:
+### Step 4: Verify Results
 
 ```bash
 mysql -u root -p me_clickup_system -e "
 SELECT 'Users' as table_name, COUNT(*) as count FROM users
-UNION ALL SELECT 'User Assignments', COUNT(*) FROM user_module_assignments
-UNION ALL SELECT '--- Preserved Data ---', NULL
 UNION ALL SELECT 'Activities', COUNT(*) FROM activities
+UNION ALL SELECT 'Programs', COUNT(*) FROM programs
 UNION ALL SELECT 'Budgets', COUNT(*) FROM program_budgets
 UNION ALL SELECT 'Resources', COUNT(*) FROM resources;
 "
 ```
 
 Expected results:
-- Users: 1 (default admin)
-- User Assignments: 0
-- Activities: (your test data count - KEPT)
-- Budgets: (your test data count - KEPT)
-- Resources: (your test data count - KEPT)
+- Users: 1 (user ID 1)
+- Activities: 0
+- Programs: 0
+- Budgets: 0
+- Resources: 0
 
-## 🔐 Default Admin Account
+## 🔐 After Cleanup - Login
 
-After cleanup, a default admin account is created:
+After cleanup, you can login with **user ID 1** (your existing admin account).
 
-**Email:** `admin@caritas.org`
-**Password:** `Admin@123`
-
-### ⚠️ CHANGE THE PASSWORD IMMEDIATELY!
-
-1. Login to the system with the default credentials
-2. Go to Settings → Profile
-3. Change the password to a strong, secure password
-4. Update the email if needed
+The credentials are whatever was set for user ID 1 in your database.
 
 ## 📝 Post-Cleanup Tasks
 
-After cleanup is complete:
-
-### 1. Login and Update Admin Account
-- Change the default password
-- Update admin email address
-- Update profile information
+### 1. Verify Admin Access
+- Login with user ID 1 credentials
+- Verify you have system admin access
+- Check module assignments are intact
 
 ### 2. Create Production Users
 - Create user accounts for your team
 - Assign appropriate roles
-- Configure module access for each user
+- Configure module access
 
-### 3. Review Test Data
-- Check if you want to keep all the test data
-- If some test data should be removed, do it manually
-- Update any test data that needs production values
+### 3. Set Up Production Data
+- Create programs (sub-programs)
+- Define components
+- Set up indicators and logframe
+- Configure budgets
 
-### 4. Configure Organization
-- Verify organization details
-- Upload organization logo if needed
-- Update contact information
+### 4. Configure Resources
+- Add resource inventory
+- Set up resource types if needed
 
-## 🔄 Rolling Back (If Needed)
+## 🔄 Rolling Back
 
-If you need to restore your backup:
+If you need to restore from backup:
 
 ```bash
 # Stop the application first
-# Then restore the backup
+# Then restore
 mysql -u root -p me_clickup_system < backup_before_cleanup_YYYYMMDD_HHMMSS.sql
 ```
 
 ## ✅ Verification Checklist
 
-Before deploying to production, verify:
+Before going to production:
 
 - [ ] Database backup created and verified
 - [ ] Ran verification script and reviewed output
 - [ ] Cleanup script executed successfully
-- [ ] Only 1 user exists (admin)
-- [ ] All test data still present (activities, budgets, resources)
-- [ ] Can login with default admin account
-- [ ] Changed default admin password
+- [ ] Only 1 user exists (user ID 1)
+- [ ] All test data removed (activities, budgets, resources)
+- [ ] System config intact (modules, roles, permissions)
+- [ ] Can login with user ID 1
 - [ ] Created production user accounts
-- [ ] Assigned proper roles and module access
+- [ ] Assigned roles and module access
 
 ## 🔒 Security Notes
 
-- The cleanup script creates ONE default admin user
-- Default password is `Admin@123` - **CHANGE THIS IMMEDIATELY**
-- All user accounts are removed - create new production accounts
-- Test data remains - review if it contains any sensitive information
-- Use strong passwords for all user accounts
+- User ID 1 is preserved - verify its password is strong
+- All test users are removed - create new production accounts
+- All audit logs are cleared - fresh start for production
+- Use strong passwords for all new accounts
 - Enable SSL for database connections in production
 - Set up regular automated backups
 
-## 🆚 Alternative: Full Data Cleanup
+## 📊 What Gets Reset
 
-If you want to remove ALL test data (not just users), you'll need to:
+All these counters are reset to start from 1 (or 2 for users):
 
-1. Manually modify the cleanup script to include additional DELETE statements
-2. Add deletions for: activities, components, programs, budgets, resources, etc.
-3. Or create a fresh database from the schema files
+- Activities
+- Programs & Components
+- Budgets & Transactions
+- Resources & Requests
+- Indicators
+- Beneficiaries
+- And all other data tables
 
-**The current script is designed to keep test data for demonstration/training purposes.**
+This means your production data will have clean, sequential IDs starting from 1.
 
 ---
 
 ## 📞 Support
 
-If you encounter any issues during cleanup:
+If you encounter errors:
 
-1. **DO NOT run the cleanup script multiple times without restoring**
-2. Restore from your backup
-3. Review the error messages
-4. Check the scripts for any database-specific issues
-5. Contact support if needed
+1. **DO NOT panic** - you have a backup
+2. Restore from backup
+3. Review the error message
+4. Check if all tables exist in your database
+5. Contact support with the specific error
 
 ---
 
-**Last Updated:** 2026-01-05
+**Last Updated:** 2026-01-06
 **Database Version:** me_clickup_system_2026_jan_05.sql
-**Script Purpose:** Clear user accounts only, preserve all test data
+**Script Purpose:** Clear all test data, keep system config and user ID 1

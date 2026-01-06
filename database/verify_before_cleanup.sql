@@ -1,147 +1,123 @@
 -- ============================================================================
--- VERIFICATION SCRIPT - Run BEFORE cleanup to see what will be deleted
+-- VERIFICATION SCRIPT - Run BEFORE cleanup
 -- ============================================================================
--- This script shows you what USER DATA will be deleted
--- ALL OTHER DATA (activities, budgets, resources) will be PRESERVED
+-- Shows what will be deleted and what will be preserved
 -- ============================================================================
 
 USE me_clickup_system;
 
 SELECT '
 ╔════════════════════════════════════════════════════════════════╗
-║              USER CLEANUP VERIFICATION                          ║
-║  Only USER data will be deleted. Everything else is kept!      ║
+║         PRODUCTION CLEANUP VERIFICATION                        ║
+╠════════════════════════════════════════════════════════════════╣
+║  This shows what will be DELETED vs PRESERVED                 ║
 ╚════════════════════════════════════════════════════════════════╝
 ' as header;
 
 -- ============================================================================
--- SHOW ORGANIZATION DATA (WILL BE KEPT)
--- ============================================================================
-SELECT '=== ORGANIZATIONS (PRESERVED) ===' as section;
-SELECT id, name, code, country FROM organizations;
-
--- ============================================================================
--- SHOW PROGRAM MODULES (WILL BE KEPT)
--- ============================================================================
-SELECT '=== PROGRAM MODULES (PRESERVED) ===' as section;
-SELECT id, name, code, icon, is_active
-FROM program_modules
-ORDER BY id;
-
--- ============================================================================
--- SHOW ROLES (WILL BE KEPT)
--- ============================================================================
-SELECT '=== ROLES (PRESERVED) ===' as section;
-SELECT id, name, description, is_system_role
-FROM roles
-ORDER BY id;
-
--- ============================================================================
--- SHOW PERMISSIONS (WILL BE KEPT)
--- ============================================================================
-SELECT '=== PERMISSIONS (PRESERVED) ===' as section;
-SELECT id, name, resource, action, description
-FROM permissions
-ORDER BY resource, action
-LIMIT 20;
-
--- ============================================================================
--- SHOW RESOURCE TYPES (WILL BE KEPT)
--- ============================================================================
-SELECT '=== RESOURCE TYPES (PRESERVED) ===' as section;
-SELECT id, name, category, description
-FROM resource_types
-WHERE is_active = TRUE
-ORDER BY category, name;
-
--- ============================================================================
--- SHOW SETTINGS (WILL BE KEPT)
--- ============================================================================
-SELECT '=== SYSTEM SETTINGS (PRESERVED) ===' as section;
-SELECT * FROM settings LIMIT 1;
-
--- ============================================================================
--- SHOW USER DATA TO BE DELETED
+-- SHOW WHAT WILL BE PRESERVED
 -- ============================================================================
 SELECT '
 ╔════════════════════════════════════════════════════════════════╗
-║  ONLY THE FOLLOWING USER DATA WILL BE DELETED:                ║
+║  SYSTEM DATA THAT WILL BE PRESERVED:                          ║
 ╚════════════════════════════════════════════════════════════════╝
-' as divider;
+' as preserved_header;
 
-SELECT '=== USER DATA TO BE REMOVED ===' as section;
+SELECT '=== SYSTEM CONFIGURATION (KEPT) ===' as section;
 
-SELECT 'Users' as table_name, COUNT(*) as record_count FROM users
-UNION ALL
-SELECT 'User Module Assignments', COUNT(*) FROM user_module_assignments
-UNION ALL
-SELECT 'User Roles', COUNT(*) FROM user_roles
+SELECT 'Organizations' as table_name, COUNT(*) as record_count FROM organizations
+UNION ALL SELECT 'Program Modules', COUNT(*) FROM program_modules
+UNION ALL SELECT 'Roles', COUNT(*) FROM roles
+UNION ALL SELECT 'Permissions', COUNT(*) FROM permissions
+UNION ALL SELECT 'Role Permissions', COUNT(*) FROM role_permissions
+UNION ALL SELECT 'Resource Types', COUNT(*) FROM resource_types
+UNION ALL SELECT 'Locations', COUNT(*) FROM locations
+UNION ALL SELECT 'Goal Categories', COUNT(*) FROM goal_categories
+UNION ALL SELECT 'Strategic Goals', COUNT(*) FROM strategic_goals
+UNION ALL SELECT 'ME Indicators', COUNT(*) FROM me_indicators
 ORDER BY record_count DESC;
 
 -- ============================================================================
--- SHOW OTHER DATA THAT WILL BE PRESERVED
+-- SHOW USER ID 1 (WILL BE KEPT)
+-- ============================================================================
+SELECT '=== USER ID 1 (WILL BE KEPT) ===' as section;
+SELECT id, email, full_name, is_system_admin, is_active, created_at
+FROM users
+WHERE id = 1;
+
+-- ============================================================================
+-- SHOW WHAT WILL BE DELETED
 -- ============================================================================
 SELECT '
 ╔════════════════════════════════════════════════════════════════╗
-║  ALL OTHER DATA WILL BE KEPT (NOT DELETED):                   ║
+║  TEST DATA THAT WILL BE DELETED:                              ║
 ╚════════════════════════════════════════════════════════════════╝
-' as kept_header;
+' as deleted_header;
 
-SELECT '=== DATA TO BE PRESERVED ===' as section;
+SELECT '=== DATA TO BE REMOVED ===' as section;
 
-SELECT 'Programs (Sub-Programs)' as table_name, COUNT(*) as record_count FROM programs
-UNION ALL
-SELECT 'Components', COUNT(*) FROM components
-UNION ALL
-SELECT 'Activities', COUNT(*) FROM activities
-UNION ALL
-SELECT 'Activity Checklists', COUNT(*) FROM activity_checklists
-UNION ALL
-SELECT 'Financial Transactions', COUNT(*) FROM financial_transactions
-UNION ALL
-SELECT 'Finance Approvals', COUNT(*) FROM finance_approvals
-UNION ALL
-SELECT 'Program Budgets', COUNT(*) FROM program_budgets
-UNION ALL
-SELECT 'Resources', COUNT(*) FROM resources
-UNION ALL
-SELECT 'Resource Requests', COUNT(*) FROM resource_requests
-UNION ALL
-SELECT 'Loans', COUNT(*) FROM loans
-UNION ALL
-SELECT 'Indicators', COUNT(*) FROM indicators
-UNION ALL
-SELECT 'Attachments', COUNT(*) FROM attachments
+SELECT 'Test Users (ID > 1)' as table_name, COUNT(*) as record_count FROM users WHERE id > 1
+UNION ALL SELECT 'User Module Assignments (user > 1)', COUNT(*) FROM user_module_assignments WHERE user_id > 1
+UNION ALL SELECT 'User Roles (user > 1)', COUNT(*) FROM user_roles WHERE user_id > 1
+UNION ALL SELECT 'Activities', COUNT(*) FROM activities
+UNION ALL SELECT 'Activity Checklists', COUNT(*) FROM activity_checklists
+UNION ALL SELECT 'Programs', COUNT(*) FROM programs
+UNION ALL SELECT 'Sub Programs', COUNT(*) FROM sub_programs
+UNION ALL SELECT 'Projects', COUNT(*) FROM projects
+UNION ALL SELECT 'Components', COUNT(*) FROM project_components
+UNION ALL SELECT 'Indicators', COUNT(*) FROM indicators
+UNION ALL SELECT 'Program Budgets', COUNT(*) FROM program_budgets
+UNION ALL SELECT 'Financial Transactions', COUNT(*) FROM financial_transactions
+UNION ALL SELECT 'Finance Approvals', COUNT(*) FROM finance_approvals
+UNION ALL SELECT 'Loans', COUNT(*) FROM loans
+UNION ALL SELECT 'Resources', COUNT(*) FROM resources
+UNION ALL SELECT 'Resource Requests', COUNT(*) FROM resource_requests
+UNION ALL SELECT 'Beneficiaries', COUNT(*) FROM beneficiaries
+UNION ALL SELECT 'Trainings', COUNT(*) FROM trainings
+UNION ALL SELECT 'Audit Logs', COUNT(*) FROM access_audit_log
+UNION ALL SELECT 'Attachments', COUNT(*) FROM attachments
 ORDER BY record_count DESC;
 
 -- ============================================================================
--- SHOW SAMPLE USER DATA THAT WILL BE DELETED
+-- SHOW SAMPLE USERS TO BE DELETED
 -- ============================================================================
-SELECT '=== SAMPLE USERS TO BE DELETED ===' as section;
+SELECT '=== SAMPLE TEST USERS TO BE DELETED (ID > 1) ===' as section;
 SELECT id, email, full_name, is_system_admin, is_active
 FROM users
+WHERE id > 1
 ORDER BY id
 LIMIT 10;
 
-SELECT '=== USER MODULE ASSIGNMENTS TO BE DELETED ===' as section;
-SELECT uma.id, u.email, pm.name as module_name, uma.role
-FROM user_module_assignments uma
-LEFT JOIN users u ON uma.user_id = u.id
-LEFT JOIN program_modules pm ON uma.module_id = pm.id
-ORDER BY uma.id
-LIMIT 10;
+-- ============================================================================
+-- SHOW SAMPLE ACTIVITIES TO BE DELETED
+-- ============================================================================
+SELECT '=== SAMPLE ACTIVITIES TO BE DELETED ===' as section;
+SELECT id, name, status, created_at
+FROM activities
+ORDER BY id DESC
+LIMIT 5;
 
+-- ============================================================================
+-- IMPORTANT REMINDER
+-- ============================================================================
 SELECT '
 ╔════════════════════════════════════════════════════════════════╗
 ║                    IMPORTANT REMINDER                           ║
 ╠════════════════════════════════════════════════════════════════╣
-║  1. Backup your database before running cleanup!              ║
-║  2. Review the above data carefully                           ║
-║  3. ONLY user accounts will be deleted                        ║
-║  4. All activities, budgets, resources will be KEPT           ║
-║  5. Run clean_for_production.sql when ready                   ║
+║  1. BACKUP YOUR DATABASE FIRST!                               ║
+║     mysqldump -u root -p me_clickup_system > backup.sql      ║
 ║                                                                 ║
-║  To backup:                                                    ║
-║  mysqldump -u root -p me_clickup_system > backup.sql         ║
+║  2. Review the counts above carefully                         ║
+║                                                                 ║
+║  3. User ID 1 will be KEPT (your existing admin)              ║
+║                                                                 ║
+║  4. All system config will be PRESERVED                       ║
+║     (organizations, modules, roles, permissions)              ║
+║                                                                 ║
+║  5. ALL test data will be DELETED                             ║
+║     (activities, budgets, resources, beneficiaries, etc.)     ║
+║                                                                 ║
+║  6. Run clean_for_production.sql when ready                   ║
+║                                                                 ║
 ╚════════════════════════════════════════════════════════════════╝
 ' as reminder;
