@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
+import LocationSelector from './LocationSelector';
 
 interface AddActivityModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
     name: '',
     description: '',
     location_details: '',
+    location_id: null as number | null,
     parish: '',
     ward: '',
     county: '',
@@ -35,6 +37,8 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
     approval_status: 'draft',
     priority: 'normal',
   });
+
+  const [selectedLocation, setSelectedLocation] = useState<any>(null);
 
   // Module-specific data for Finance (module_id = 6)
   const [financeData, setFinanceData] = useState({
@@ -200,6 +204,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
       name: '',
       description: '',
       location_details: '',
+      location_id: null,
       parish: '',
       ward: '',
       county: '',
@@ -216,6 +221,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
       approval_status: 'draft',
       priority: 'normal',
     });
+    setSelectedLocation(null);
     setFinanceData({
       transaction_type: 'expense',
       expense_category: 'program',
@@ -640,48 +646,30 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Parish
-                        </label>
-                        <input
-                          type="text"
-                          name="parish"
-                          value={formData.parish}
-                          onChange={handleChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="Parish"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Ward
-                        </label>
-                        <input
-                          type="text"
-                          name="ward"
-                          value={formData.ward}
-                          onChange={handleChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="Ward"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          County
-                        </label>
-                        <input
-                          type="text"
-                          name="county"
-                          value={formData.county}
-                          onChange={handleChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="County"
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Location (Hierarchical Selector)
+                      </label>
+                      <LocationSelector
+                        value={formData.location_id}
+                        onChange={(locationId, location) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            location_id: locationId,
+                            // Keep old fields for backward compatibility
+                            parish: location?.type === 'parish' ? location.name : '',
+                            ward: location?.type === 'ward' ? location.name : (location?.parent_name || ''),
+                            county: location?.county_name || ''
+                          }));
+                          setSelectedLocation(location);
+                        }}
+                        maxLevel="ward"
+                      />
+                      {selectedLocation && (
+                        <div className="mt-2 text-sm text-gray-600">
+                          <span className="font-medium">Selected:</span> {selectedLocation.name} ({selectedLocation.type})
+                        </div>
+                      )}
                     </div>
                   </div>
                 </>

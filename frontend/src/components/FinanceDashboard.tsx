@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { authFetch } from '../config/api';
 import AddBudgetModal from './AddBudgetModal';
 import AddTransactionModal from './AddTransactionModal';
+import FinanceBudgetReview from './FinanceBudgetReview';
 
 interface BudgetSummary {
   program_module_id: number;
@@ -43,7 +44,7 @@ const FinanceDashboard: React.FC = () => {
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'approvals'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'approvals' | 'budget-requests'>('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterProgram, setFilterProgram] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -321,6 +322,16 @@ const FinanceDashboard: React.FC = () => {
                   </span>
                 )}
               </button>
+              <button
+                onClick={() => setActiveTab('budget-requests')}
+                className={`py-4 px-6 font-medium text-sm border-b-2 transition-colors ${
+                  activeTab === 'budget-requests'
+                    ? 'border-green-500 text-green-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Budget Requests
+              </button>
             </nav>
           </div>
 
@@ -505,6 +516,12 @@ const FinanceDashboard: React.FC = () => {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {activeTab === 'budget-requests' && (
+              <div>
+                <FinanceBudgetReview />
               </div>
             )}
           </div>
