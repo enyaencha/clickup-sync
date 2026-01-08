@@ -34,7 +34,7 @@ class ReportsService {
       LEFT JOIN project_components pc ON sp.id = pc.sub_program_id AND pc.deleted_at IS NULL
       LEFT JOIN activities a ON pc.id = a.component_id AND a.deleted_at IS NULL
       LEFT JOIN activity_beneficiaries ab ON a.id = ab.activity_id
-      LEFT JOIN activity_expenses ae ON a.id = ae.activity_id
+      LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
       WHERE pm.deleted_at IS NULL
     `;
 
@@ -105,7 +105,7 @@ class ReportsService {
       JOIN sub_programs sp ON pc.sub_program_id = sp.id
       JOIN program_modules pm ON sp.module_id = pm.id
       LEFT JOIN activity_beneficiaries ab ON a.id = ab.activity_id
-      LEFT JOIN activity_expenses ae ON a.id = ae.activity_id
+      LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
       LEFT JOIN activity_checklists ac ON a.id = ac.activity_id
       LEFT JOIN attachments att ON a.id = att.entity_id AND att.entity_type = 'activity'
       LEFT JOIN time_entries te ON a.id = te.activity_id
@@ -175,7 +175,7 @@ class ReportsService {
       LEFT JOIN sub_programs sp ON pm.id = sp.module_id AND sp.deleted_at IS NULL
       LEFT JOIN project_components pc ON sp.id = pc.sub_program_id AND pc.deleted_at IS NULL
       LEFT JOIN activities a ON pc.id = a.component_id AND a.deleted_at IS NULL
-      LEFT JOIN activity_expenses ae ON a.id = ae.activity_id
+      LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
       LEFT JOIN activity_beneficiaries ab ON a.id = ab.activity_id
       WHERE pm.deleted_at IS NULL
     `;
@@ -242,7 +242,7 @@ class ReportsService {
       JOIN project_components pc ON a.component_id = pc.id
       JOIN sub_programs sp ON pc.sub_program_id = sp.id
       JOIN program_modules pm ON sp.module_id = pm.id
-      LEFT JOIN activity_expenses ae ON a.id = ae.activity_id
+      LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
       LEFT JOIN activity_beneficiaries ab ON a.id = ab.activity_id
       WHERE a.deleted_at IS NULL
     `;
@@ -282,7 +282,7 @@ class ReportsService {
         AVG(ae.amount) as avg_amount,
         MIN(ae.amount) as min_amount,
         MAX(ae.amount) as max_amount
-      FROM activity_expenses ae
+      FROM activity_expenditures ae
       JOIN activities a ON ae.activity_id = a.id
       JOIN project_components pc ON a.component_id = pc.id
       JOIN sub_programs sp ON pc.sub_program_id = sp.id
@@ -403,7 +403,7 @@ class ReportsService {
       LEFT JOIN activities a ON l.id = a.location_id AND a.deleted_at IS NULL
       LEFT JOIN activity_beneficiaries ab ON a.id = ab.activity_id
       LEFT JOIN beneficiaries b ON ab.beneficiary_id = b.id AND b.deleted_at IS NULL
-      LEFT JOIN activity_expenses ae ON a.id = ae.activity_id
+      LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
       LEFT JOIN project_components pc ON a.component_id = pc.id
       LEFT JOIN sub_programs sp ON pc.sub_program_id = sp.id
       LEFT JOIN program_modules pm ON sp.module_id = pm.id
@@ -643,7 +643,7 @@ class ReportsService {
       JOIN project_components pc ON a.component_id = pc.id
       JOIN sub_programs sp ON pc.sub_program_id = sp.id
       JOIN program_modules pm ON sp.module_id = pm.id
-      LEFT JOIN activity_expenses ae ON a.id = ae.activity_id
+      LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
       LEFT JOIN activity_beneficiaries ab ON a.id = ab.activity_id
       LEFT JOIN activity_checklists ac ON a.id = ac.activity_id
       WHERE a.deleted_at IS NULL
@@ -805,7 +805,7 @@ class ReportsService {
       LEFT JOIN activities a ON pc.id = a.component_id AND a.deleted_at IS NULL ${dateCondition}
       LEFT JOIN activity_beneficiaries ab ON a.id = ab.activity_id
       LEFT JOIN beneficiaries b ON ab.beneficiary_id = b.id AND b.deleted_at IS NULL
-      LEFT JOIN activity_expenses ae ON a.id = ae.activity_id
+      LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
       WHERE pm.deleted_at IS NULL
     `;
 

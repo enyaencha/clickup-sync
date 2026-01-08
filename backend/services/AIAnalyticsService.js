@@ -19,7 +19,7 @@ class AIAnalyticsService {
       JOIN project_components pc ON a.component_id = pc.id
       JOIN sub_programs sp ON pc.sub_program_id = sp.id
       JOIN program_modules pm ON sp.module_id = pm.id
-      LEFT JOIN activity_expenses ae ON a.id = ae.activity_id
+      LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
       WHERE pm.id = ?
         AND a.deleted_at IS NULL
         AND a.start_date >= DATE_SUB(CURDATE(), INTERVAL 180 DAY)
@@ -62,7 +62,7 @@ class AIAnalyticsService {
       JOIN project_components pc ON a.component_id = pc.id
       JOIN sub_programs sp ON pc.sub_program_id = sp.id
       JOIN program_modules pm ON sp.module_id = pm.id
-      LEFT JOIN activity_expenses ae ON a.id = ae.activity_id
+      LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
       WHERE pm.id = ? AND a.deleted_at IS NULL
     `, [moduleId]);
 
@@ -154,7 +154,7 @@ class AIAnalyticsService {
       FROM activities a
       LEFT JOIN activity_checklists ac ON a.id = ac.activity_id
       LEFT JOIN activity_beneficiaries ab ON a.id = ab.activity_id
-      LEFT JOIN activity_expenses ae ON a.id = ae.activity_id
+      LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
       WHERE a.component_id = ? AND a.deleted_at IS NULL
       GROUP BY a.id
       ORDER BY a.start_date DESC
@@ -345,7 +345,7 @@ class AIAnalyticsService {
       JOIN project_components pc ON a.component_id = pc.id
       JOIN sub_programs sp ON pc.sub_program_id = sp.id
       JOIN program_modules pm ON sp.module_id = pm.id
-      LEFT JOIN activity_expenses ae ON a.id = ae.activity_id
+      LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
       LEFT JOIN activity_beneficiaries ab ON a.id = ab.activity_id
       WHERE pm.id = ?
         AND a.deleted_at IS NULL
@@ -519,7 +519,7 @@ class AIAnalyticsService {
       FROM activities a
       JOIN project_components pc ON a.component_id = pc.id
       JOIN sub_programs sp ON pc.sub_program_id = sp.id
-      JOIN activity_expenses ae ON a.id = ae.activity_id
+      JOIN activity_expenditures ae ON a.id = ae.activity_id
       WHERE sp.module_id = ?
         AND a.deleted_at IS NULL
       GROUP BY a.id
@@ -596,7 +596,7 @@ class AIAnalyticsService {
       FROM activities a
       JOIN project_components pc ON a.component_id = pc.id
       JOIN sub_programs sp ON pc.sub_program_id = sp.id
-      LEFT JOIN activity_expenses ae ON a.id = ae.activity_id
+      LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
       WHERE sp.module_id = ? AND a.deleted_at IS NULL
     `, [moduleId]);
 
@@ -717,7 +717,7 @@ class AIAnalyticsService {
       FROM activities a
       JOIN project_components pc ON a.component_id = pc.id
       JOIN sub_programs sp ON pc.sub_program_id = sp.id
-      LEFT JOIN activity_expenses ae ON a.id = ae.activity_id
+      LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
       WHERE sp.module_id = ? AND a.deleted_at IS NULL
     `;
     const budgetData = (await db.query(budgetQuery, [moduleId]))[0];
@@ -811,7 +811,7 @@ class AIAnalyticsService {
       JOIN project_components pc ON a.component_id = pc.id
       JOIN sub_programs sp ON pc.sub_program_id = sp.id
       LEFT JOIN activity_beneficiaries ab ON a.id = ab.activity_id
-      LEFT JOIN activity_expenses ae ON a.id = ae.activity_id
+      LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
       WHERE sp.module_id = ? AND a.deleted_at IS NULL
     `;
     const resourceData = (await db.query(resourceQuery, [moduleId]))[0];
@@ -915,7 +915,7 @@ class AIAnalyticsService {
       JOIN project_components pc ON a.component_id = pc.id
       JOIN sub_programs sp ON pc.sub_program_id = sp.id
       LEFT JOIN activity_beneficiaries ab ON a.id = ab.activity_id
-      LEFT JOIN activity_expenses ae ON a.id = ae.activity_id
+      LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
       WHERE sp.module_id = ?
         AND a.deleted_at IS NULL
         AND a.start_date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
@@ -1165,7 +1165,7 @@ class AIAnalyticsService {
       JOIN sub_programs sp ON pc.sub_program_id = sp.id
       LEFT JOIN activities a ON pc.id = a.component_id AND a.deleted_at IS NULL
       LEFT JOIN activity_beneficiaries ab ON a.id = ab.activity_id
-      LEFT JOIN activity_expenses ae ON a.id = ae.activity_id
+      LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
       WHERE sp.module_id = ?
       GROUP BY pc.id, pc.name
       HAVING total_activities > 0

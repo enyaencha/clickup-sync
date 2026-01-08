@@ -33,10 +33,11 @@ interface ActivityExpenditureTrackingProps {
 const ActivityExpenditureTracking: React.FC<ActivityExpenditureTrackingProps> = ({
   activityId,
   activityName,
-  approvedBudget
+  approvedBudget: _approvedBudget
 }) => {
   const { user } = useAuth();
   const [expenditures, setExpenditures] = useState<Expenditure[]>([]);
+  const [approvedBudget, setApprovedBudget] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -52,6 +53,7 @@ const ActivityExpenditureTracking: React.FC<ActivityExpenditureTrackingProps> = 
 
   useEffect(() => {
     fetchExpenditures();
+    fetchApprovedBudget();
   }, [activityId]);
 
   const fetchExpenditures = async () => {
@@ -66,6 +68,18 @@ const ActivityExpenditureTracking: React.FC<ActivityExpenditureTrackingProps> = 
       console.error('Error fetching expenditures:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchApprovedBudget = async () => {
+    try {
+      const response = await authFetch(`/api/budget-requests/activity/${activityId}/approved-budget`);
+      if (response.ok) {
+        const data = await response.json();
+        setApprovedBudget(data.data.approved_budget || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching approved budget:', error);
     }
   };
 
