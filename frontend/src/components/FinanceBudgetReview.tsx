@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
-import BudgetRequestConversation from './BudgetRequestConversation';
+import ConversationSidePanel from './ConversationSidePanel';
 
 interface BudgetRequest {
   id: number;
@@ -550,29 +550,16 @@ const FinanceBudgetReview: React.FC = () => {
         </div>
       )}
 
-      {/* Conversation Modal */}
-      {showConversationModal && selectedRequest && user && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-900">Budget Request Conversation</h2>
-              <button
-                onClick={closeConversation}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
-              >
-                ×
-              </button>
-            </div>
-            <div className="p-6">
-              <BudgetRequestConversation
-                budgetRequestId={selectedRequest.id}
-                activityName={selectedRequest.activity_name}
-                currentUserId={user.id}
-                isFinanceTeam={true}
-              />
-            </div>
-          </div>
-        </div>
+      {/* Conversation Side Panel */}
+      {user && (
+        <ConversationSidePanel
+          isOpen={showConversationModal}
+          onClose={closeConversation}
+          budgetRequestId={selectedRequest?.id || null}
+          activityName={selectedRequest?.activity_name || ''}
+          currentUserId={user.id}
+          isFinanceTeam={true}
+        />
       )}
     </div>
   );

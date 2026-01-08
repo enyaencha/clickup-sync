@@ -456,6 +456,82 @@ module.exports = (db) => {
         }
     });
 
+    // ==================== NOTIFICATIONS ====================
+
+    /**
+     * GET /api/budget-requests/notifications
+     * Get budget requests with unread message counts for user's activities
+     */
+    router.get('/notifications', async (req, res) => {
+        try {
+            const userId = req.user.id;
+
+            // Get all budget requests for activities the user has access to
+            // with unread comment counts
+            const query = `
+                SELECT DISTINCT
+                    abr.id as request_id,
+                    abr.request_number,
+                    abr.status,
+                    a.name as activity_name,
+                    (
+                        SELECT MAX(c.created_at)
+                        FROM comments c
+                        WHERE c.entity_type = 'budget_request'
+                        AND c.entity_id = abr.id
+                        AND c.deleted_at IS NULL
+                    ) as last_message_at,
+                    (
+                        SELECT COUNT(*)
+                        FROM comments c
+                        WHERE c.entity_type = 'budget_request'
+                        AND c.entity_id = abr.id
+                        AND c.deleted_at IS NULL
+                        AND c.created_by != ?
+                        AND c.created_at > COALESCE(
+                            (SELECT MAX(c2.created_at)
+                             FROM comments c2
+                             WHERE c2.entity_type = 'budget_request'
+                             AND c2.entity_id = abr.id
+                             AND c2.created_by = ?
+                             AND c2.deleted_at IS NULL),
+                            '2000-01-01'
+                        )
+                    ) as unread_count
+                FROM activity_budget_requests abr
+                LEFT JOIN activities a ON abr.activity_id = a.id
+                LEFT JOIN user_module_assignments uma ON uma.user_id = ?
+                WHERE abr.deleted_at IS NULL
+                AND abr.status IN ('submitted', 'under_review', 'returned_for_amendment')
+                AND (
+                    uma.module_id = 6
+                    OR abr.activity_id IN (
+                        SELECT DISTINCT activity_id
+                        FROM activity_assignments
+                        WHERE user_id = ?
+                    )
+                )
+                HAVING last_message_at IS NOT NULL OR abr.status = 'returned_for_amendment'
+                ORDER BY unread_count DESC, last_message_at DESC
+            `;
+
+            const notifications = await db.query(query, [userId, userId, userId, userId]);
+
+            res.json({
+                success: true,
+                data: notifications || []
+            });
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+            console.error('Error details:', error.message, error.stack);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch notifications',
+                details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
+        }
+    });
+
     // ==================== COMMENTS / CONVERSATION ====================
 
     /**
@@ -562,12 +638,12 @@ module.exports = (db) => {
 
     /**
      * PUT /api/budget-requests/:id/status
-     * Change the status of a budget request (for under_review management)
+     * Change the status of a budget request (for under_review management and resubmission)
      */
     router.put('/:id/status', async (req, res) => {
         try {
             const { id } = req.params;
-            const { status, notes } = req.body;
+            const { status, notes, requested_amount, justification, breakdown, priority } = req.body;
 
             const validStatuses = ['draft', 'submitted', 'under_review', 'approved', 'rejected', 'returned_for_amendment'];
 
@@ -580,6 +656,28 @@ module.exports = (db) => {
 
             let query = `UPDATE activity_budget_requests SET status = ?`;
             const params = [status];
+
+            // Allow updating request details when resubmitting (status = submitted)
+            if (status === 'submitted') {
+                if (requested_amount !== undefined) {
+                    query += `, requested_amount = ?`;
+                    params.push(requested_amount);
+                }
+                if (justification !== undefined) {
+                    query += `, justification = ?`;
+                    params.push(justification);
+                }
+                if (breakdown !== undefined) {
+                    query += `, breakdown = ?`;
+                    params.push(JSON.stringify(breakdown));
+                }
+                if (priority !== undefined) {
+                    query += `, priority = ?`;
+                    params.push(priority);
+                }
+                // Clear amendment notes and reset review fields when resubmitting
+                query += `, amendment_notes = NULL, rejection_reason = NULL, reviewed_by = NULL, reviewed_at = NULL, submitted_at = NOW()`;
+            }
 
             if (notes) {
                 query += `, finance_notes = ?`;
