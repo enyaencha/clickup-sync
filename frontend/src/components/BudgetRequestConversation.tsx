@@ -108,7 +108,8 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
         ) : (
           comments.map((comment) => {
             const isOwnComment = comment.created_by_id === currentUserId;
-            const isFinanceComment = comment.is_finance_team;
+            // Use isFinanceTeam prop for own messages styling
+            const commentIsFromFinance = isOwnComment ? isFinanceTeam : false;
 
             return (
               <div
@@ -119,9 +120,9 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
                   {/* Author and timestamp */}
                   <div className={`flex items-center gap-2 mb-1 ${isOwnComment ? 'justify-end' : 'justify-start'}`}>
                     <span className={`text-xs font-medium ${
-                      isFinanceComment ? 'text-green-600' : 'text-blue-600'
+                      isOwnComment && isFinanceTeam ? 'text-green-600' : 'text-blue-600'
                     }`}>
-                      {isFinanceComment && '🏦 '}
+                      {isOwnComment && isFinanceTeam && '🏦 '}
                       {comment.created_by_name}
                       {isOwnComment && ' (You)'}
                     </span>
@@ -134,11 +135,9 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
                   <div
                     className={`rounded-lg px-4 py-3 ${
                       isOwnComment
-                        ? isFinanceComment
+                        ? commentIsFromFinance
                           ? 'bg-green-100 text-gray-900'
                           : 'bg-blue-100 text-gray-900'
-                        : isFinanceComment
-                        ? 'bg-green-50 border border-green-200 text-gray-900'
                         : 'bg-gray-100 border border-gray-200 text-gray-900'
                     }`}
                   >
