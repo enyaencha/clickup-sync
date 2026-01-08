@@ -28,6 +28,7 @@ import AgricultureMonitoring from './components/AgricultureMonitoring';
 import FinanceDashboard from './components/FinanceDashboard';
 import ResourceManagement from './components/ResourceManagement';
 import ReportsAnalytics from './components/ReportsAnalytics';
+import MyBudgetRequests from './components/MyBudgetRequests';
 
 const App: React.FC = () => {
   return (
@@ -93,6 +94,7 @@ const App: React.FC = () => {
                     {/* Finance Management Module Routes */}
                     <Route path="/finance" element={<FinanceDashboard />} />
                     <Route path="/finance/dashboard" element={<FinanceDashboard />} />
+                    <Route path="/my-budget-requests" element={<MyBudgetRequests />} />
 
                     {/* Resource Management Module Routes */}
                     <Route path="/resources" element={<ResourceManagement />} />
