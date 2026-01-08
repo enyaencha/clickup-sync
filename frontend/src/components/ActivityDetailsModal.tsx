@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
 import ActivityChecklist from './ActivityChecklist';
+import ActivityBudgetWidget from './ActivityBudgetWidget';
 
 interface Activity {
   id: number;
@@ -512,6 +513,12 @@ const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
                     <option value="urgent">Urgent</option>
                   </select>
                 </div>
+              </div>
+
+              {/* Budget Widget */}
+              <div className="mt-6 pt-6 border-t">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Budget Status</h3>
+                <ActivityBudgetWidget activityId={activity.id} />
               </div>
 
               {/* Activity Checklist */}
