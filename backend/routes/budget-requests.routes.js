@@ -473,11 +473,16 @@ module.exports = (db) => {
                     c.created_at,
                     c.created_by as created_by_id,
                     u.full_name as created_by_name,
-                    (SELECT COUNT(*) FROM user_module_assignments uma
-                     JOIN modules m ON uma.module_id = m.id
-                     WHERE uma.user_id = c.created_by
-                     AND m.name = 'Finance Management'
-                     AND uma.has_access = 1) > 0 as is_finance_team
+                    CASE
+                        WHEN EXISTS (
+                            SELECT 1 FROM user_module_assignments uma
+                            JOIN modules m ON uma.module_id = m.id
+                            WHERE uma.user_id = c.created_by
+                            AND m.name = 'Finance Management'
+                            AND uma.has_access = 1
+                        ) THEN 1
+                        ELSE 0
+                    END as is_finance_team
                 FROM comments c
                 LEFT JOIN users u ON c.created_by = u.id
                 WHERE c.entity_type = 'budget_request'
@@ -490,13 +495,15 @@ module.exports = (db) => {
 
             res.json({
                 success: true,
-                data: comments
+                data: comments || []
             });
         } catch (error) {
             console.error('Error fetching comments:', error);
+            console.error('Error details:', error.message, error.stack);
             res.status(500).json({
                 success: false,
-                error: 'Failed to fetch comments'
+                error: 'Failed to fetch comments',
+                details: process.env.NODE_ENV === 'development' ? error.message : undefined
             });
         }
     });
@@ -510,10 +517,21 @@ module.exports = (db) => {
             const { id } = req.params;
             const { comment_text } = req.body;
 
+            console.log('Adding comment for budget request:', id);
+            console.log('User ID:', req.user?.id);
+            console.log('Comment text:', comment_text);
+
             if (!comment_text || !comment_text.trim()) {
                 return res.status(400).json({
                     success: false,
                     error: 'Comment text is required'
+                });
+            }
+
+            if (!req.user || !req.user.id) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'User not authenticated'
                 });
             }
 
@@ -529,6 +547,8 @@ module.exports = (db) => {
 
             const result = await db.query(query, [id, comment_text, req.user.id]);
 
+            console.log('Comment added successfully, ID:', result.insertId);
+
             res.json({
                 success: true,
                 data: {
@@ -538,9 +558,11 @@ module.exports = (db) => {
             });
         } catch (error) {
             console.error('Error adding comment:', error);
+            console.error('Error details:', error.message, error.stack);
             res.status(500).json({
                 success: false,
-                error: 'Failed to add comment'
+                error: 'Failed to add comment',
+                details: process.env.NODE_ENV === 'development' ? error.message : undefined
             });
         }
     });
