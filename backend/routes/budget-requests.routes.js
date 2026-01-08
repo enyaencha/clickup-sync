@@ -586,6 +586,74 @@ module.exports = (db) => {
         }
     });
 
+    /**
+     * GET /api/budget-requests/user-notifications
+     * Get general notifications (approvals, revisions, etc.) for the current user
+     */
+    router.get('/user-notifications', async (req, res) => {
+        try {
+            const userId = req.user.id;
+
+            const query = `
+                SELECT
+                    n.id,
+                    n.type,
+                    n.title,
+                    n.message,
+                    n.entity_type,
+                    n.entity_id,
+                    n.action_url,
+                    n.is_read,
+                    n.created_at
+                FROM notifications n
+                WHERE n.user_id = ?
+                ORDER BY n.created_at DESC
+                LIMIT 50
+            `;
+
+            const notifications = await db.query(query, [userId]);
+
+            res.json({
+                success: true,
+                data: notifications || []
+            });
+        } catch (error) {
+            console.error('Error fetching user notifications:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch user notifications'
+            });
+        }
+    });
+
+    /**
+     * PUT /api/budget-requests/user-notifications/:id/mark-read
+     * Mark a notification as read
+     */
+    router.put('/user-notifications/:id/mark-read', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const userId = req.user.id;
+
+            // Only allow marking own notifications as read
+            await db.query(
+                'UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?',
+                [id, userId]
+            );
+
+            res.json({
+                success: true,
+                message: 'Notification marked as read'
+            });
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to mark notification as read'
+            });
+        }
+    });
+
     // ==================== COMMENTS / CONVERSATION ====================
 
     /**
@@ -926,6 +994,41 @@ module.exports = (db) => {
             res.status(500).json({
                 success: false,
                 error: 'Failed to fetch expenditures'
+            });
+        }
+    });
+
+    /**
+     * GET /api/budget-requests/activity/:activityId/approved-budget
+     * Get the total approved budget for an activity from activity_budgets
+     */
+    router.get('/activity/:activityId/approved-budget', async (req, res) => {
+        try {
+            const { activityId } = req.params;
+
+            const query = `
+                SELECT
+                    COALESCE(SUM(abr.approved_amount), 0) as total_approved_budget
+                FROM activity_budget_requests abr
+                WHERE abr.activity_id = ?
+                AND abr.status = 'approved'
+                AND abr.deleted_at IS NULL
+            `;
+
+            const result = await db.query(query, [activityId]);
+            const approvedBudget = result[0]?.total_approved_budget || 0;
+
+            res.json({
+                success: true,
+                data: {
+                    approved_budget: approvedBudget
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching approved budget:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch approved budget'
             });
         }
     });
