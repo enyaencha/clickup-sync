@@ -466,8 +466,10 @@ module.exports = (db) => {
         try {
             const userId = req.user.id;
 
-            // Get all budget requests for activities the user has access to
-            // with unread comment counts
+            // Get all budget requests the user has access to with unread comment counts
+            // Access rules:
+            // 1. Finance team (module_id = 6) can see all requests
+            // 2. Activity users can see requests they created (requested_by = user_id)
             const query = `
                 SELECT DISTINCT
                     abr.id as request_id,
@@ -500,16 +502,14 @@ module.exports = (db) => {
                     ) as unread_count
                 FROM activity_budget_requests abr
                 LEFT JOIN activities a ON abr.activity_id = a.id
-                LEFT JOIN user_module_assignments uma ON uma.user_id = ?
                 WHERE abr.deleted_at IS NULL
                 AND abr.status IN ('submitted', 'under_review', 'returned_for_amendment')
                 AND (
-                    uma.module_id = 6
-                    OR abr.activity_id IN (
-                        SELECT DISTINCT activity_id
-                        FROM activity_assignments
-                        WHERE user_id = ?
+                    EXISTS (
+                        SELECT 1 FROM user_module_assignments uma
+                        WHERE uma.user_id = ? AND uma.module_id = 6
                     )
+                    OR abr.requested_by = ?
                 )
                 HAVING last_message_at IS NOT NULL OR abr.status = 'returned_for_amendment'
                 ORDER BY unread_count DESC, last_message_at DESC
