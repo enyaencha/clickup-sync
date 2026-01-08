@@ -145,11 +145,13 @@ module.exports = (db) => {
                     abr.requested_by,
                     abr.request_number,
                     a.name as activity_name,
-                    a.project_id,
-                    p.program_id
+                    a.component_id,
+                    pc.sub_program_id,
+                    sp.module_id as program_module_id
                 FROM activity_budget_requests abr
                 LEFT JOIN activities a ON abr.activity_id = a.id
-                LEFT JOIN projects p ON a.project_id = p.id
+                LEFT JOIN project_components pc ON a.component_id = pc.id
+                LEFT JOIN sub_programs sp ON pc.sub_program_id = sp.id
                 WHERE abr.id = ?
             `;
             const [request] = await db.query(requestQuery, [id]);
@@ -204,8 +206,8 @@ module.exports = (db) => {
                 req.user.id
             ]);
 
-            // Deduct from program budget if program_id exists
-            if (request.program_id) {
+            // Deduct from program budget if program_module_id exists
+            if (request.program_module_id) {
                 const deductQuery = `
                     UPDATE program_budgets
                     SET allocated_budget = allocated_budget - ?
@@ -216,7 +218,7 @@ module.exports = (db) => {
                     ORDER BY id DESC
                     LIMIT 1
                 `;
-                await db.query(deductQuery, [approved_amount, request.program_id]);
+                await db.query(deductQuery, [approved_amount, request.program_module_id]);
             }
 
             // Create notification for the requestor
@@ -478,28 +480,66 @@ module.exports = (db) => {
         try {
             const { activityId } = req.params;
 
-            const query = `
+            // Get total approved budget from approved budget requests
+            const approvedQuery = `
                 SELECT
-                    ab.*,
-                    a.name as activity_name,
-                    a.code as activity_code
-                FROM activity_budgets ab
-                LEFT JOIN activities a ON ab.activity_id = a.id
-                WHERE ab.activity_id = ?
+                    COALESCE(SUM(abr.approved_amount), 0) as total_approved_budget
+                FROM activity_budget_requests abr
+                WHERE abr.activity_id = ?
+                AND abr.status = 'approved'
+                AND abr.deleted_at IS NULL
             `;
+            const approvedResult = await db.query(approvedQuery, [activityId]);
+            const approvedBudget = approvedResult[0]?.total_approved_budget || 0;
 
-            const [budget] = await db.query(query, [activityId]);
+            // Get total spent from activity expenditures
+            const spentQuery = `
+                SELECT
+                    COALESCE(SUM(ae.amount), 0) as total_spent
+                FROM activity_expenditures ae
+                WHERE ae.activity_id = ?
+                AND ae.deleted_at IS NULL
+            `;
+            const spentResult = await db.query(spentQuery, [activityId]);
+            const spentBudget = spentResult[0]?.total_spent || 0;
+
+            // Get committed budget (pending expenditures awaiting approval)
+            const committedQuery = `
+                SELECT
+                    COALESCE(SUM(ae.amount), 0) as total_committed
+                FROM activity_expenditures ae
+                WHERE ae.activity_id = ?
+                AND ae.status = 'pending'
+                AND ae.deleted_at IS NULL
+            `;
+            const committedResult = await db.query(committedQuery, [activityId]);
+            const committedBudget = committedResult[0]?.total_committed || 0;
+
+            // Calculate remaining
+            const remainingBudget = approvedBudget - (spentBudget + committedBudget);
+
+            // Get activity details for reference
+            const activityQuery = `
+                SELECT name, code FROM activities WHERE id = ?
+            `;
+            const [activity] = await db.query(activityQuery, [activityId]);
+
+            const budgetData = {
+                activity_id: parseInt(activityId),
+                activity_name: activity?.name || '',
+                activity_code: activity?.code || '',
+                allocated_budget: 0, // Not using this field anymore
+                approved_budget: approvedBudget,
+                spent_budget: spentBudget,
+                committed_budget: committedBudget,
+                remaining_budget: remainingBudget,
+                budget_source: 'activity_budget_requests',
+                last_allocation_date: null
+            };
 
             res.json({
                 success: true,
-                data: budget || {
-                    activity_id: activityId,
-                    allocated_budget: 0,
-                    approved_budget: 0,
-                    spent_budget: 0,
-                    committed_budget: 0,
-                    remaining_budget: 0
-                }
+                data: budgetData
             });
         } catch (error) {
             console.error('Error fetching activity budget:', error);
@@ -855,11 +895,13 @@ module.exports = (db) => {
                     abr.requested_by,
                     abr.request_number,
                     a.name as activity_name,
-                    a.project_id,
-                    p.program_id
+                    a.component_id,
+                    pc.sub_program_id,
+                    sp.module_id as program_module_id
                 FROM activity_budget_requests abr
                 LEFT JOIN activities a ON abr.activity_id = a.id
-                LEFT JOIN projects p ON a.project_id = p.id
+                LEFT JOIN project_components pc ON a.component_id = pc.id
+                LEFT JOIN sub_programs sp ON pc.sub_program_id = sp.id
                 WHERE abr.id = ? AND abr.status = 'approved'
             `;
             const [request] = await db.query(requestQuery, [id]);
@@ -906,7 +948,7 @@ module.exports = (db) => {
             await db.query(budgetQuery, [difference, difference, req.user.id, request.activity_id]);
 
             // Update program budget (difference can be positive or negative)
-            if (request.program_id) {
+            if (request.program_module_id) {
                 const programQuery = `
                     UPDATE program_budgets
                     SET allocated_budget = allocated_budget - ?
@@ -917,7 +959,7 @@ module.exports = (db) => {
                     ORDER BY id DESC
                     LIMIT 1
                 `;
-                await db.query(programQuery, [difference, request.program_id]);
+                await db.query(programQuery, [difference, request.program_module_id]);
             }
 
             // Notify the requestor
