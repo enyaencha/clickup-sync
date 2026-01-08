@@ -208,7 +208,7 @@ module.exports = (db) => {
             if (request.program_id) {
                 const deductQuery = `
                     UPDATE program_budgets
-                    SET allocated_budget = allocated_budget + ?
+                    SET allocated_budget = allocated_budget - ?
                     WHERE program_module_id = ?
                     AND status = 'active'
                     AND budget_start_date <= CURDATE()
@@ -837,11 +837,11 @@ module.exports = (db) => {
             `;
             await db.query(budgetQuery, [difference, difference, req.user.id, request.activity_id]);
 
-            // Update program budget
+            // Update program budget (difference can be positive or negative)
             if (request.program_id) {
                 const programQuery = `
                     UPDATE program_budgets
-                    SET allocated_budget = allocated_budget + ?
+                    SET allocated_budget = allocated_budget - ?
                     WHERE program_module_id = ?
                     AND status = 'active'
                     AND budget_start_date <= CURDATE()

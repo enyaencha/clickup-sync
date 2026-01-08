@@ -32,14 +32,16 @@ const FinanceBudgetReview: React.FC = () => {
   const [selectedRequest, setSelectedRequest] = useState<BudgetRequest | null>(null);
   const [showActionModal, setShowActionModal] = useState(false);
   const [showConversationModal, setShowConversationModal] = useState(false);
-  const [actionType, setActionType] = useState<'approve' | 'reject' | 'return' | 'edit'>('approve');
+  const [actionType, setActionType] = useState<'approve' | 'reject' | 'return' | 'edit' | 'revise'>('approve');
   const [actionData, setActionData] = useState({
     approved_amount: '',
     finance_notes: '',
     rejection_reason: '',
     amendment_notes: '',
     requested_amount: '',
-    justification: ''
+    justification: '',
+    new_amount: '',
+    revision_reason: ''
   });
 
   useEffect(() => {
@@ -70,7 +72,9 @@ const FinanceBudgetReview: React.FC = () => {
       rejection_reason: '',
       amendment_notes: '',
       requested_amount: request.requested_amount.toString(),
-      justification: request.justification
+      justification: request.justification,
+      new_amount: request.approved_amount?.toString() || request.requested_amount.toString(),
+      revision_reason: ''
     });
     setShowActionModal(true);
   };
@@ -84,7 +88,9 @@ const FinanceBudgetReview: React.FC = () => {
       rejection_reason: '',
       amendment_notes: '',
       requested_amount: '',
-      justification: ''
+      justification: '',
+      new_amount: '',
+      revision_reason: ''
     });
   };
 
@@ -167,6 +173,18 @@ const FinanceBudgetReview: React.FC = () => {
             finance_notes: actionData.finance_notes
           };
           break;
+
+        case 'revise':
+          if (!actionData.new_amount || !actionData.revision_reason.trim()) {
+            alert('New amount and revision reason are required');
+            return;
+          }
+          endpoint = `/api/budget-requests/${selectedRequest.id}/revise`;
+          body = {
+            new_amount: parseFloat(actionData.new_amount),
+            revision_reason: actionData.revision_reason
+          };
+          break;
       }
 
       const response = await authFetch(endpoint, {
@@ -180,7 +198,7 @@ const FinanceBudgetReview: React.FC = () => {
         throw new Error(errorData.error || 'Action failed');
       }
 
-      alert(`Budget request ${actionType}d successfully!`);
+      alert(`Budget request ${actionType === 'revise' ? 'revised' : actionType + 'd'} successfully!`);
       closeActionModal();
       fetchRequests();
     } catch (error) {
@@ -380,6 +398,16 @@ const FinanceBudgetReview: React.FC = () => {
                     </button>
                   </>
                 )}
+
+                {/* Revise button for approved requests */}
+                {request.status === 'approved' && (
+                  <button
+                    onClick={() => openActionModal(request, 'revise')}
+                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm flex items-center gap-2"
+                  >
+                    <span>✏️</span> Revise Budget
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -397,6 +425,7 @@ const FinanceBudgetReview: React.FC = () => {
                   {actionType === 'reject' && 'Reject Budget Request'}
                   {actionType === 'return' && 'Return for Amendment'}
                   {actionType === 'edit' && 'Edit Budget Request'}
+                  {actionType === 'revise' && 'Revise Approved Budget'}
                 </h2>
                 <button
                   onClick={closeActionModal}
@@ -521,6 +550,45 @@ const FinanceBudgetReview: React.FC = () => {
                     </div>
                   </>
                 )}
+
+                {actionType === 'revise' && (
+                  <>
+                    <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm text-blue-900">
+                        <strong>Current Approved Amount:</strong> {formatCurrency(selectedRequest.approved_amount || 0)}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        New Approved Amount (KES) *
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        required
+                        value={actionData.new_amount}
+                        onChange={(e) => setActionData({ ...actionData, new_amount: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        You can increase or decrease the approved budget
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Revision Reason *
+                      </label>
+                      <textarea
+                        rows={3}
+                        required
+                        value={actionData.revision_reason}
+                        onChange={(e) => setActionData({ ...actionData, revision_reason: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                        placeholder="Explain why you're revising this approved budget..."
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
@@ -536,6 +604,7 @@ const FinanceBudgetReview: React.FC = () => {
                     actionType === 'approve' ? 'bg-green-600 hover:bg-green-700' :
                     actionType === 'reject' ? 'bg-red-600 hover:bg-red-700' :
                     actionType === 'return' ? 'bg-yellow-600 hover:bg-yellow-700' :
+                    actionType === 'revise' ? 'bg-orange-600 hover:bg-orange-700' :
                     'bg-blue-600 hover:bg-blue-700'
                   }`}
                 >
@@ -543,6 +612,7 @@ const FinanceBudgetReview: React.FC = () => {
                   {actionType === 'reject' && 'Reject Request'}
                   {actionType === 'return' && 'Return Request'}
                   {actionType === 'edit' && 'Update Request'}
+                  {actionType === 'revise' && 'Revise Budget'}
                 </button>
               </div>
             </div>

@@ -7,6 +7,7 @@ import ActivityVerificationModal from './ActivityVerificationModal';
 import ActivityOutcomeModal from './ActivityOutcomeModal';
 import ActivityChecklist from './ActivityChecklist';
 import BudgetRequestForm from './BudgetRequestForm';
+import ActivityExpenditureTracking from './ActivityExpenditureTracking';
 import { authFetch } from '../config/api';
 
 interface Activity {
@@ -79,6 +80,7 @@ const Activities: React.FC = () => {
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [showOutcomeModal, setShowOutcomeModal] = useState(false);
   const [showBudgetRequestModal, setShowBudgetRequestModal] = useState(false);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
 
   // Checklist visibility
@@ -256,6 +258,12 @@ const Activities: React.FC = () => {
   const handleOpenBudgetRequest = (activity: Activity) => {
     setSelectedActivity(activity);
     setShowBudgetRequestModal(true);
+    setOpenDropdownId(null);
+  };
+
+  const handleOpenExpense = (activity: Activity) => {
+    setSelectedActivity(activity);
+    setShowExpenseModal(true);
     setOpenDropdownId(null);
   };
 
@@ -611,6 +619,13 @@ const Activities: React.FC = () => {
                               <span className="font-medium">Request Budget</span>
                             </button>
                             <button
+                              onClick={() => handleOpenExpense(activity)}
+                              className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors flex items-center gap-3"
+                            >
+                              <span className="text-xl">💵</span>
+                              <span className="font-medium">Record Expense</span>
+                            </button>
+                            <button
                               onClick={() => {
                                 toggleChecklist(activity.id);
                                 setOpenDropdownId(null);
@@ -881,6 +896,12 @@ const Activities: React.FC = () => {
                                       <span>💰</span> Request Budget
                                     </button>
                                     <button
+                                      onClick={() => handleOpenExpense(activity)}
+                                      className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center gap-2 text-sm"
+                                    >
+                                      <span>💵</span> Record Expense
+                                    </button>
+                                    <button
                                       onClick={() => {
                                         toggleChecklist(activity.id);
                                         setOpenDropdownId(null);
@@ -972,6 +993,7 @@ const Activities: React.FC = () => {
           {showBudgetRequestModal && (
             <BudgetRequestForm
               activityId={selectedActivity.id}
+              activityName={selectedActivity.name}
               onClose={() => {
                 setShowBudgetRequestModal(false);
                 setSelectedActivity(null);
@@ -982,6 +1004,32 @@ const Activities: React.FC = () => {
                 fetchData(); // Refresh activities after budget request
               }}
             />
+          )}
+
+          {showExpenseModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center p-4 border-b sticky top-0 bg-white">
+                  <h2 className="text-xl font-bold">Expenditure Tracking</h2>
+                  <button
+                    onClick={() => {
+                      setShowExpenseModal(false);
+                      setSelectedActivity(null);
+                    }}
+                    className="text-gray-400 hover:text-gray-600 text-2xl"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="p-4">
+                  <ActivityExpenditureTracking
+                    activityId={selectedActivity.id}
+                    activityName={selectedActivity.name}
+                    approvedBudget={selectedActivity.budget_allocated || 0}
+                  />
+                </div>
+              </div>
+            </div>
           )}
         </>
       )}
