@@ -462,6 +462,13 @@ async function initializeServices() {
             console.log('✅ Budget Requests routes registered at /api/budget-requests');
             logger.info('✅ Budget Requests routes registered');
 
+            // ==================== LOCATIONS MODULE ====================
+            console.log('\n📍 Registering Locations routes...');
+            const locationsRouter = require('./routes/locations.routes')(dbManager);
+            app.use('/api/locations', authMW(authSvc), locationsRouter);
+            console.log('✅ Locations routes registered at /api/locations');
+            logger.info('✅ Locations routes registered');
+
             // ==================== RESOURCE MANAGEMENT MODULE ====================
             console.log('\n🏗️  Registering Resource Management routes...');
             const resourcesRouter = require('./routes/resources.routes')(dbManager);
