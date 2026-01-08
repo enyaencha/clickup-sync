@@ -3,7 +3,14 @@ import { authFetch } from '../config/api';
 
 interface BudgetRequestFormProps {
   activityId: number;
-  activityName: string;
+  activityName?: string;
+  editingRequest?: {
+    id: number;
+    requested_amount: number;
+    justification: string;
+    breakdown: any;
+    priority: string;
+  };
   onSuccess: () => void;
   onClose: () => void;
 }
@@ -15,21 +22,26 @@ interface BudgetBreakdown {
 const BudgetRequestForm: React.FC<BudgetRequestFormProps> = ({
   activityId,
   activityName,
+  editingRequest,
   onSuccess,
   onClose
 }) => {
   const [formData, setFormData] = useState({
-    requested_amount: '',
-    justification: '',
-    priority: 'medium'
+    requested_amount: editingRequest?.requested_amount.toString() || '',
+    justification: editingRequest?.justification || '',
+    priority: editingRequest?.priority || 'medium'
   });
-  const [breakdown, setBreakdown] = useState<BudgetBreakdown>({
-    'Materials': 0,
-    'Personnel': 0,
-    'Venue': 0,
-    'Transport': 0,
-    'Other': 0
-  });
+  const [breakdown, setBreakdown] = useState<BudgetBreakdown>(
+    editingRequest?.breakdown && Object.keys(editingRequest.breakdown).length > 0
+      ? editingRequest.breakdown
+      : {
+          'Materials': 0,
+          'Personnel': 0,
+          'Venue': 0,
+          'Transport': 0,
+          'Other': 0
+        }
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -85,24 +97,50 @@ const BudgetRequestForm: React.FC<BudgetRequestFormProps> = ({
     setLoading(true);
 
     try {
-      const response = await authFetch('/api/budget-requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          activity_id: activityId,
-          requested_amount: requestedAmount,
-          justification: formData.justification,
-          breakdown: breakdown,
-          priority: formData.priority
-        })
-      });
+      let response;
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit budget request');
+      if (editingRequest) {
+        // Update existing request and change status back to submitted
+        response = await authFetch(`/api/budget-requests/${editingRequest.id}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: 'submitted',
+            requested_amount: requestedAmount,
+            justification: formData.justification,
+            breakdown: breakdown,
+            priority: formData.priority
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to update budget request');
+        }
+
+        alert('Budget request resubmitted successfully!');
+      } else {
+        // Create new request
+        response = await authFetch('/api/budget-requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            activity_id: activityId,
+            requested_amount: requestedAmount,
+            justification: formData.justification,
+            breakdown: breakdown,
+            priority: formData.priority
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to submit budget request');
+        }
+
+        alert('Budget request submitted successfully!');
       }
 
-      alert('Budget request submitted successfully!');
       onSuccess();
       onClose();
     } catch (err) {
@@ -118,8 +156,10 @@ const BudgetRequestForm: React.FC<BudgetRequestFormProps> = ({
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Request Budget</h2>
-              <p className="text-sm text-gray-600 mt-1">For: {activityName}</p>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {editingRequest ? 'Edit Budget Request' : 'Request Budget'}
+              </h2>
+              {activityName && <p className="text-sm text-gray-600 mt-1">For: {activityName}</p>}
             </div>
             <button
               onClick={onClose}
@@ -257,7 +297,10 @@ const BudgetRequestForm: React.FC<BudgetRequestFormProps> = ({
                 disabled={loading}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Submitting...' : 'Submit Request'}
+                {loading
+                  ? (editingRequest ? 'Resubmitting...' : 'Submitting...')
+                  : (editingRequest ? 'Resubmit Request' : 'Submit Request')
+                }
               </button>
             </div>
           </form>

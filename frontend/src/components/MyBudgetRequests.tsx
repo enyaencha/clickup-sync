@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
-import BudgetRequestConversation from './BudgetRequestConversation';
+import ConversationSidePanel from './ConversationSidePanel';
+import BudgetRequestForm from './BudgetRequestForm';
 
 interface BudgetRequest {
   id: number;
@@ -29,7 +30,8 @@ const MyBudgetRequests: React.FC = () => {
   const [requests, setRequests] = useState<BudgetRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState<BudgetRequest | null>(null);
-  const [showConversationModal, setShowConversationModal] = useState(false);
+  const [showConversationPanel, setShowConversationPanel] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
     fetchMyRequests();
@@ -53,12 +55,27 @@ const MyBudgetRequests: React.FC = () => {
 
   const openConversation = (request: BudgetRequest) => {
     setSelectedRequest(request);
-    setShowConversationModal(true);
+    setShowConversationPanel(true);
   };
 
   const closeConversation = () => {
-    setShowConversationModal(false);
+    setShowConversationPanel(false);
     setSelectedRequest(null);
+  };
+
+  const openEditRequest = (request: BudgetRequest) => {
+    setSelectedRequest(request);
+    setShowEditModal(true);
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setSelectedRequest(null);
+  };
+
+  const handleEditSuccess = () => {
+    closeEditModal();
+    fetchMyRequests(); // Refresh the list
   };
 
   const getStatusColor = (status: string) => {
@@ -250,11 +267,23 @@ const MyBudgetRequests: React.FC = () => {
                 </div>
               )}
 
-              {/* Action Button */}
+              {/* Action Buttons */}
               <div className="flex gap-2 pt-4 border-t">
+                {/* Edit/Resubmit for returned requests */}
+                {request.status === 'returned_for_amendment' && (
+                  <button
+                    onClick={() => openEditRequest(request)}
+                    className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium flex items-center justify-center gap-2"
+                  >
+                    <span>✏️</span>
+                    Edit & Resubmit
+                  </button>
+                )}
+
+                {/* Conversation button */}
                 <button
                   onClick={() => openConversation(request)}
-                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium flex items-center justify-center gap-2"
+                  className={`${request.status === 'returned_for_amendment' ? 'flex-1' : 'flex-1'} px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium flex items-center justify-center gap-2`}
                 >
                   <span>💬</span>
                   {request.status === 'returned_for_amendment'
@@ -267,28 +296,58 @@ const MyBudgetRequests: React.FC = () => {
         </div>
       )}
 
-      {/* Conversation Modal */}
-      {showConversationModal && selectedRequest && user && (
+      {/* Conversation Side Panel */}
+      {user && (
+        <ConversationSidePanel
+          isOpen={showConversationPanel}
+          onClose={closeConversation}
+          budgetRequestId={selectedRequest?.id || null}
+          activityName={selectedRequest?.activity_name || ''}
+          currentUserId={user.id}
+          isFinanceTeam={false}
+        />
+      )}
+
+      {/* Edit Budget Request Modal */}
+      {showEditModal && selectedRequest && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Budget Request Discussion</h2>
-                <p className="text-sm text-gray-600">Request #{selectedRequest.request_number}</p>
-              </div>
-              <button
-                onClick={closeConversation}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
-              >
-                ×
-              </button>
-            </div>
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <BudgetRequestConversation
-                budgetRequestId={selectedRequest.id}
-                activityName={selectedRequest.activity_name}
-                currentUserId={user.id}
-                isFinanceTeam={false}
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Edit & Resubmit Budget Request</h2>
+                  <p className="text-sm text-gray-600 mt-1">Request #{selectedRequest.request_number}</p>
+                </div>
+                <button
+                  onClick={closeEditModal}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Show amendment notes */}
+              {selectedRequest.amendment_notes && (
+                <div className="mb-6 bg-orange-50 border-l-4 border-orange-500 p-4">
+                  <p className="text-sm font-semibold text-orange-900 mb-1">
+                    Finance Team Feedback:
+                  </p>
+                  <p className="text-sm text-orange-800">{selectedRequest.amendment_notes}</p>
+                </div>
+              )}
+
+              {/* Use BudgetRequestForm in edit mode */}
+              <BudgetRequestForm
+                activityId={selectedRequest.activity_id}
+                editingRequest={{
+                  id: selectedRequest.id,
+                  requested_amount: selectedRequest.requested_amount,
+                  justification: selectedRequest.justification,
+                  breakdown: selectedRequest.breakdown,
+                  priority: selectedRequest.priority
+                }}
+                onClose={closeEditModal}
+                onSuccess={handleEditSuccess}
               />
             </div>
           </div>

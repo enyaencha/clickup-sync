@@ -638,12 +638,12 @@ module.exports = (db) => {
 
     /**
      * PUT /api/budget-requests/:id/status
-     * Change the status of a budget request (for under_review management)
+     * Change the status of a budget request (for under_review management and resubmission)
      */
     router.put('/:id/status', async (req, res) => {
         try {
             const { id } = req.params;
-            const { status, notes } = req.body;
+            const { status, notes, requested_amount, justification, breakdown, priority } = req.body;
 
             const validStatuses = ['draft', 'submitted', 'under_review', 'approved', 'rejected', 'returned_for_amendment'];
 
@@ -656,6 +656,28 @@ module.exports = (db) => {
 
             let query = `UPDATE activity_budget_requests SET status = ?`;
             const params = [status];
+
+            // Allow updating request details when resubmitting (status = submitted)
+            if (status === 'submitted') {
+                if (requested_amount !== undefined) {
+                    query += `, requested_amount = ?`;
+                    params.push(requested_amount);
+                }
+                if (justification !== undefined) {
+                    query += `, justification = ?`;
+                    params.push(justification);
+                }
+                if (breakdown !== undefined) {
+                    query += `, breakdown = ?`;
+                    params.push(JSON.stringify(breakdown));
+                }
+                if (priority !== undefined) {
+                    query += `, priority = ?`;
+                    params.push(priority);
+                }
+                // Clear amendment notes and reset review fields when resubmitting
+                query += `, amendment_notes = NULL, rejection_reason = NULL, reviewed_by = NULL, reviewed_at = NULL, submitted_at = NOW()`;
+            }
 
             if (notes) {
                 query += `, finance_notes = ?`;
