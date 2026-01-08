@@ -466,6 +466,8 @@ module.exports = (db) => {
         try {
             const { id } = req.params;
 
+            // Simplified query without modules table dependency
+            // is_finance_team will be determined on frontend based on user context
             const query = `
                 SELECT
                     c.id,
@@ -473,16 +475,7 @@ module.exports = (db) => {
                     c.created_at,
                     c.created_by as created_by_id,
                     u.full_name as created_by_name,
-                    CASE
-                        WHEN EXISTS (
-                            SELECT 1 FROM user_module_assignments uma
-                            JOIN modules m ON uma.module_id = m.id
-                            WHERE uma.user_id = c.created_by
-                            AND m.name = 'Finance Management'
-                            AND uma.has_access = 1
-                        ) THEN 1
-                        ELSE 0
-                    END as is_finance_team
+                    0 as is_finance_team
                 FROM comments c
                 LEFT JOIN users u ON c.created_by = u.id
                 WHERE c.entity_type = 'budget_request'
