@@ -137,6 +137,30 @@ module.exports = (db) => {
                 finance_notes
             } = req.body;
 
+            // Get request details including requestor and activity info
+            const requestQuery = `
+                SELECT
+                    abr.activity_id,
+                    abr.approved_amount as previous_amount,
+                    abr.requested_by,
+                    abr.request_number,
+                    a.name as activity_name,
+                    a.project_id,
+                    p.program_id
+                FROM activity_budget_requests abr
+                LEFT JOIN activities a ON abr.activity_id = a.id
+                LEFT JOIN projects p ON a.project_id = p.id
+                WHERE abr.id = ?
+            `;
+            const [request] = await db.query(requestQuery, [id]);
+
+            if (!request) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Budget request not found'
+                });
+            }
+
             // Update request status
             const updateQuery = `
                 UPDATE activity_budget_requests
@@ -156,35 +180,65 @@ module.exports = (db) => {
                 id
             ]);
 
-            // Get request details
-            const requestQuery = `SELECT activity_id, approved_amount FROM activity_budget_requests WHERE id = ?`;
-            const [request] = await db.query(requestQuery, [id]);
+            // Update activity budget
+            const budgetQuery = `
+                INSERT INTO activity_budgets (
+                    activity_id,
+                    allocated_budget,
+                    approved_budget,
+                    budget_source,
+                    last_allocation_date,
+                    last_updated_by
+                ) VALUES (?, ?, ?, 'request', CURDATE(), ?)
+                ON DUPLICATE KEY UPDATE
+                    approved_budget = approved_budget + VALUES(approved_budget),
+                    allocated_budget = allocated_budget + VALUES(allocated_budget),
+                    last_allocation_date = VALUES(last_allocation_date),
+                    last_updated_by = VALUES(last_updated_by)
+            `;
 
-            if (request) {
-                // Update activity budget
-                const budgetQuery = `
-                    INSERT INTO activity_budgets (
-                        activity_id,
-                        allocated_budget,
-                        approved_budget,
-                        budget_source,
-                        last_allocation_date,
-                        last_updated_by
-                    ) VALUES (?, ?, ?, 'request', CURDATE(), ?)
-                    ON DUPLICATE KEY UPDATE
-                        approved_budget = approved_budget + VALUES(approved_budget),
-                        allocated_budget = allocated_budget + VALUES(allocated_budget),
-                        last_allocation_date = VALUES(last_allocation_date),
-                        last_updated_by = VALUES(last_updated_by)
+            await db.query(budgetQuery, [
+                request.activity_id,
+                approved_amount,
+                approved_amount,
+                req.user.id
+            ]);
+
+            // Deduct from program budget if program_id exists
+            if (request.program_id) {
+                const deductQuery = `
+                    UPDATE program_budgets
+                    SET allocated_budget = allocated_budget + ?
+                    WHERE program_module_id = ?
+                    AND status = 'active'
+                    AND budget_start_date <= CURDATE()
+                    AND budget_end_date >= CURDATE()
+                    ORDER BY id DESC
+                    LIMIT 1
                 `;
-
-                await db.query(budgetQuery, [
-                    request.activity_id,
-                    approved_amount,
-                    approved_amount,
-                    req.user.id
-                ]);
+                await db.query(deductQuery, [approved_amount, request.program_id]);
             }
+
+            // Create notification for the requestor
+            const notificationQuery = `
+                INSERT INTO notifications (
+                    user_id,
+                    type,
+                    title,
+                    message,
+                    entity_type,
+                    entity_id,
+                    action_url
+                ) VALUES (?, 'budget_approved', ?, ?, 'budget_request', ?, ?)
+            `;
+
+            await db.query(notificationQuery, [
+                request.requested_by,
+                'Budget Request Approved',
+                `Your budget request #${request.request_number} for "${request.activity_name}" has been approved with an amount of KES ${approved_amount.toLocaleString()}${finance_notes ? '. Finance notes: ' + finance_notes : '.'}`,
+                id,
+                `/my-budget-requests`
+            ]);
 
             res.json({
                 success: true,
@@ -703,6 +757,352 @@ module.exports = (db) => {
             res.status(500).json({
                 success: false,
                 error: 'Failed to update status'
+            });
+        }
+    });
+
+    // ==================== BUDGET REVISION ====================
+
+    /**
+     * PUT /api/budget-requests/:id/revise
+     * Revise an approved budget (finance team only)
+     */
+    router.put('/:id/revise', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { new_amount, revision_reason } = req.body;
+
+            if (!new_amount || !revision_reason) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'New amount and revision reason are required'
+                });
+            }
+
+            // Get current budget request
+            const requestQuery = `
+                SELECT
+                    abr.approved_amount as previous_amount,
+                    abr.activity_id,
+                    abr.requested_by,
+                    abr.request_number,
+                    a.name as activity_name,
+                    a.project_id,
+                    p.program_id
+                FROM activity_budget_requests abr
+                LEFT JOIN activities a ON abr.activity_id = a.id
+                LEFT JOIN projects p ON a.project_id = p.id
+                WHERE abr.id = ? AND abr.status = 'approved'
+            `;
+            const [request] = await db.query(requestQuery, [id]);
+
+            if (!request) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Approved budget request not found'
+                });
+            }
+
+            const difference = new_amount - request.previous_amount;
+
+            // Record revision history
+            const historyQuery = `
+                INSERT INTO budget_revision_history (
+                    budget_request_id,
+                    previous_amount,
+                    new_amount,
+                    revision_reason,
+                    revised_by
+                ) VALUES (?, ?, ?, ?, ?)
+            `;
+            await db.query(historyQuery, [id, request.previous_amount, new_amount, revision_reason, req.user.id]);
+
+            // Update budget request
+            const updateQuery = `
+                UPDATE activity_budget_requests
+                SET approved_amount = ?, finance_notes = CONCAT(COALESCE(finance_notes, ''), '\n\nREVISION: ', ?)
+                WHERE id = ?
+            `;
+            await db.query(updateQuery, [new_amount, revision_reason, id]);
+
+            // Update activity budget
+            const budgetQuery = `
+                UPDATE activity_budgets
+                SET
+                    approved_budget = approved_budget + ?,
+                    allocated_budget = allocated_budget + ?,
+                    last_allocation_date = CURDATE(),
+                    last_updated_by = ?
+                WHERE activity_id = ?
+            `;
+            await db.query(budgetQuery, [difference, difference, req.user.id, request.activity_id]);
+
+            // Update program budget
+            if (request.program_id) {
+                const programQuery = `
+                    UPDATE program_budgets
+                    SET allocated_budget = allocated_budget + ?
+                    WHERE program_module_id = ?
+                    AND status = 'active'
+                    AND budget_start_date <= CURDATE()
+                    AND budget_end_date >= CURDATE()
+                    ORDER BY id DESC
+                    LIMIT 1
+                `;
+                await db.query(programQuery, [difference, request.program_id]);
+            }
+
+            // Notify the requestor
+            const notificationQuery = `
+                INSERT INTO notifications (
+                    user_id,
+                    type,
+                    title,
+                    message,
+                    entity_type,
+                    entity_id,
+                    action_url
+                ) VALUES (?, 'budget_revised', ?, ?, 'budget_request', ?, ?)
+            `;
+            await db.query(notificationQuery, [
+                request.requested_by,
+                'Budget Revised',
+                `Your approved budget #${request.request_number} for "${request.activity_name}" has been revised from KES ${request.previous_amount.toLocaleString()} to KES ${new_amount.toLocaleString()}. Reason: ${revision_reason}`,
+                id,
+                `/my-budget-requests`
+            ]);
+
+            res.json({
+                success: true,
+                message: 'Budget revised successfully',
+                data: {
+                    previous_amount: request.previous_amount,
+                    new_amount,
+                    difference
+                }
+            });
+        } catch (error) {
+            console.error('Error revising budget:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to revise budget'
+            });
+        }
+    });
+
+    // ==================== EXPENDITURE TRACKING ====================
+
+    /**
+     * GET /api/budget-requests/activity/:activityId/expenditures
+     * Get all expenditures for an activity
+     */
+    router.get('/activity/:activityId/expenditures', async (req, res) => {
+        try {
+            const { activityId } = req.params;
+
+            const query = `
+                SELECT
+                    ae.*,
+                    u1.full_name as submitted_by_name,
+                    u2.full_name as approved_by_name,
+                    abr.request_number
+                FROM activity_expenditures ae
+                LEFT JOIN users u1 ON ae.submitted_by = u1.id
+                LEFT JOIN users u2 ON ae.approved_by = u2.id
+                LEFT JOIN activity_budget_requests abr ON ae.budget_request_id = abr.id
+                WHERE ae.activity_id = ?
+                AND ae.deleted_at IS NULL
+                ORDER BY ae.expense_date DESC, ae.created_at DESC
+            `;
+
+            const expenditures = await db.query(query, [activityId]);
+
+            res.json({
+                success: true,
+                data: expenditures || []
+            });
+        } catch (error) {
+            console.error('Error fetching expenditures:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch expenditures'
+            });
+        }
+    });
+
+    /**
+     * POST /api/budget-requests/expenditures
+     * Create new expenditure record
+     */
+    router.post('/expenditures', async (req, res) => {
+        try {
+            const {
+                activity_id,
+                budget_request_id,
+                expense_date,
+                expense_category,
+                description,
+                amount,
+                receipt_number,
+                vendor_name,
+                payment_method,
+                notes
+            } = req.body;
+
+            const query = `
+                INSERT INTO activity_expenditures (
+                    activity_id,
+                    budget_request_id,
+                    expense_date,
+                    expense_category,
+                    description,
+                    amount,
+                    receipt_number,
+                    vendor_name,
+                    payment_method,
+                    notes,
+                    submitted_by
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+
+            const result = await db.query(query, [
+                activity_id,
+                budget_request_id || null,
+                expense_date,
+                expense_category,
+                description,
+                amount,
+                receipt_number || null,
+                vendor_name || null,
+                payment_method || 'cash',
+                notes || null,
+                req.user.id
+            ]);
+
+            // Update activity budget spent amount
+            const updateBudgetQuery = `
+                UPDATE activity_budgets
+                SET spent_budget = spent_budget + ?
+                WHERE activity_id = ?
+            `;
+            await db.query(updateBudgetQuery, [amount, activity_id]);
+
+            res.status(201).json({
+                success: true,
+                data: {
+                    id: result.insertId
+                },
+                message: 'Expenditure recorded successfully'
+            });
+        } catch (error) {
+            console.error('Error creating expenditure:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to record expenditure'
+            });
+        }
+    });
+
+    /**
+     * PUT /api/budget-requests/expenditures/:id/approve
+     * Approve an expenditure
+     */
+    router.put('/expenditures/:id/approve', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { notes } = req.body;
+
+            const query = `
+                UPDATE activity_expenditures
+                SET
+                    status = 'approved',
+                    approved_by = ?,
+                    approved_at = NOW(),
+                    notes = CONCAT(COALESCE(notes, ''), '\n\nAPPROVAL NOTE: ', ?)
+                WHERE id = ? AND deleted_at IS NULL
+            `;
+
+            await db.query(query, [req.user.id, notes || 'Approved', id]);
+
+            res.json({
+                success: true,
+                message: 'Expenditure approved successfully'
+            });
+        } catch (error) {
+            console.error('Error approving expenditure:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to approve expenditure'
+            });
+        }
+    });
+
+    // ==================== USER NOTIFICATIONS ====================
+
+    /**
+     * GET /api/budget-requests/user/notifications
+     * Get notifications for current user
+     */
+    router.get('/user/notifications', async (req, res) => {
+        try {
+            const userId = req.user.id;
+            const { unread_only } = req.query;
+
+            let query = `
+                SELECT *
+                FROM notifications
+                WHERE user_id = ?
+                AND deleted_at IS NULL
+            `;
+
+            const params = [userId];
+
+            if (unread_only === 'true') {
+                query += ` AND is_read = 0`;
+            }
+
+            query += ` ORDER BY created_at DESC LIMIT 50`;
+
+            const notifications = await db.query(query, params);
+
+            res.json({
+                success: true,
+                data: notifications || []
+            });
+        } catch (error) {
+            console.error('Error fetching user notifications:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch notifications'
+            });
+        }
+    });
+
+    /**
+     * PUT /api/budget-requests/notifications/:id/read
+     * Mark notification as read
+     */
+    router.put('/notifications/:id/read', async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            const query = `
+                UPDATE notifications
+                SET is_read = 1, read_at = NOW()
+                WHERE id = ? AND user_id = ?
+            `;
+
+            await db.query(query, [id, req.user.id]);
+
+            res.json({
+                success: true,
+                message: 'Notification marked as read'
+            });
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to mark notification as read'
             });
         }
     });
