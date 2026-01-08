@@ -6,6 +6,7 @@ import ActivityObjectivesModal from './ActivityObjectivesModal';
 import ActivityVerificationModal from './ActivityVerificationModal';
 import ActivityOutcomeModal from './ActivityOutcomeModal';
 import ActivityChecklist from './ActivityChecklist';
+import BudgetRequestForm from './BudgetRequestForm';
 import { authFetch } from '../config/api';
 
 interface Activity {
@@ -77,6 +78,7 @@ const Activities: React.FC = () => {
   const [showObjectivesModal, setShowObjectivesModal] = useState(false);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [showOutcomeModal, setShowOutcomeModal] = useState(false);
+  const [showBudgetRequestModal, setShowBudgetRequestModal] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
 
   // Checklist visibility
@@ -248,6 +250,12 @@ const Activities: React.FC = () => {
   const handleOpenOutcome = (activity: Activity) => {
     setSelectedActivity(activity);
     setShowOutcomeModal(true);
+    setOpenDropdownId(null);
+  };
+
+  const handleOpenBudgetRequest = (activity: Activity) => {
+    setSelectedActivity(activity);
+    setShowBudgetRequestModal(true);
     setOpenDropdownId(null);
   };
 
@@ -596,6 +604,13 @@ const Activities: React.FC = () => {
                               <span className="font-medium">Record Outcome</span>
                             </button>
                             <button
+                              onClick={() => handleOpenBudgetRequest(activity)}
+                              className="w-full px-4 py-3 text-left hover:bg-indigo-50 transition-colors flex items-center gap-3"
+                            >
+                              <span className="text-xl">💰</span>
+                              <span className="font-medium">Request Budget</span>
+                            </button>
+                            <button
                               onClick={() => {
                                 toggleChecklist(activity.id);
                                 setOpenDropdownId(null);
@@ -860,6 +875,12 @@ const Activities: React.FC = () => {
                                       <span>📊</span> Record Outcome
                                     </button>
                                     <button
+                                      onClick={() => handleOpenBudgetRequest(activity)}
+                                      className="w-full px-4 py-2.5 text-left hover:bg-indigo-50 transition-colors flex items-center gap-2 text-sm"
+                                    >
+                                      <span>💰</span> Request Budget
+                                    </button>
+                                    <button
                                       onClick={() => {
                                         toggleChecklist(activity.id);
                                         setOpenDropdownId(null);
@@ -947,6 +968,21 @@ const Activities: React.FC = () => {
             activityId={selectedActivity.id}
             activityName={selectedActivity.name}
           />
+
+          {showBudgetRequestModal && (
+            <BudgetRequestForm
+              activityId={selectedActivity.id}
+              onClose={() => {
+                setShowBudgetRequestModal(false);
+                setSelectedActivity(null);
+              }}
+              onSuccess={() => {
+                setShowBudgetRequestModal(false);
+                setSelectedActivity(null);
+                fetchData(); // Refresh activities after budget request
+              }}
+            />
+          )}
         </>
       )}
     </div>
