@@ -456,5 +456,143 @@ module.exports = (db) => {
         }
     });
 
+    // ==================== COMMENTS / CONVERSATION ====================
+
+    /**
+     * GET /api/budget-requests/:id/comments
+     * Get all comments for a budget request
+     */
+    router.get('/:id/comments', async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            const query = `
+                SELECT
+                    c.id,
+                    c.comment_text,
+                    c.created_at,
+                    c.created_by as created_by_id,
+                    u.full_name as created_by_name,
+                    (SELECT COUNT(*) FROM user_module_assignments uma
+                     JOIN modules m ON uma.module_id = m.id
+                     WHERE uma.user_id = c.created_by
+                     AND m.name = 'Finance Management'
+                     AND uma.has_access = 1) > 0 as is_finance_team
+                FROM comments c
+                LEFT JOIN users u ON c.created_by = u.id
+                WHERE c.entity_type = 'budget_request'
+                AND c.entity_id = ?
+                AND c.deleted_at IS NULL
+                ORDER BY c.created_at ASC
+            `;
+
+            const comments = await db.query(query, [id]);
+
+            res.json({
+                success: true,
+                data: comments
+            });
+        } catch (error) {
+            console.error('Error fetching comments:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch comments'
+            });
+        }
+    });
+
+    /**
+     * POST /api/budget-requests/:id/comments
+     * Add a comment to a budget request
+     */
+    router.post('/:id/comments', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { comment_text } = req.body;
+
+            if (!comment_text || !comment_text.trim()) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Comment text is required'
+                });
+            }
+
+            const query = `
+                INSERT INTO comments (
+                    entity_type,
+                    entity_id,
+                    comment_text,
+                    created_by,
+                    created_at
+                ) VALUES ('budget_request', ?, ?, ?, NOW())
+            `;
+
+            const result = await db.query(query, [id, comment_text, req.user.id]);
+
+            res.json({
+                success: true,
+                data: {
+                    id: result.insertId,
+                    message: 'Comment added successfully'
+                }
+            });
+        } catch (error) {
+            console.error('Error adding comment:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to add comment'
+            });
+        }
+    });
+
+    /**
+     * PUT /api/budget-requests/:id/status
+     * Change the status of a budget request (for under_review management)
+     */
+    router.put('/:id/status', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { status, notes } = req.body;
+
+            const validStatuses = ['draft', 'submitted', 'under_review', 'approved', 'rejected', 'returned_for_amendment'];
+
+            if (!validStatuses.includes(status)) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Invalid status'
+                });
+            }
+
+            let query = `UPDATE activity_budget_requests SET status = ?`;
+            const params = [status];
+
+            if (notes) {
+                query += `, finance_notes = ?`;
+                params.push(notes);
+            }
+
+            if (status !== 'under_review' && status !== 'submitted') {
+                query += `, reviewed_by = ?, reviewed_at = NOW()`;
+                params.push(req.user.id);
+            }
+
+            query += ` WHERE id = ?`;
+            params.push(id);
+
+            await db.query(query, params);
+
+            res.json({
+                success: true,
+                message: `Status updated to ${status}`
+            });
+        } catch (error) {
+            console.error('Error updating status:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to update status'
+            });
+        }
+    });
+
     return router;
 };

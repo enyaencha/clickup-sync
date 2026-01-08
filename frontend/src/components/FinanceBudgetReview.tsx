@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
+import { useAuth } from '../contexts/AuthContext';
+import BudgetRequestConversation from './BudgetRequestConversation';
 
 interface BudgetRequest {
   id: number;
@@ -23,11 +25,13 @@ interface BudgetRequest {
 }
 
 const FinanceBudgetReview: React.FC = () => {
+  const { user } = useAuth();
   const [requests, setRequests] = useState<BudgetRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('submitted');
   const [selectedRequest, setSelectedRequest] = useState<BudgetRequest | null>(null);
   const [showActionModal, setShowActionModal] = useState(false);
+  const [showConversationModal, setShowConversationModal] = useState(false);
   const [actionType, setActionType] = useState<'approve' | 'reject' | 'return' | 'edit'>('approve');
   const [actionData, setActionData] = useState({
     approved_amount: '',
@@ -82,6 +86,39 @@ const FinanceBudgetReview: React.FC = () => {
       requested_amount: '',
       justification: ''
     });
+  };
+
+  const openConversation = (request: BudgetRequest) => {
+    setSelectedRequest(request);
+    setShowConversationModal(true);
+  };
+
+  const closeConversation = () => {
+    setShowConversationModal(false);
+    setSelectedRequest(null);
+  };
+
+  const handleMarkAsUnderReview = async (requestId: number) => {
+    if (!confirm('Mark this request as under review?')) return;
+
+    try {
+      const response = await authFetch(`/api/budget-requests/${requestId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'under_review' })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update status');
+      }
+
+      alert('Request marked as under review');
+      fetchRequests();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert(error instanceof Error ? error.message : 'Failed to update status');
+    }
   };
 
   const handleAction = async () => {
@@ -295,34 +332,55 @@ const FinanceBudgetReview: React.FC = () => {
               )}
 
               {/* Actions */}
-              {request.status === 'submitted' && (
-                <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-2 flex-wrap">
+                {/* View Conversation - Always available */}
+                <button
+                  onClick={() => openConversation(request)}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm flex items-center gap-2"
+                >
+                  <span>💬</span> View Conversation
+                </button>
+
+                {/* Mark as Under Review - Only for submitted requests */}
+                {request.status === 'submitted' && (
                   <button
-                    onClick={() => openActionModal(request, 'approve')}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                    onClick={() => handleMarkAsUnderReview(request.id)}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
                   >
-                    Approve
+                    Mark Under Review
                   </button>
-                  <button
-                    onClick={() => openActionModal(request, 'edit')}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-                  >
-                    Edit Request
-                  </button>
-                  <button
-                    onClick={() => openActionModal(request, 'return')}
-                    className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 text-sm"
-                  >
-                    Return for Amendment
-                  </button>
-                  <button
-                    onClick={() => openActionModal(request, 'reject')}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
-                  >
-                    Reject
-                  </button>
-                </div>
-              )}
+                )}
+
+                {/* Action buttons for submitted or under_review */}
+                {(request.status === 'submitted' || request.status === 'under_review') && (
+                  <>
+                    <button
+                      onClick={() => openActionModal(request, 'approve')}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => openActionModal(request, 'edit')}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                    >
+                      Edit Request
+                    </button>
+                    <button
+                      onClick={() => openActionModal(request, 'return')}
+                      className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 text-sm"
+                    >
+                      Return for Amendment
+                    </button>
+                    <button
+                      onClick={() => openActionModal(request, 'reject')}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                    >
+                      Reject
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -487,6 +545,31 @@ const FinanceBudgetReview: React.FC = () => {
                   {actionType === 'edit' && 'Update Request'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Conversation Modal */}
+      {showConversationModal && selectedRequest && user && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-900">Budget Request Conversation</h2>
+              <button
+                onClick={closeConversation}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6">
+              <BudgetRequestConversation
+                budgetRequestId={selectedRequest.id}
+                activityName={selectedRequest.activity_name}
+                currentUserId={user.id}
+                isFinanceTeam={true}
+              />
             </div>
           </div>
         </div>
