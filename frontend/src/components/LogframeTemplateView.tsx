@@ -301,263 +301,218 @@ const LogframeTemplateView: React.FC = () => {
                 </div>
             </div>
 
-            {/* Logframe Table */}
-            <div className="overflow-x-auto">
-                <table className="min-w-full border-collapse border border-gray-300">
-                    <thead>
-                        <tr className="bg-blue-100">
-                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
-                                Strategic Objective
-                            </th>
-                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
-                                Intermediate Outcomes
-                            </th>
-                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
-                                Outputs
-                            </th>
-                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
-                                Key Activities
-                            </th>
-                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
-                                Indicators
-                            </th>
-                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
-                                Means of Verification
-                            </th>
-                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
-                                Timeframe
-                            </th>
-                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
-                                Responsibility
-                            </th>
-                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
-                                Status
-                            </th>
-                            <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700">
-                                Progress %
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {logframeData.subPrograms.flatMap((subProgram, spIdx) =>
-                            subProgram.components.flatMap((component, compIdx) => {
-                                const activities = component.activities.length > 0
-                                    ? component.activities
-                                    : [null]; // Show at least one row for component
+          {/* Logframe Table */}
+{/* <div className="overflow-x-auto">
+    <table className="min-w-full border-collapse border border-gray-300"> */}
+{/* Logframe Table */}
+<div className="overflow-auto border border-gray-300 rounded-lg" style={{ maxHeight: 'calc(100vh - 400px)' }}>
+    <table className="w-full border-collapse border border-gray-300" style={{ minWidth: '2000px' }}>
+        <thead className="sticky top-0 z-10">
+            <tr className="bg-blue-100">
+                <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700 bg-blue-100" style={{ minWidth: '250px' }}>
+                    Strategic Objective
+                </th>
+                <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700 bg-blue-100" style={{ minWidth: '250px' }}>
+                    Intermediate Outcomes
+                </th>
+                <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700 bg-blue-100" style={{ minWidth: '200px' }}>
+                    Output
+                </th>
+                <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700 bg-blue-100" style={{ minWidth: '250px' }}>
+                    Key Activities
+                </th>
+                <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700 bg-blue-100" style={{ minWidth: '200px' }}>
+                    Indicators
+                </th>
+                <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700 bg-blue-100" style={{ minWidth: '200px' }}>
+                    Means of Verification
+                </th>
+                <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700 bg-blue-100" style={{ minWidth: '120px' }}>
+                    Timeframe
+                </th>
+                <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700 bg-blue-100" style={{ minWidth: '150px' }}>
+                    Responsibility
+                </th>
+                <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700 bg-blue-100" style={{ minWidth: '120px' }}>
+                    Status
+                </th>
+                <th className="border border-gray-300 px-4 py-2 text-left font-bold text-gray-700 bg-blue-100" style={{ minWidth: '120px' }}>
+                    Progress %
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            {logframeData.subPrograms.flatMap((subProgram, spIdx) =>
+                subProgram.components.flatMap((component, compIdx) => {
+                    const activities = component.activities.length > 0
+                        ? component.activities
+                        : [null];
 
-                                // Calculate total activities before this component
-                                const activitiesBeforeComponent = subProgram.components
-                                    .slice(0, compIdx)
-                                    .reduce((sum, c) => sum + Math.max(c.activities.length, 1), 0);
+                    return activities.map((activity, actIdx) => {
+                        return (
+                            <tr key={`${spIdx}-${compIdx}-${actIdx}`} className="hover:bg-gray-50">
+                                {/* Strategic Objective */}
+                                <td className="border border-gray-300 px-4 py-2 align-top" style={{ minWidth: '250px' }}>
+                                    <div className="space-y-2">
+                                        <div className="font-medium text-gray-900 mb-3">
+                                            {logframeData.module.goal || 'Not set'}
+                                        </div>
 
-                                // Calculate total activities before this sub-program
-                                const activitiesBeforeSubProgram = logframeData.subPrograms
-                                    .slice(0, spIdx)
-                                    .reduce(
-                                        (sum, sp) =>
-                                            sum +
-                                            sp.components.reduce(
-                                                (csum, c) => csum + Math.max(c.activities.length, 1),
-                                                0
-                                            ),
-                                        0
-                                    );
-
-                                return activities.map((activity, actIdx) => {
-                                    const isFirstRowOfTable = spIdx === 0 && compIdx === 0 && actIdx === 0;
-                                    const isFirstRowOfSubProgram = compIdx === 0 && actIdx === 0;
-                                    const isFirstRowOfComponent = actIdx === 0;
-
-                                    // Debug: Count cells for this row
-                                    const cellCount =
-                                        (isFirstRowOfTable ? 1 : 0) +           // Strategic Objective
-                                        (isFirstRowOfSubProgram ? 1 : 0) +      // Intermediate Outcomes
-                                        (isFirstRowOfComponent ? 1 : 0) +       // Outputs
-                                        1 +                                      // Activity (always)
-                                        7;                                       // Status, Progress, Indicators, MOV, Timeframe, Responsibility
-
-                                    console.log(`Row ${spIdx}-${compIdx}-${actIdx}: ${cellCount} cells`, {
-                                        hasStrategic: isFirstRowOfTable,
-                                        hasIntermediate: isFirstRowOfSubProgram,
-                                        hasOutput: isFirstRowOfComponent,
-                                        output: component.output,
-                                        activityName: activity?.name
-                                    });
-
-                                    return (
-                                        <tr key={`${spIdx}-${compIdx}-${actIdx}`} className="hover:bg-gray-50">
-                                            {/* Strategic Objective - show only on first row of table */}
-                                            {isFirstRowOfTable && (
-                                                <td
-                                                    rowSpan={logframeData.subPrograms.reduce(
-                                                        (total, sp) =>
-                                                            total +
-                                                            sp.components.reduce(
-                                                                (ctotal, c) =>
-                                                                    ctotal + Math.max(c.activities.length, 1),
-                                                                0
-                                                            ),
-                                                        0
-                                                    )}
-                                                    className="border border-gray-300 px-4 py-2 align-top"
-                                                >
-                                                    {logframeData.module.goal || ''}
-                                                </td>
-                                            )}
-
-                                            {/* Intermediate Outcome - show only on first row of sub-program */}
-                                            {isFirstRowOfSubProgram && (
-                                                <td
-                                                    rowSpan={subProgram.components.reduce(
-                                                        (total, c) => total + Math.max(c.activities.length, 1),
-                                                        0
-                                                    )}
-                                                    className="border border-gray-300 px-4 py-2 align-top"
-                                                >
-                                                    {subProgram.outcome || ''}
-                                                </td>
-                                            )}
-
-                                            {/* Output - show only on first row of component */}
-                                            {isFirstRowOfComponent && (
-                                                <td
-                                                    rowSpan={Math.max(component.activities.length, 1)}
-                                                    className="border border-gray-300 px-4 py-2 align-top"
-                                                >
-                                                    {component.output || ''}
-                                                </td>
-                                            )}
-
-                                            {/* Activity */}
-                                            <td className="border border-gray-300 px-4 py-2">
-                                                {activity ? (
-                                                    <div className="space-y-2">
-                                                        <div className="font-medium text-gray-900">{activity.name}</div>
-
-                                                        {/* Objectives */}
-                                                        {activity.immediate_objectives && (
-                                                            <div className="text-xs">
-                                                                <span className="font-semibold text-purple-700">Objectives: </span>
-                                                                <span className="text-gray-700">{activity.immediate_objectives}</span>
-                                                            </div>
-                                                        )}
-
-                                                        {activity.expected_results && (
-                                                            <div className="text-xs">
-                                                                <span className="font-semibold text-indigo-700">Expected Results: </span>
-                                                                <span className="text-gray-700">{activity.expected_results}</span>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Outcomes */}
-                                                        {activity.outcome_notes && (
-                                                            <div className="text-xs mt-2 pt-2 border-t border-gray-200">
-                                                                <span className="font-semibold text-green-700">Outcomes: </span>
-                                                                <span className="text-gray-700">{activity.outcome_notes}</span>
-                                                            </div>
-                                                        )}
-
-                                                        {activity.challenges_faced && (
-                                                            <div className="text-xs">
-                                                                <span className="font-semibold text-orange-700">Challenges: </span>
-                                                                <span className="text-gray-700">{activity.challenges_faced}</span>
-                                                            </div>
-                                                        )}
-
-                                                        {activity.lessons_learned && (
-                                                            <div className="text-xs">
-                                                                <span className="font-semibold text-blue-700">Lessons: </span>
-                                                                <span className="text-gray-700">{activity.lessons_learned}</span>
-                                                            </div>
-                                                        )}
-
-                                                        {activity.recommendations && (
-                                                            <div className="text-xs">
-                                                                <span className="font-semibold text-teal-700">Recommendations: </span>
-                                                                <span className="text-gray-700">{activity.recommendations}</span>
-                                                            </div>
-                                                        )}
+                                        {activity && (
+                                            <>
+                                                {activity.immediate_objectives && (
+                                                    <div className="text-xs pt-2 border-t border-gray-300">
+                                                        <span className="font-semibold text-purple-700">Objectives: </span>
+                                                        <span className="text-gray-700">{activity.immediate_objectives}</span>
                                                     </div>
-                                                ) : ''}
-                                            </td>
+                                                )}
 
-                                        {/* Indicators */}
-                                        <td className="border border-gray-300 px-4 py-2">
-                                            {activity && activity.indicators && activity.indicators.length > 0
-                                                ? activity.indicators.map((ind) => ind.name).join('; ')
-                                                : component.indicators.map((ind) => ind.name).join('; ')}
-                                        </td>
-
-                                        {/* Means of Verification */}
-                                        <td className="border border-gray-300 px-4 py-2">
-                                            {activity && activity.means_of_verification && activity.means_of_verification.length > 0
-                                                ? activity.means_of_verification
-                                                      .map((mov) => mov.verification_method)
-                                                      .join('; ')
-                                                : component.means_of_verification
-                                                      .map((mov) => mov.verification_method)
-                                                      .join('; ')}
-                                        </td>
-
-                                        {/* Timeframe */}
-                                        <td className="border border-gray-300 px-4 py-2">
-                                            {activity ? formatTimeframe(activity) : ''}
-                                        </td>
-
-                                        {/* Responsibility */}
-                                        <td className="border border-gray-300 px-4 py-2">
-                                            {activity
-                                                ? activity.responsible_person || ''
-                                                : component.responsible_person || ''}
-                                        </td>
-
-                                        {/* Status */}
-                                        <td className="border border-gray-300 px-2 py-2">
-                                            {activity && activity.status ? (
-                                                <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(activity.status)}`}>
-                                                    {activity.status_override ? '⚠️ ' : ''}
-                                                    {activity.status.replace('-', ' ').toUpperCase()}
-                                                </span>
-                                            ) : (
-                                                <span className="text-gray-400 text-xs">-</span>
-                                            )}
-                                        </td>
-
-                                        {/* Progress % */}
-                                        <td className="border border-gray-300 px-4 py-2 text-center">
-                                            {activity && activity.progress_percentage !== undefined ? (
-                                                <div className="flex items-center gap-2">
-                                                    <div className="flex-1 bg-gray-200 rounded-full h-2">
-                                                        <div
-                                                            className={`h-2 rounded-full ${
-                                                                activity.progress_percentage >= 75
-                                                                    ? 'bg-green-500'
-                                                                    : activity.progress_percentage >= 50
-                                                                    ? 'bg-blue-500'
-                                                                    : activity.progress_percentage >= 25
-                                                                    ? 'bg-yellow-500'
-                                                                    : 'bg-red-500'
-                                                            }`}
-                                                            style={{ width: `${activity.progress_percentage}%` }}
-                                                        ></div>
+                                                {activity.expected_results && (
+                                                    <div className="text-xs">
+                                                        <span className="font-semibold text-indigo-700">Expected Results: </span>
+                                                        <span className="text-gray-700">{activity.expected_results}</span>
                                                     </div>
-                                                    <span className="text-xs font-medium text-gray-700 w-10">
-                                                        {activity.progress_percentage}%
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-gray-400 text-xs">-</span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                );
-                            });
-                        })
-                    )}
-                    </tbody>
-                </table>
-            </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                </td>
 
+                                {/* Intermediate Outcome */}
+                                <td className="border border-gray-300 px-4 py-2 align-top" style={{ minWidth: '250px' }}>
+                                    <div className="space-y-2">
+                                        <div className="font-medium text-gray-800 mb-3">
+                                            {subProgram.outcome || '(No outcome set)'}
+                                        </div>
+
+                                        {activity && (
+                                            <>
+                                                {activity.outcome_notes && (
+                                                    <div className="text-xs pt-2 border-t border-gray-300">
+                                                        <span className="font-semibold text-green-700">Outcomes: </span>
+                                                        <span className="text-gray-700">{activity.outcome_notes}</span>
+                                                    </div>
+                                                )}
+
+                                                {activity.challenges_faced && (
+                                                    <div className="text-xs">
+                                                        <span className="font-semibold text-orange-700">Challenges: </span>
+                                                        <span className="text-gray-700">{activity.challenges_faced}</span>
+                                                    </div>
+                                                )}
+
+                                                {activity.lessons_learned && (
+                                                    <div className="text-xs">
+                                                        <span className="font-semibold text-blue-700">Lessons: </span>
+                                                        <span className="text-gray-700">{activity.lessons_learned}</span>
+                                                    </div>
+                                                )}
+
+                                                {activity.recommendations && (
+                                                    <div className="text-xs">
+                                                        <span className="font-semibold text-teal-700">Recommendations: </span>
+                                                        <span className="text-gray-700">{activity.recommendations}</span>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                </td>
+
+                                {/* Output */}
+                                <td className="border border-gray-300 px-4 py-2 align-top" style={{ minWidth: '200px' }}>
+                                    <div className="font-medium text-gray-800">
+                                        {component.output || '(No output set)'}
+                                    </div>
+                                </td>
+
+                                {/* Activity */}
+                                <td className="border border-gray-300 px-4 py-2" style={{ minWidth: '250px' }}>
+                                    {activity ? (
+                                        <div className="font-medium text-gray-900">{activity.name}</div>
+                                    ) : ''}
+                                </td>
+
+                                {/* Indicators */}
+                                <td className="border border-gray-300 px-4 py-2" style={{ minWidth: '200px' }}>
+                                    {activity && activity.indicators && activity.indicators.length > 0
+                                        ? activity.indicators.map((ind) => ind.name).join('; ')
+                                        : component.indicators && component.indicators.length > 0
+                                        ? component.indicators.map((ind) => ind.name).join('; ')
+                                        : '-'}
+                                </td>
+
+                                {/* Means of Verification */}
+                                <td className="border border-gray-300 px-4 py-2" style={{ minWidth: '200px' }}>
+                                    {activity && activity.means_of_verification && activity.means_of_verification.length > 0
+                                        ? activity.means_of_verification
+                                              .map((mov) => mov.verification_method)
+                                              .join('; ')
+                                        : component.means_of_verification && component.means_of_verification.length > 0
+                                        ? component.means_of_verification
+                                              .map((mov) => mov.verification_method)
+                                              .join('; ')
+                                        : '-'}
+                                </td>
+
+                                {/* Timeframe */}
+                                <td className="border border-gray-300 px-4 py-2" style={{ minWidth: '120px' }}>
+                                    {activity ? formatTimeframe(activity) : ''}
+                                </td>
+
+                                {/* Responsibility */}
+                                <td className="border border-gray-300 px-4 py-2" style={{ minWidth: '150px' }}>
+                                    {activity
+                                        ? activity.responsible_person || ''
+                                        : component.responsible_person || ''}
+                                </td>
+
+                                {/* Status */}
+                                <td className="border border-gray-300 px-2 py-2" style={{ minWidth: '120px' }}>
+                                    {activity && activity.status ? (
+                                        <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(activity.status)}`}>
+                                            {activity.status_override ? '⚠️ ' : ''}
+                                            {activity.status.replace('-', ' ').toUpperCase()}
+                                        </span>
+                                    ) : (
+                                        <span className="text-gray-400 text-xs">-</span>
+                                    )}
+                                </td>
+
+                                {/* Progress % */}
+                                <td className="border border-gray-300 px-4 py-2 text-center" style={{ minWidth: '120px' }}>
+                                    {activity && activity.progress_percentage !== undefined ? (
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                                <div
+                                                    className={`h-2 rounded-full ${
+                                                        activity.progress_percentage >= 75
+                                                            ? 'bg-green-500'
+                                                            : activity.progress_percentage >= 50
+                                                            ? 'bg-blue-500'
+                                                            : activity.progress_percentage >= 25
+                                                            ? 'bg-yellow-500'
+                                                            : 'bg-red-500'
+                                                    }`}
+                                                    style={{ width: `${activity.progress_percentage}%` }}
+                                                ></div>
+                                            </div>
+                                            <span className="text-xs font-medium text-gray-700 w-10">
+                                                {activity.progress_percentage}%
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <span className="text-gray-400 text-xs">-</span>
+                                    )}
+                                </td>
+                            </tr>
+                        );
+                    });
+                })
+            )}
+        </tbody>
+    </table>
+</div>
             {/* Instructions */}
             <div className="mt-6 bg-gray-50 border border-gray-300 rounded-lg p-4">
                 <h3 className="font-bold text-gray-700 mb-2">Instructions:</h3>

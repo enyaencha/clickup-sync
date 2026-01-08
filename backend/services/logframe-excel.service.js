@@ -34,8 +34,8 @@ class LogframeExcelService {
         );
 
         // Set up header rows
-        worksheet.mergeCells('B2:I2');
-        worksheet.getCell('B2').value = 'LOGICAL FRAMEWORK TEMPLATE';
+        worksheet.mergeCells('B2:J2');
+        worksheet.getCell('B2').value = 'LOGICAL FRAMEWORK';
         worksheet.getCell('B2').font = { bold: true, size: 14 };
         worksheet.getCell('B2').alignment = { horizontal: 'center' };
 
@@ -60,22 +60,24 @@ class LogframeExcelService {
             '',
             'Strategic Objective',
             'Intermediate Outcomes',
-            'Outputs',
+            'Output',
             'Key Activities',
             'Indicators',
             'Means of Verification',
             'Timeframe',
-            'Responsibility'
+            'Responsibility',
+            'Status',
+            'Progress %'
         ];
 
         headers.forEach((header, idx) => {
             const cell = worksheet.getCell(headerRow, idx + 1);
             cell.value = header;
-            cell.font = { bold: true };
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
             cell.fill = {
                 type: 'pattern',
                 pattern: 'solid',
-                fgColor: { argb: 'FFD9E1F2' }
+                fgColor: { argb: 'FF4472C4' }
             };
             cell.border = {
                 top: { style: 'thin' },
@@ -83,6 +85,7 @@ class LogframeExcelService {
                 bottom: { style: 'thin' },
                 right: { style: 'thin' }
             };
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
         });
 
         let currentRow = headerRow + 1;
@@ -95,10 +98,6 @@ class LogframeExcelService {
                 [subProgram.id]
             );
 
-            // Add strategic objective (from module or sub-program)
-            const startRow = currentRow;
-            worksheet.getCell(currentRow, 2).value = module.logframe_goal || '';
-
             for (const component of components) {
                 // Get activities for this component
                 const activities = await this.db.query(
@@ -108,58 +107,123 @@ class LogframeExcelService {
                     [component.id]
                 );
 
-                // Get indicators for this component
-                const indicators = await this.db.query(
+                // Get component-level indicators
+                const componentIndicators = await this.db.query(
                     `SELECT * FROM me_indicators
                      WHERE component_id = ? AND deleted_at IS NULL`,
                     [component.id]
                 );
 
-                // Get means of verification
-                const movs = await this.db.query(
+                // Get component-level means of verification
+                const componentMovs = await this.db.query(
                     `SELECT * FROM means_of_verification
                      WHERE entity_type = 'component' AND entity_id = ? AND deleted_at IS NULL`,
                     [component.id]
                 );
 
-                if (activities.length === 0) {
-                    // Add component row even if no activities
-                    worksheet.getCell(currentRow, 3).value = subProgram.logframe_outcome || '';
-                    worksheet.getCell(currentRow, 4).value = component.logframe_output || '';
-                    worksheet.getCell(currentRow, 5).value = '';
-                    worksheet.getCell(currentRow, 6).value = indicators.map(i => i.name).join('; ') || '';
-                    worksheet.getCell(currentRow, 7).value = movs.map(m => m.verification_method).join('; ') || '';
-                    worksheet.getCell(currentRow, 8).value = '';
-                    worksheet.getCell(currentRow, 9).value = component.responsible_person || '';
-                    currentRow++;
-                }
+                // If no activities, add at least one row for the component
+                const activitiesToProcess = activities.length > 0 ? activities : [null];
 
-                // Add activities
-                for (const activity of activities) {
-                    worksheet.getCell(currentRow, 3).value = subProgram.logframe_outcome || '';
-                    worksheet.getCell(currentRow, 4).value = component.logframe_output || '';
-                    worksheet.getCell(currentRow, 5).value = activity.name;
+                for (const activity of activitiesToProcess) {
+                    // Column 1: Row number (optional)
+                    worksheet.getCell(currentRow, 1).value = '';
 
-                    // Get indicators for this activity
-                    const activityIndicators = await this.db.query(
-                        `SELECT * FROM me_indicators
-                         WHERE activity_id = ? AND deleted_at IS NULL`,
-                        [activity.id]
+                    // Column 2: Strategic Objective
+                    const strategicObjectiveContent = this.buildStrategicObjectiveContent(
+                        module.logframe_goal,
+                        activity
                     );
+                    worksheet.getCell(currentRow, 2).value = strategicObjectiveContent;
+                    worksheet.getCell(currentRow, 2).alignment = { vertical: 'top', wrapText: true };
 
-                    worksheet.getCell(currentRow, 6).value = activityIndicators.map(i => i.name).join('; ') ||
-                                                             indicators.map(i => i.name).join('; ') || '';
-                    worksheet.getCell(currentRow, 7).value = movs.map(m => m.verification_method).join('; ') || '';
+                    // Column 3: Intermediate Outcomes
+                    const intermediateOutcomesContent = this.buildIntermediateOutcomesContent(
+                        subProgram.logframe_outcome,
+                        activity
+                    );
+                    worksheet.getCell(currentRow, 3).value = intermediateOutcomesContent;
+                    worksheet.getCell(currentRow, 3).alignment = { vertical: 'top', wrapText: true };
 
-                    // Timeframe
+                    // Column 4: Output
+                    worksheet.getCell(currentRow, 4).value = component.logframe_output || '';
+                    worksheet.getCell(currentRow, 4).alignment = { vertical: 'top', wrapText: true };
+
+                    // Column 5: Key Activities
+                    worksheet.getCell(currentRow, 5).value = activity ? activity.name : '';
+                    worksheet.getCell(currentRow, 5).alignment = { vertical: 'top', wrapText: true };
+
+                    // Column 6: Indicators
+                    let indicators = '';
+                    if (activity) {
+                        // Get activity-level indicators
+                        const activityIndicators = await this.db.query(
+                            `SELECT * FROM me_indicators
+                             WHERE activity_id = ? AND deleted_at IS NULL`,
+                            [activity.id]
+                        );
+                        indicators = activityIndicators.length > 0
+                            ? activityIndicators.map(i => i.name).join('; ')
+                            : componentIndicators.map(i => i.name).join('; ');
+                    } else {
+                        indicators = componentIndicators.map(i => i.name).join('; ');
+                    }
+                    worksheet.getCell(currentRow, 6).value = indicators;
+                    worksheet.getCell(currentRow, 6).alignment = { vertical: 'top', wrapText: true };
+
+                    // Column 7: Means of Verification
+                    let movs = '';
+                    if (activity) {
+                        // Get activity-level MOVs
+                        const activityMovs = await this.db.query(
+                            `SELECT * FROM means_of_verification
+                             WHERE entity_type = 'activity' AND entity_id = ? AND deleted_at IS NULL`,
+                            [activity.id]
+                        );
+                        movs = activityMovs.length > 0
+                            ? activityMovs.map(m => m.verification_method).join('; ')
+                            : componentMovs.map(m => m.verification_method).join('; ');
+                    } else {
+                        movs = componentMovs.map(m => m.verification_method).join('; ');
+                    }
+                    worksheet.getCell(currentRow, 7).value = movs;
+                    worksheet.getCell(currentRow, 7).alignment = { vertical: 'top', wrapText: true };
+
+                    // Column 8: Timeframe
                     let timeframe = '';
-                    if (activity.start_date && activity.end_date) {
-                        timeframe = `${this.formatDate(activity.start_date)} - ${this.formatDate(activity.end_date)}`;
-                    } else if (activity.activity_date) {
-                        timeframe = this.formatDate(activity.activity_date);
+                    if (activity) {
+                        timeframe = this.formatTimeframe(activity);
                     }
                     worksheet.getCell(currentRow, 8).value = timeframe;
-                    worksheet.getCell(currentRow, 9).value = activity.responsible_person || '';
+                    worksheet.getCell(currentRow, 8).alignment = { vertical: 'middle', horizontal: 'center' };
+
+                    // Column 9: Responsibility
+                    const responsibility = activity 
+                        ? (activity.responsible_person || '') 
+                        : (component.responsible_person || '');
+                    worksheet.getCell(currentRow, 9).value = responsibility;
+                    worksheet.getCell(currentRow, 9).alignment = { vertical: 'top', wrapText: true };
+
+                    // Column 10: Status
+                    worksheet.getCell(currentRow, 10).value = activity?.status || '';
+                    worksheet.getCell(currentRow, 10).alignment = { vertical: 'middle', horizontal: 'center' };
+
+                    // Column 11: Progress %
+                    const progress = activity?.progress_percentage !== undefined 
+                        ? `${activity.progress_percentage}%` 
+                        : '';
+                    worksheet.getCell(currentRow, 11).value = progress;
+                    worksheet.getCell(currentRow, 11).alignment = { vertical: 'middle', horizontal: 'center' };
+
+                    // Apply borders to all cells in this row
+                    for (let col = 1; col <= 11; col++) {
+                        const cell = worksheet.getCell(currentRow, col);
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' }
+                        };
+                    }
 
                     currentRow++;
                 }
@@ -179,30 +243,79 @@ class LogframeExcelService {
 
         // Set column widths
         worksheet.getColumn(1).width = 5;
-        worksheet.getColumn(2).width = 30;
-        worksheet.getColumn(3).width = 30;
-        worksheet.getColumn(4).width = 30;
-        worksheet.getColumn(5).width = 30;
-        worksheet.getColumn(6).width = 30;
-        worksheet.getColumn(7).width = 25;
-        worksheet.getColumn(8).width = 15;
-        worksheet.getColumn(9).width = 25;
+        worksheet.getColumn(2).width = 35;  // Strategic Objective
+        worksheet.getColumn(3).width = 35;  // Intermediate Outcomes
+        worksheet.getColumn(4).width = 30;  // Output
+        worksheet.getColumn(5).width = 30;  // Key Activities
+        worksheet.getColumn(6).width = 30;  // Indicators
+        worksheet.getColumn(7).width = 25;  // Means of Verification
+        worksheet.getColumn(8).width = 15;  // Timeframe
+        worksheet.getColumn(9).width = 25;  // Responsibility
+        worksheet.getColumn(10).width = 15; // Status
+        worksheet.getColumn(11).width = 12; // Progress %
 
-        // Apply borders to all data cells
-        for (let i = headerRow; i < currentRow; i++) {
-            for (let j = 1; j <= 9; j++) {
-                const cell = worksheet.getCell(i, j);
-                cell.border = {
-                    top: { style: 'thin' },
-                    left: { style: 'thin' },
-                    bottom: { style: 'thin' },
-                    right: { style: 'thin' }
-                };
-                cell.alignment = { vertical: 'top', wrapText: true };
+        return workbook;
+    }
+
+    /**
+     * Build Strategic Objective column content
+     * Includes: Goal + Objectives + Expected Results
+     */
+    buildStrategicObjectiveContent(goal, activity) {
+        let content = goal || 'Not set';
+
+        if (activity) {
+            if (activity.immediate_objectives) {
+                content += `\n\nObjectives: ${activity.immediate_objectives}`;
+            }
+            if (activity.expected_results) {
+                content += `\n\nExpected Results: ${activity.expected_results}`;
             }
         }
 
-        return workbook;
+        return content;
+    }
+
+    /**
+     * Build Intermediate Outcomes column content
+     * Includes: Outcome + Outcomes + Challenges + Lessons + Recommendations
+     */
+    buildIntermediateOutcomesContent(outcome, activity) {
+        let content = outcome || '(No outcome set)';
+
+        if (activity) {
+            if (activity.outcome_notes) {
+                content += `\n\nOutcomes: ${activity.outcome_notes}`;
+            }
+            if (activity.challenges_faced) {
+                content += `\n\nChallenges: ${activity.challenges_faced}`;
+            }
+            if (activity.lessons_learned) {
+                content += `\n\nLessons: ${activity.lessons_learned}`;
+            }
+            if (activity.recommendations) {
+                content += `\n\nRecommendations: ${activity.recommendations}`;
+            }
+        }
+
+        return content;
+    }
+
+    /**
+     * Format timeframe from activity dates to Quarter format
+     */
+    formatTimeframe(activity) {
+        if (activity.start_date && activity.end_date) {
+            const start = new Date(activity.start_date);
+            const end = new Date(activity.end_date);
+            const startQ = `Q${Math.ceil((start.getMonth() + 1) / 3)} ${start.getFullYear()}`;
+            const endQ = `Q${Math.ceil((end.getMonth() + 1) / 3)} ${end.getFullYear()}`;
+            return startQ === endQ ? startQ : `${startQ} - ${endQ}`;
+        } else if (activity.activity_date) {
+            const date = new Date(activity.activity_date);
+            return `Q${Math.ceil((date.getMonth() + 1) / 3)} ${date.getFullYear()}`;
+        }
+        return '';
     }
 
     /**
@@ -281,7 +394,9 @@ class LogframeExcelService {
                     indicator: row.getCell(6).value,
                     mov: row.getCell(7).value,
                     timeframe: row.getCell(8).value,
-                    responsibility: row.getCell(9).value
+                    responsibility: row.getCell(9).value,
+                    status: row.getCell(10).value,
+                    progress: row.getCell(11).value
                 });
             }
         });
@@ -293,7 +408,7 @@ class LogframeExcelService {
 
             // Handle Intermediate Outcome (Sub-Program level)
             if (rowData.intermediateOutcome && rowData.intermediateOutcome !== currentOutcome) {
-                currentOutcome = rowData.intermediateOutcome;
+                currentOutcome = this.extractMainContent(rowData.intermediateOutcome);
 
                 // Create or find sub-program
                 const existing = await this.db.query(
@@ -353,17 +468,34 @@ class LogframeExcelService {
                 let endDate = null;
                 if (rowData.timeframe) {
                     const timeStr = rowData.timeframe.toString();
-                    // Try to parse dates from various formats
                     const dateMatch = timeStr.match(/(\d{4}-\d{2}-\d{2})|Q\d\s+\d{4}/);
                     if (dateMatch) {
                         startDate = dateMatch[0];
                     }
                 }
 
+                // Parse progress percentage
+                let progressPercentage = null;
+                if (rowData.progress) {
+                    const progressStr = rowData.progress.toString().replace('%', '');
+                    const progressNum = parseInt(progressStr);
+                    if (!isNaN(progressNum)) {
+                        progressPercentage = progressNum;
+                    }
+                }
+
                 const result = await this.db.query(
-                    `INSERT INTO activities (project_id, component_id, name, code, responsible_person, status)
-                     VALUES (?, ?, ?, ?, ?, 'not-started')`,
-                    [currentSubProgramId, currentComponentId, activityName, code, rowData.responsibility || '']
+                    `INSERT INTO activities (project_id, component_id, name, code, responsible_person, status, progress_percentage)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                    [
+                        currentSubProgramId, 
+                        currentComponentId, 
+                        activityName, 
+                        code, 
+                        rowData.responsibility || '', 
+                        rowData.status || 'not-started',
+                        progressPercentage
+                    ]
                 );
 
                 imported.activities.push({
@@ -410,6 +542,17 @@ class LogframeExcelService {
         }
 
         return imported;
+    }
+
+    /**
+     * Extract main content from a cell that might contain additional data
+     * (like "Outcome text\n\nOutcomes: ..." -> "Outcome text")
+     */
+    extractMainContent(text) {
+        if (!text) return '';
+        const str = text.toString();
+        const firstBreak = str.indexOf('\n\n');
+        return firstBreak > 0 ? str.substring(0, firstBreak) : str;
     }
 
     /**
@@ -523,7 +666,9 @@ class LogframeExcelService {
                 indicator: row.getCell(6).value,
                 mov: row.getCell(7).value,
                 timeframe: row.getCell(8).value,
-                responsibility: row.getCell(9).value
+                responsibility: row.getCell(9).value,
+                status: row.getCell(10).value,
+                progress: row.getCell(11).value
             };
 
             // Skip empty rows and instruction rows
@@ -537,7 +682,7 @@ class LogframeExcelService {
         for (const rowData of dataRows) {
             // Handle Intermediate Outcome (Sub-Program level)
             if (rowData.intermediateOutcome && rowData.intermediateOutcome !== currentOutcome) {
-                currentOutcome = rowData.intermediateOutcome;
+                currentOutcome = this.extractMainContent(rowData.intermediateOutcome);
 
                 // Create or find sub-program
                 const existing = await this.db.query(
@@ -601,10 +746,28 @@ class LogframeExcelService {
                     }
                 }
 
+                // Parse progress percentage
+                let progressPercentage = null;
+                if (rowData.progress) {
+                    const progressStr = rowData.progress.toString().replace('%', '');
+                    const progressNum = parseInt(progressStr);
+                    if (!isNaN(progressNum)) {
+                        progressPercentage = progressNum;
+                    }
+                }
+
                 const result = await this.db.query(
-                    `INSERT INTO activities (project_id, component_id, name, code, responsible_person, status)
-                     VALUES (?, ?, ?, ?, ?, 'not-started')`,
-                    [currentSubProgramId, currentComponentId, activityName, code, rowData.responsibility || '']
+                    `INSERT INTO activities (project_id, component_id, name, code, responsible_person, status, progress_percentage)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                    [
+                        currentSubProgramId, 
+                        currentComponentId, 
+                        activityName, 
+                        code, 
+                        rowData.responsibility || '', 
+                        rowData.status || 'not-started',
+                        progressPercentage
+                    ]
                 );
 
                 imported.activities.push({
