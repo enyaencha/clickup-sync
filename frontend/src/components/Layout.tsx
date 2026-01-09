@@ -29,12 +29,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   // Listen for custom events from other components (e.g., FinanceDashboard notification bell)
   useEffect(() => {
-    const handleCustomEvent = (e: CustomEvent) => {
-      handleOpenConversation(e.detail.requestId, e.detail.activityName);
+    const handleCustomEvent = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      handleOpenConversation(customEvent.detail.requestId, customEvent.detail.activityName);
     };
 
-    window.addEventListener('openBudgetConversation' as any, handleCustomEvent as any);
-    return () => window.removeEventListener('openBudgetConversation' as any, handleCustomEvent as any);
+    window.addEventListener('openBudgetConversation', handleCustomEvent);
+    return () => window.removeEventListener('openBudgetConversation', handleCustomEvent);
   }, []);
 
   // Determine if user is in finance team (module_id = 6)
