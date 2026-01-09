@@ -8,6 +8,7 @@ interface Comment {
   created_by_id: number;
   created_at: string;
   is_finance_team: boolean;
+  is_online: number;
 }
 
 interface BudgetRequestConversationProps {
@@ -31,6 +32,7 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
 
   useEffect(() => {
     fetchComments();
+    markConversationAsRead();
     // Poll for new comments every 10 seconds
     const interval = setInterval(fetchComments, 10000);
     return () => clearInterval(interval);
@@ -53,6 +55,16 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
       console.error('Error fetching comments:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const markConversationAsRead = async () => {
+    try {
+      await authFetch(`/api/budget-requests/${budgetRequestId}/mark-conversation-read`, {
+        method: 'PUT'
+      });
+    } catch (error) {
+      console.error('Error marking conversation as read:', error);
     }
   };
 
@@ -144,10 +156,14 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
                     >
                       {/* Sender name (only for received messages) */}
                       {!isOwnComment && (
-                        <div className={`text-xs font-semibold mb-1 ${
+                        <div className={`text-xs font-semibold mb-1 flex items-center gap-1 ${
                           commentIsFromFinance ? 'text-green-700' : 'text-blue-700'
                         }`}>
-                          {commentIsFromFinance && '🏦 '}{comment.created_by_name}
+                          {!!commentIsFromFinance && '🏦 '}
+                          <span>{comment.created_by_name}</span>
+                          {comment.is_online === 1 && (
+                            <span className="inline-block w-2 h-2 bg-green-500 rounded-full" title="Online"></span>
+                          )}
                         </div>
                       )}
 
