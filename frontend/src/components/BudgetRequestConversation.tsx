@@ -31,11 +31,17 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    console.log('[BudgetRequestConversation] Component mounted/updated for budgetRequestId:', budgetRequestId, 'isFinanceTeam:', isFinanceTeam);
+
     fetchComments();
     markConversationAsRead();
     // Poll for new comments every 10 seconds
     const interval = setInterval(fetchComments, 10000);
-    return () => clearInterval(interval);
+
+    return () => {
+      console.log('[BudgetRequestConversation] Component unmounting for budgetRequestId:', budgetRequestId);
+      clearInterval(interval);
+    };
   }, [budgetRequestId]);
 
   useEffect(() => {
@@ -69,6 +75,8 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
   };
 
   const handleSubmitComment = async () => {
+    console.log('[BudgetRequestConversation] handleSubmitComment called for budget request:', budgetRequestId, 'by user:', currentUserId, 'isFinanceTeam:', isFinanceTeam);
+
     if (!newComment.trim()) {
       alert('Comment cannot be empty');
       return;
@@ -76,6 +84,8 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
 
     try {
       setSubmitting(true);
+      console.log('[BudgetRequestConversation] Submitting comment:', newComment);
+
       const response = await authFetch(`/api/budget-requests/${budgetRequestId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -87,6 +97,7 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
         throw new Error(errorData.error || 'Failed to post comment');
       }
 
+      console.log('[BudgetRequestConversation] Comment submitted successfully');
       setNewComment('');
       await fetchComments();
     } catch (error) {
