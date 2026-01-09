@@ -438,57 +438,139 @@ module.exports = (db) => {
             const limit = Math.max(1, parseInt(req.query.limit) || 50);
             const offset = Math.max(0, parseInt(req.query.offset) || 0);
 
-            let query = `
+            // Get module filter for RBAC
+            let moduleFilter = '';
+            const moduleParams = [];
+            if (!req.user.is_system_admin && req.user.module_assignments && req.user.module_assignments.length > 0) {
+                const assignedModuleIds = req.user.module_assignments.map(m => m.module_id);
+                moduleFilter = ` AND pb.program_module_id IN (${assignedModuleIds.map(() => '?').join(',')})`;
+                moduleParams.push(...assignedModuleIds);
+            }
+
+            // Query for approvals from finance_approvals table
+            let approvalQuery = `
                 SELECT
-                    fa.*,
+                    fa.id,
+                    fa.approval_number,
+                    fa.request_type,
+                    fa.program_budget_id,
+                    fa.transaction_id,
+                    fa.requested_amount,
+                    fa.approved_amount,
+                    fa.request_title,
+                    fa.request_description,
+                    fa.justification,
+                    fa.status,
+                    fa.priority,
+                    fa.requested_by,
+                    fa.requested_at,
+                    fa.reviewed_by,
+                    fa.reviewed_at,
                     u1.full_name as requester_name,
                     u2.full_name as reviewer_name,
                     u3.full_name as approver_name,
                     pb.fiscal_year,
-                    pm.name as program_module_name
+                    pm.name as program_module_name,
+                    'finance_approvals' as source_table
                 FROM finance_approvals fa
                 LEFT JOIN users u1 ON fa.requested_by = u1.id
                 LEFT JOIN users u2 ON fa.reviewed_by = u2.id
                 LEFT JOIN users u3 ON fa.approved_by = u3.id
                 LEFT JOIN program_budgets pb ON fa.program_budget_id = pb.id
                 LEFT JOIN program_modules pm ON pb.program_module_id = pm.id
-                WHERE fa.deleted_at IS NULL`;
+                WHERE fa.deleted_at IS NULL
+                ${moduleFilter}
+            `;
 
-            const params = [];
-
-            // RBAC: Filter by user's assigned modules
-            if (!req.user.is_system_admin && req.user.module_assignments && req.user.module_assignments.length > 0) {
-                const assignedModuleIds = req.user.module_assignments.map(m => m.module_id);
-                query += ` AND pb.program_module_id IN (${assignedModuleIds.map(() => '?').join(',')})`;
-                params.push(...assignedModuleIds);
-            }
+            const approvalParams = [...moduleParams];
 
             if (status) {
-                query += ` AND fa.status = ?`;
-                params.push(status);
+                approvalQuery += ` AND fa.status = ?`;
+                approvalParams.push(status);
             }
 
             if (request_type) {
-                query += ` AND fa.request_type = ?`;
-                params.push(request_type);
+                approvalQuery += ` AND fa.request_type = ?`;
+                approvalParams.push(request_type);
             }
 
             if (priority) {
-                query += ` AND fa.priority = ?`;
-                params.push(priority);
+                approvalQuery += ` AND fa.priority = ?`;
+                approvalParams.push(priority);
             }
 
-            query += `
-                ORDER BY FIELD(fa.priority, 'urgent', 'high', 'medium', 'low'), fa.requested_at DESC
-                LIMIT ${limit} OFFSET ${offset}`;
+            // Query for old program_budgets that don't have finance_approvals entries
+            let legacyQuery = `
+                SELECT
+                    pb.id,
+                    CONCAT('FIN-LEGACY-', pb.id) as approval_number,
+                    'budget_allocation' as request_type,
+                    pb.id as program_budget_id,
+                    NULL as transaction_id,
+                    pb.total_budget as requested_amount,
+                    NULL as approved_amount,
+                    CONCAT('Budget Allocation - ', pm.name, ' FY ', pb.fiscal_year) as request_title,
+                    CONCAT('Program budget request for ', pm.name, ' - Fiscal Year ', pb.fiscal_year, '. Total budget: KES ', FORMAT(pb.total_budget, 0)) as request_description,
+                    COALESCE(pb.notes, CONCAT('Budget allocation for ', pm.name, ' operations and activities')) as justification,
+                    'pending' as status,
+                    'medium' as priority,
+                    pb.submitted_by as requested_by,
+                    pb.submitted_at as requested_at,
+                    NULL as reviewed_by,
+                    NULL as reviewed_at,
+                    u1.full_name as requester_name,
+                    NULL as reviewer_name,
+                    NULL as approver_name,
+                    pb.fiscal_year,
+                    pm.name as program_module_name,
+                    'program_budgets' as source_table
+                FROM program_budgets pb
+                LEFT JOIN program_modules pm ON pb.program_module_id = pm.id
+                LEFT JOIN users u1 ON pb.submitted_by = u1.id
+                WHERE pb.deleted_at IS NULL
+                AND pb.status = 'submitted'
+                AND NOT EXISTS (
+                    SELECT 1 FROM finance_approvals fa2
+                    WHERE fa2.program_budget_id = pb.id
+                    AND fa2.deleted_at IS NULL
+                )
+                ${moduleFilter}
+            `;
 
-            const results = await db.query(query, params);
+            const legacyParams = [...moduleParams];
 
-            console.log(`✅ Approvals query returned ${results.length} records`);
+            // Only include legacy budgets if status is 'pending' or not specified
+            const includeLegacy = !status || status === 'pending';
+
+            // Combine results
+            let combinedQuery;
+            let combinedParams;
+
+            if (includeLegacy) {
+                combinedQuery = `
+                    (${approvalQuery})
+                    UNION ALL
+                    (${legacyQuery})
+                    ORDER BY FIELD(priority, 'urgent', 'high', 'medium', 'low'), requested_at DESC
+                    LIMIT ${limit} OFFSET ${offset}
+                `;
+                combinedParams = [...approvalParams, ...legacyParams];
+            } else {
+                combinedQuery = `
+                    ${approvalQuery}
+                    ORDER BY FIELD(fa.priority, 'urgent', 'high', 'medium', 'low'), fa.requested_at DESC
+                    LIMIT ${limit} OFFSET ${offset}
+                `;
+                combinedParams = approvalParams;
+            }
+
+            const results = await db.query(combinedQuery, combinedParams);
+
+            console.log(`✅ Approvals query returned ${results.length} records (including legacy budgets)`);
             if (results.length > 0) {
                 console.log('Sample approval:', JSON.stringify(results[0], null, 2));
             } else {
-                console.log('No approvals found. Query params:', params);
+                console.log('No approvals found. Query params:', combinedParams);
             }
 
             res.json({
@@ -562,35 +644,79 @@ module.exports = (db) => {
             const { id } = req.params;
             const { approved_amount, finance_notes } = req.body;
 
-            // Get approval details including program_budget_id
-            const [approval] = await db.query(
+            // Check if this is a legacy budget (ID from program_budgets table)
+            // Legacy budgets come through GET endpoint with id from program_budgets
+            // First try to get from finance_approvals
+            let approval = await db.query(
                 'SELECT program_budget_id, requested_amount, request_type FROM finance_approvals WHERE id = ? AND deleted_at IS NULL',
                 [id]
             );
 
-            if (!approval) {
-                return res.status(404).json({
-                    success: false,
-                    error: 'Approval request not found'
-                });
-            }
+            let isLegacy = false;
+            let programBudgetId = id;
 
-            // Update approval request
-            const query = `
-                UPDATE finance_approvals
-                SET
-                    status = 'approved',
-                    approved_amount = ?,
-                    finance_notes = ?,
-                    approved_by = ?,
-                    approved_at = NOW()
-                WHERE id = ? AND deleted_at IS NULL
-            `;
+            if (!approval || approval.length === 0) {
+                // This might be a legacy budget - check program_budgets
+                const legacyBudget = await db.query(
+                    'SELECT id, total_budget, submitted_by FROM program_budgets WHERE id = ? AND status = "submitted" AND deleted_at IS NULL',
+                    [id]
+                );
 
-            await db.query(query, [approved_amount || approval.requested_amount, finance_notes, req.user.id, id]);
+                if (!legacyBudget || legacyBudget.length === 0) {
+                    return res.status(404).json({
+                        success: false,
+                        error: 'Approval request not found'
+                    });
+                }
 
-            // If this is a budget allocation approval, update the program_budgets table
-            if (approval.program_budget_id && approval.request_type === 'budget_allocation') {
+                // This is a legacy budget - create finance_approvals entry first
+                isLegacy = true;
+                const [budget] = legacyBudget;
+                programBudgetId = budget.id;
+
+                // Get program module name
+                const [programModule] = await db.query(
+                    'SELECT pm.name, pb.fiscal_year FROM program_budgets pb LEFT JOIN program_modules pm ON pb.program_module_id = pm.id WHERE pb.id = ?',
+                    [programBudgetId]
+                );
+
+                const approvalNumber = `FIN-${Date.now()}-${programBudgetId}`;
+                const requestTitle = `Budget Allocation - ${programModule?.name || 'Program'} FY ${programModule?.fiscal_year || ''}`;
+                const requestDescription = `Program budget request for ${programModule?.name || 'Program'}. Total budget: KES ${budget.total_budget?.toLocaleString() || '0'}`;
+
+                // Create finance_approvals entry
+                const insertQuery = `
+                    INSERT INTO finance_approvals (
+                        approval_number,
+                        request_type,
+                        program_budget_id,
+                        requested_amount,
+                        approved_amount,
+                        request_title,
+                        request_description,
+                        status,
+                        priority,
+                        requested_by,
+                        requested_at,
+                        finance_notes,
+                        approved_by,
+                        approved_at
+                    ) VALUES (?, 'budget_allocation', ?, ?, ?, ?, ?, 'approved', 'medium', ?, NOW(), ?, ?, NOW())
+                `;
+
+                await db.query(insertQuery, [
+                    approvalNumber,
+                    programBudgetId,
+                    budget.total_budget,
+                    approved_amount || budget.total_budget,
+                    requestTitle,
+                    requestDescription,
+                    budget.submitted_by,
+                    finance_notes,
+                    req.user.id
+                ]);
+
+                // Update program_budgets
                 const budgetQuery = `
                     UPDATE program_budgets
                     SET
@@ -602,10 +728,47 @@ module.exports = (db) => {
                 `;
 
                 await db.query(budgetQuery, [
-                    approved_amount || approval.requested_amount,
+                    approved_amount || budget.total_budget,
                     req.user.id,
-                    approval.program_budget_id
+                    programBudgetId
                 ]);
+
+            } else {
+                // Normal approval flow - update existing finance_approvals entry
+                const [approvalData] = approval;
+
+                // Update approval request
+                const query = `
+                    UPDATE finance_approvals
+                    SET
+                        status = 'approved',
+                        approved_amount = ?,
+                        finance_notes = ?,
+                        approved_by = ?,
+                        approved_at = NOW()
+                    WHERE id = ? AND deleted_at IS NULL
+                `;
+
+                await db.query(query, [approved_amount || approvalData.requested_amount, finance_notes, req.user.id, id]);
+
+                // If this is a budget allocation approval, update the program_budgets table
+                if (approvalData.program_budget_id && approvalData.request_type === 'budget_allocation') {
+                    const budgetQuery = `
+                        UPDATE program_budgets
+                        SET
+                            status = 'approved',
+                            allocated_budget = ?,
+                            approved_by = ?,
+                            approved_at = NOW()
+                        WHERE id = ?
+                    `;
+
+                    await db.query(budgetQuery, [
+                        approved_amount || approvalData.requested_amount,
+                        req.user.id,
+                        approvalData.program_budget_id
+                    ]);
+                }
             }
 
             res.json({
@@ -630,41 +793,102 @@ module.exports = (db) => {
             const { id } = req.params;
             const { rejection_reason } = req.body;
 
-            // Get approval details including program_budget_id
-            const [approval] = await db.query(
+            // Check if this is a legacy budget (ID from program_budgets table)
+            let approval = await db.query(
                 'SELECT program_budget_id, request_type FROM finance_approvals WHERE id = ? AND deleted_at IS NULL',
                 [id]
             );
 
-            if (!approval) {
-                return res.status(404).json({
-                    success: false,
-                    error: 'Approval request not found'
-                });
-            }
+            let programBudgetId = id;
 
-            // Update approval request
-            const query = `
-                UPDATE finance_approvals
-                SET
-                    status = 'rejected',
-                    rejection_reason = ?,
-                    approved_by = ?,
-                    approved_at = NOW()
-                WHERE id = ? AND deleted_at IS NULL
-            `;
+            if (!approval || approval.length === 0) {
+                // This might be a legacy budget - check program_budgets
+                const legacyBudget = await db.query(
+                    'SELECT id, total_budget, submitted_by FROM program_budgets WHERE id = ? AND status = "submitted" AND deleted_at IS NULL',
+                    [id]
+                );
 
-            await db.query(query, [rejection_reason, req.user.id, id]);
+                if (!legacyBudget || legacyBudget.length === 0) {
+                    return res.status(404).json({
+                        success: false,
+                        error: 'Approval request not found'
+                    });
+                }
 
-            // If this is a budget allocation approval, update the program_budgets table
-            if (approval.program_budget_id && approval.request_type === 'budget_allocation') {
-                const budgetQuery = `
-                    UPDATE program_budgets
-                    SET status = 'rejected'
-                    WHERE id = ?
+                // This is a legacy budget - create finance_approvals entry as rejected
+                const [budget] = legacyBudget;
+                programBudgetId = budget.id;
+
+                // Get program module name
+                const [programModule] = await db.query(
+                    'SELECT pm.name, pb.fiscal_year FROM program_budgets pb LEFT JOIN program_modules pm ON pb.program_module_id = pm.id WHERE pb.id = ?',
+                    [programBudgetId]
+                );
+
+                const approvalNumber = `FIN-${Date.now()}-${programBudgetId}`;
+                const requestTitle = `Budget Allocation - ${programModule?.name || 'Program'} FY ${programModule?.fiscal_year || ''}`;
+                const requestDescription = `Program budget request for ${programModule?.name || 'Program'}. Total budget: KES ${budget.total_budget?.toLocaleString() || '0'}`;
+
+                // Create finance_approvals entry as rejected
+                const insertQuery = `
+                    INSERT INTO finance_approvals (
+                        approval_number,
+                        request_type,
+                        program_budget_id,
+                        requested_amount,
+                        request_title,
+                        request_description,
+                        status,
+                        priority,
+                        requested_by,
+                        requested_at,
+                        rejection_reason,
+                        approved_by,
+                        approved_at
+                    ) VALUES (?, 'budget_allocation', ?, ?, ?, ?, 'rejected', 'medium', ?, NOW(), ?, ?, NOW())
                 `;
 
-                await db.query(budgetQuery, [approval.program_budget_id]);
+                await db.query(insertQuery, [
+                    approvalNumber,
+                    programBudgetId,
+                    budget.total_budget,
+                    requestTitle,
+                    requestDescription,
+                    budget.submitted_by,
+                    rejection_reason,
+                    req.user.id
+                ]);
+
+                // Update program_budgets
+                await db.query('UPDATE program_budgets SET status = "rejected" WHERE id = ?', [programBudgetId]);
+
+            } else {
+                // Normal rejection flow
+                const [approvalData] = approval;
+
+                // Update approval request
+                const query = `
+                    UPDATE finance_approvals
+                    SET
+                        status = 'rejected',
+                        rejection_reason = ?,
+                        approved_by = ?,
+                        approved_at = NOW()
+                    WHERE id = ? AND deleted_at IS NULL
+                `;
+
+                await db.query(query, [rejection_reason, req.user.id, id]);
+
+                // If this is a budget allocation approval, update the program_budgets table
+                if (approvalData.program_budget_id && approvalData.request_type === 'budget_allocation') {
+                    const budgetQuery = `
+                        UPDATE program_budgets
+                        SET status = 'rejected'
+                        WHERE id = ?
+                    `;
+
+                    await db.query(budgetQuery, [approvalData.program_budget_id]);
+                }
             }
 
             res.json({
