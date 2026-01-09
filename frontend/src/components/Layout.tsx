@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import BudgetRequestNotificationBell from './BudgetRequestNotificationBell';
 import ConversationSidePanel from './ConversationSidePanel';
@@ -26,6 +26,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     setShowConversationPanel(false);
     setSelectedBudgetRequest(null);
   };
+
+  // Listen for custom events from other components (e.g., FinanceDashboard notification bell)
+  useEffect(() => {
+    const handleCustomEvent = (e: CustomEvent) => {
+      handleOpenConversation(e.detail.requestId, e.detail.activityName);
+    };
+
+    window.addEventListener('openBudgetConversation' as any, handleCustomEvent as any);
+    return () => window.removeEventListener('openBudgetConversation' as any, handleCustomEvent as any);
+  }, []);
 
   // Determine if user is in finance team (module_id = 6)
   const isFinanceTeam = user?.modules?.some((m: any) => m.module_id === 6) || false;

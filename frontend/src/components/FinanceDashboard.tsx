@@ -4,7 +4,6 @@ import { authFetch } from '../config/api';
 import AddBudgetModal from './AddBudgetModal';
 import AddTransactionModal from './AddTransactionModal';
 import FinanceBudgetReview from './FinanceBudgetReview';
-import ConversationSidePanel from './ConversationSidePanel';
 
 interface BudgetSummary {
   program_module_id: number;
@@ -61,8 +60,6 @@ const FinanceDashboard: React.FC = () => {
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [conversationNotifications, setConversationNotifications] = useState<BudgetConversationNotification[]>([]);
-  const [showConversationPanel, setShowConversationPanel] = useState(false);
-  const [selectedConversation, setSelectedConversation] = useState<{ requestId: number; activityName: string } | null>(null);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const { user } = useAuth();
 
@@ -119,8 +116,11 @@ const FinanceDashboard: React.FC = () => {
   };
 
   const handleOpenConversation = (requestId: number, activityName: string) => {
-    setSelectedConversation({ requestId, activityName });
-    setShowConversationPanel(true);
+    // Emit custom event for Layout to handle (to use the global ConversationSidePanel)
+    const event = new CustomEvent('openBudgetConversation', {
+      detail: { requestId, activityName }
+    });
+    window.dispatchEvent(event);
     setShowNotificationDropdown(false);
   };
 
@@ -676,19 +676,6 @@ const FinanceDashboard: React.FC = () => {
         isOpen={showTransactionModal}
         onClose={() => setShowTransactionModal(false)}
         onSuccess={fetchFinanceData}
-      />
-
-      {/* Conversation Side Panel */}
-      <ConversationSidePanel
-        isOpen={showConversationPanel}
-        onClose={() => {
-          setShowConversationPanel(false);
-          fetchConversationNotifications(); // Refresh notifications when closing
-        }}
-        budgetRequestId={selectedConversation?.requestId || null}
-        activityName={selectedConversation?.activityName || ''}
-        currentUserId={user?.id || 0}
-        isFinanceTeam={true}
       />
     </div>
   );
