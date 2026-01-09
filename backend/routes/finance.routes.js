@@ -184,6 +184,12 @@ module.exports = (db) => {
                 }
             }
 
+            // Get program module name for the approval title
+            const [programModule] = await db.query(
+                'SELECT name FROM program_modules WHERE id = ?',
+                [program_module_id]
+            );
+
             const query = `
                 INSERT INTO program_budgets (
                     program_module_id, sub_program_id, fiscal_year,
@@ -202,10 +208,46 @@ module.exports = (db) => {
                 req.user.id, notes
             ]);
 
+            const budgetId = result.insertId;
+
+            // Generate approval number
+            const approvalNumber = `FIN-${Date.now()}-${budgetId}`;
+
+            // Create approval request in finance_approvals table
+            const approvalQuery = `
+                INSERT INTO finance_approvals (
+                    approval_number,
+                    request_type,
+                    program_budget_id,
+                    requested_amount,
+                    request_title,
+                    request_description,
+                    justification,
+                    status,
+                    priority,
+                    requested_by,
+                    requested_at
+                ) VALUES (?, 'budget_allocation', ?, ?, ?, ?, ?, 'pending', 'medium', ?, NOW())
+            `;
+
+            const requestTitle = `Budget Allocation - ${programModule?.name || 'Program'} FY ${fiscal_year}`;
+            const requestDescription = `Program budget request for ${programModule?.name || 'Program'} - Fiscal Year ${fiscal_year}. Total budget: KES ${total_budget?.toLocaleString() || '0'}`;
+            const justification = notes || `Budget allocation for ${programModule?.name || 'Program'} operations and activities`;
+
+            await db.query(approvalQuery, [
+                approvalNumber,
+                budgetId,
+                total_budget,
+                requestTitle,
+                requestDescription,
+                justification,
+                req.user.id
+            ]);
+
             res.status(201).json({
                 success: true,
-                data: { id: result.insertId },
-                message: 'Budget created successfully'
+                data: { id: budgetId },
+                message: 'Budget created successfully and submitted for approval'
             });
         } catch (error) {
             console.error('Error creating budget:', error);
@@ -520,6 +562,20 @@ module.exports = (db) => {
             const { id } = req.params;
             const { approved_amount, finance_notes } = req.body;
 
+            // Get approval details including program_budget_id
+            const [approval] = await db.query(
+                'SELECT program_budget_id, requested_amount, request_type FROM finance_approvals WHERE id = ? AND deleted_at IS NULL',
+                [id]
+            );
+
+            if (!approval) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Approval request not found'
+                });
+            }
+
+            // Update approval request
             const query = `
                 UPDATE finance_approvals
                 SET
@@ -531,7 +587,26 @@ module.exports = (db) => {
                 WHERE id = ? AND deleted_at IS NULL
             `;
 
-            await db.query(query, [approved_amount, finance_notes, req.user.id, id]);
+            await db.query(query, [approved_amount || approval.requested_amount, finance_notes, req.user.id, id]);
+
+            // If this is a budget allocation approval, update the program_budgets table
+            if (approval.program_budget_id && approval.request_type === 'budget_allocation') {
+                const budgetQuery = `
+                    UPDATE program_budgets
+                    SET
+                        status = 'approved',
+                        allocated_budget = ?,
+                        approved_by = ?,
+                        approved_at = NOW()
+                    WHERE id = ?
+                `;
+
+                await db.query(budgetQuery, [
+                    approved_amount || approval.requested_amount,
+                    req.user.id,
+                    approval.program_budget_id
+                ]);
+            }
 
             res.json({
                 success: true,
@@ -555,6 +630,20 @@ module.exports = (db) => {
             const { id } = req.params;
             const { rejection_reason } = req.body;
 
+            // Get approval details including program_budget_id
+            const [approval] = await db.query(
+                'SELECT program_budget_id, request_type FROM finance_approvals WHERE id = ? AND deleted_at IS NULL',
+                [id]
+            );
+
+            if (!approval) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Approval request not found'
+                });
+            }
+
+            // Update approval request
             const query = `
                 UPDATE finance_approvals
                 SET
@@ -566,6 +655,17 @@ module.exports = (db) => {
             `;
 
             await db.query(query, [rejection_reason, req.user.id, id]);
+
+            // If this is a budget allocation approval, update the program_budgets table
+            if (approval.program_budget_id && approval.request_type === 'budget_allocation') {
+                const budgetQuery = `
+                    UPDATE program_budgets
+                    SET status = 'rejected'
+                    WHERE id = ?
+                `;
+
+                await db.query(budgetQuery, [approval.program_budget_id]);
+            }
 
             res.json({
                 success: true,
