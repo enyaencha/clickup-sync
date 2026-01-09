@@ -48,9 +48,7 @@ module.exports = (db) => {
                 params.push(priority);
             }
 
-            query += ` ORDER BY
-                FIELD(abr.priority, 'urgent', 'high', 'medium', 'low'),
-                abr.submitted_at DESC`;
+            query += ` ORDER BY abr.submitted_at DESC`;
 
             const results = await db.query(query, params);
 
@@ -606,7 +604,7 @@ module.exports = (db) => {
                     OR abr.requested_by = ?
                 )
                 HAVING last_message_at IS NOT NULL OR abr.status = 'returned_for_amendment'
-                ORDER BY unread_count DESC, last_message_at DESC
+                ORDER BY last_message_at DESC, unread_count DESC
             `;
 
             const notifications = await db.query(query, [userId, userId, userId, userId]);
