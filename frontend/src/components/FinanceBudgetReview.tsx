@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
-import ConversationSidePanel from './ConversationSidePanel';
 
 interface BudgetRequest {
   id: number;
@@ -31,7 +30,6 @@ const FinanceBudgetReview: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('submitted');
   const [selectedRequest, setSelectedRequest] = useState<BudgetRequest | null>(null);
   const [showActionModal, setShowActionModal] = useState(false);
-  const [showConversationModal, setShowConversationModal] = useState(false);
   const [actionType, setActionType] = useState<'approve' | 'reject' | 'return' | 'edit' | 'revise'>('approve');
   const [actionData, setActionData] = useState({
     approved_amount: '',
@@ -95,13 +93,11 @@ const FinanceBudgetReview: React.FC = () => {
   };
 
   const openConversation = (request: BudgetRequest) => {
-    setSelectedRequest(request);
-    setShowConversationModal(true);
-  };
-
-  const closeConversation = () => {
-    setShowConversationModal(false);
-    setSelectedRequest(null);
+    // Emit custom event for Layout to handle (to use the global ConversationSidePanel)
+    const event = new CustomEvent('openBudgetConversation', {
+      detail: { requestId: request.id, activityName: request.activity_name }
+    });
+    window.dispatchEvent(event);
   };
 
   const handleMarkAsUnderReview = async (requestId: number) => {
@@ -618,18 +614,6 @@ const FinanceBudgetReview: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Conversation Side Panel */}
-      {user && (
-        <ConversationSidePanel
-          isOpen={showConversationModal}
-          onClose={closeConversation}
-          budgetRequestId={selectedRequest?.id || null}
-          activityName={selectedRequest?.activity_name || ''}
-          currentUserId={user.id}
-          isFinanceTeam={true}
-        />
       )}
     </div>
   );

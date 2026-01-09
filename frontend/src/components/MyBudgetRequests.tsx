@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
-import ConversationSidePanel from './ConversationSidePanel';
 import BudgetRequestForm from './BudgetRequestForm';
 
 interface BudgetRequest {
@@ -30,7 +29,6 @@ const MyBudgetRequests: React.FC = () => {
   const [requests, setRequests] = useState<BudgetRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState<BudgetRequest | null>(null);
-  const [showConversationPanel, setShowConversationPanel] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
@@ -54,13 +52,11 @@ const MyBudgetRequests: React.FC = () => {
   };
 
   const openConversation = (request: BudgetRequest) => {
-    setSelectedRequest(request);
-    setShowConversationPanel(true);
-  };
-
-  const closeConversation = () => {
-    setShowConversationPanel(false);
-    setSelectedRequest(null);
+    // Emit custom event for Layout to handle (to use the global ConversationSidePanel)
+    const event = new CustomEvent('openBudgetConversation', {
+      detail: { requestId: request.id, activityName: request.activity_name }
+    });
+    window.dispatchEvent(event);
   };
 
   const openEditRequest = (request: BudgetRequest) => {
@@ -294,18 +290,6 @@ const MyBudgetRequests: React.FC = () => {
             </div>
           ))}
         </div>
-      )}
-
-      {/* Conversation Side Panel */}
-      {user && (
-        <ConversationSidePanel
-          isOpen={showConversationPanel}
-          onClose={closeConversation}
-          budgetRequestId={selectedRequest?.id || null}
-          activityName={selectedRequest?.activity_name || ''}
-          currentUserId={user.id}
-          isFinanceTeam={false}
-        />
       )}
 
       {/* Edit Budget Request Modal */}
