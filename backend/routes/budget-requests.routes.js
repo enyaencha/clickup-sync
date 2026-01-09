@@ -736,6 +736,7 @@ module.exports = (db) => {
             const { id } = req.params;
 
             // Query includes online status from user_sessions table
+            // Using subquery to avoid duplicates when user has multiple sessions
             const query = `
                 SELECT
                     c.id,
@@ -744,10 +745,16 @@ module.exports = (db) => {
                     c.created_by as created_by_id,
                     u.full_name as created_by_name,
                     0 as is_finance_team,
-                    COALESCE(us.is_active, 0) as is_online
+                    COALESCE(
+                        (SELECT us.is_active
+                         FROM user_sessions us
+                         WHERE us.user_id = c.created_by
+                         ORDER BY us.updated_at DESC
+                         LIMIT 1),
+                        0
+                    ) as is_online
                 FROM comments c
                 LEFT JOIN users u ON c.created_by = u.id
-                LEFT JOIN user_sessions us ON u.id = us.user_id
                 WHERE c.entity_type = 'budget_request'
                 AND c.entity_id = ?
                 AND c.deleted_at IS NULL

@@ -31,17 +31,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   useEffect(() => {
     const handleCustomEvent = (e: Event) => {
       const customEvent = e as CustomEvent;
-      console.log('[Layout] Received openBudgetConversation event:', customEvent.detail);
       handleOpenConversation(customEvent.detail.requestId, customEvent.detail.activityName);
     };
 
-    console.log('[Layout] Adding event listener for openBudgetConversation');
     window.addEventListener('openBudgetConversation', handleCustomEvent);
-
-    return () => {
-      console.log('[Layout] Removing event listener for openBudgetConversation');
-      window.removeEventListener('openBudgetConversation', handleCustomEvent);
-    };
+    return () => window.removeEventListener('openBudgetConversation', handleCustomEvent);
   }, []);
 
   // Determine if user is in finance team (module_id = 6)
