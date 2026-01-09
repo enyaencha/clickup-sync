@@ -716,11 +716,11 @@ module.exports = (db) => {
                     req.user.id
                 ]);
 
-                // Update program_budgets
+                // Update program_budgets - set to 'active' so it can be allocated
                 const budgetQuery = `
                     UPDATE program_budgets
                     SET
-                        status = 'approved',
+                        status = 'active',
                         allocated_budget = ?,
                         approved_by = ?,
                         approved_at = NOW()
@@ -756,7 +756,7 @@ module.exports = (db) => {
                     const budgetQuery = `
                         UPDATE program_budgets
                         SET
-                            status = 'approved',
+                            status = 'active',
                             allocated_budget = ?,
                             approved_by = ?,
                             approved_at = NOW()
