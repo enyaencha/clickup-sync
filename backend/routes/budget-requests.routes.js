@@ -742,6 +742,7 @@ module.exports = (db) => {
                     c.id,
                     c.comment_text,
                     c.created_at,
+                    c.updated_at,
                     c.created_by as created_by_id,
                     u.full_name as created_by_name,
                     0 as is_finance_team,
@@ -832,6 +833,104 @@ module.exports = (db) => {
                 success: false,
                 error: 'Failed to add comment',
                 details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
+        }
+    });
+
+    /**
+     * PUT /api/budget-requests/:requestId/comments/:commentId
+     * Edit a comment (only by the comment author)
+     */
+    router.put('/:requestId/comments/:commentId', async (req, res) => {
+        try {
+            const { commentId } = req.params;
+            const { comment_text } = req.body;
+
+            if (!comment_text || !comment_text.trim()) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Comment text is required'
+                });
+            }
+
+            // Check if comment exists and user is the author
+            const checkQuery = `SELECT created_by FROM comments WHERE id = ? AND deleted_at IS NULL`;
+            const comments = await db.query(checkQuery, [commentId]);
+
+            if (comments.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Comment not found'
+                });
+            }
+
+            if (comments[0].created_by !== req.user.id) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'You can only edit your own comments'
+                });
+            }
+
+            // Update comment
+            const updateQuery = `
+                UPDATE comments
+                SET comment_text = ?, updated_at = NOW()
+                WHERE id = ?
+            `;
+            await db.query(updateQuery, [comment_text, commentId]);
+
+            res.json({
+                success: true,
+                message: 'Comment updated successfully'
+            });
+        } catch (error) {
+            console.error('Error updating comment:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to update comment'
+            });
+        }
+    });
+
+    /**
+     * DELETE /api/budget-requests/:requestId/comments/:commentId
+     * Delete a comment (soft delete, only by author)
+     */
+    router.delete('/:requestId/comments/:commentId', async (req, res) => {
+        try {
+            const { commentId } = req.params;
+
+            // Check if comment exists and user is the author
+            const checkQuery = `SELECT created_by FROM comments WHERE id = ? AND deleted_at IS NULL`;
+            const comments = await db.query(checkQuery, [commentId]);
+
+            if (comments.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Comment not found'
+                });
+            }
+
+            if (comments[0].created_by !== req.user.id) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'You can only delete your own comments'
+                });
+            }
+
+            // Soft delete
+            const deleteQuery = `UPDATE comments SET deleted_at = NOW() WHERE id = ?`;
+            await db.query(deleteQuery, [commentId]);
+
+            res.json({
+                success: true,
+                message: 'Comment deleted successfully'
+            });
+        } catch (error) {
+            console.error('Error deleting comment:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to delete comment'
             });
         }
     });

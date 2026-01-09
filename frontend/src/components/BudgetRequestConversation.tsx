@@ -7,6 +7,7 @@ interface Comment {
   created_by_name: string;
   created_by_id: number;
   created_at: string;
+  updated_at: string | null;
   is_finance_team: boolean;
   is_online: number;
 }
@@ -28,7 +29,15 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [editText, setEditText] = useState('');
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [newMessageCount, setNewMessageCount] = useState(0);
+  const [previousCommentsLength, setPreviousCommentsLength] = useState(0);
+  const [visibleDate, setVisibleDate] = useState<string>('');
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchComments();
@@ -38,14 +47,70 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
     return () => clearInterval(interval);
   }, [budgetRequestId]);
 
+  // Smart auto-scroll - only scroll if user is at bottom
   useEffect(() => {
-    // Scroll to bottom when new messages arrive
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (comments.length > previousCommentsLength) {
+      const newMessages = comments.length - previousCommentsLength;
+
+      if (isAtBottom) {
+        // User is at bottom, scroll to new messages
+        scrollToBottom();
+        setNewMessageCount(0);
+      } else {
+        // User is scrolled up, show counter
+        setNewMessageCount(prev => prev + newMessages);
+      }
+
+      setPreviousCommentsLength(comments.length);
+    }
   }, [comments]);
+
+  // Check if user is at bottom while scrolling
+  const handleScroll = () => {
+    if (!messagesContainerRef.current) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    const isBottom = scrollHeight - scrollTop - clientHeight < 50;
+
+    setIsAtBottom(isBottom);
+
+    if (isBottom) {
+      setNewMessageCount(0);
+    }
+
+    // Update visible date based on scroll position
+    updateVisibleDate();
+  };
+
+  const updateVisibleDate = () => {
+    if (!messagesContainerRef.current) return;
+
+    const container = messagesContainerRef.current;
+    const dateElements = container.querySelectorAll('[data-message-date]');
+
+    // Find the date that's currently visible at the top
+    for (let i = dateElements.length - 1; i >= 0; i--) {
+      const element = dateElements[i] as HTMLElement;
+      const rect = element.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+
+      if (rect.top <= containerRect.top + 100) {
+        const date = element.getAttribute('data-message-date');
+        if (date) {
+          setVisibleDate(formatDateHeader(date));
+          break;
+        }
+      }
+    }
+  };
+
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
+  };
 
   const fetchComments = async () => {
     try {
-      setLoading(true);
+      setLoading(comments.length === 0);
       const response = await authFetch(`/api/budget-requests/${budgetRequestId}/comments`);
       if (response.ok) {
         const data = await response.json();
@@ -89,6 +154,7 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
 
       setNewComment('');
       await fetchComments();
+      scrollToBottom('smooth');
     } catch (error) {
       console.error('Error posting comment:', error);
       alert(error instanceof Error ? error.message : 'Failed to post comment');
@@ -97,12 +163,121 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
     }
   };
 
+  const handleEditComment = async (commentId: number) => {
+    if (!editText.trim()) {
+      alert('Comment cannot be empty');
+      return;
+    }
+
+    try {
+      const response = await authFetch(`/api/budget-requests/${budgetRequestId}/comments/${commentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment_text: editText })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to edit comment');
+      }
+
+      setEditingCommentId(null);
+      setEditText('');
+      await fetchComments();
+    } catch (error) {
+      console.error('Error editing comment:', error);
+      alert(error instanceof Error ? error.message : 'Failed to edit comment');
+    }
+  };
+
+  const handleDeleteComment = async (commentId: number) => {
+    if (!confirm('Are you sure you want to delete this message?')) return;
+
+    try {
+      const response = await authFetch(`/api/budget-requests/${budgetRequestId}/comments/${commentId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete comment');
+      }
+
+      await fetchComments();
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      alert(error instanceof Error ? error.message : 'Failed to delete comment');
+    }
+  };
+
+  const startEdit = (comment: Comment) => {
+    setEditingCommentId(comment.id);
+    setEditText(comment.comment_text);
+  };
+
+  const cancelEdit = () => {
+    setEditingCommentId(null);
+    setEditText('');
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmitComment();
     }
   };
+
+  const handleEditKeyPress = (e: React.KeyboardEvent, commentId: number) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleEditComment(commentId);
+    }
+    if (e.key === 'Escape') {
+      cancelEdit();
+    }
+  };
+
+  // Date formatting functions
+  const formatDateHeader = (date: string) => {
+    const messageDate = new Date(date);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (messageDate.toDateString() === today.toDateString()) {
+      return 'Today';
+    } else if (messageDate.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    } else {
+      return messageDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    }
+  };
+
+  const groupMessagesByDate = () => {
+    const grouped: { [key: string]: Comment[] } = {};
+
+    comments.forEach(comment => {
+      const date = new Date(comment.created_at).toDateString();
+      if (!grouped[date]) {
+        grouped[date] = [];
+      }
+      grouped[date].push(comment);
+    });
+
+    return Object.entries(grouped).map(([date, msgs]) => ({
+      date,
+      messages: msgs
+    }));
+  };
+
+  const isEdited = (comment: Comment) => {
+    if (!comment.updated_at) return false;
+    const created = new Date(comment.created_at).getTime();
+    const updated = new Date(comment.updated_at).getTime();
+    return updated > created + 1000; // More than 1 second difference
+  };
+
+  const groupedMessages = groupMessagesByDate();
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
@@ -113,8 +288,20 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
         </p>
       </div>
 
+      {/* Sticky Date Header - Shows when scrolling */}
+      {visibleDate && !isAtBottom && (
+        <div className="sticky top-0 z-10 bg-gray-700 bg-opacity-90 text-white text-center py-1 text-xs">
+          {visibleDate}
+        </div>
+      )}
+
       {/* Messages Area - WhatsApp Style */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#e5ddd5]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4c5b9' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }}>
+      <div
+        ref={messagesContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#e5ddd5]"
+        style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4c5b9' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }}
+      >
         {loading && comments.length === 0 ? (
           <div className="flex justify-center items-center py-12">
             <div className="bg-white rounded-lg shadow-sm px-6 py-4">
@@ -131,62 +318,142 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
             </div>
           </div>
         ) : (
-          <>
-            {comments.map((comment) => {
-              const isOwnComment = comment.created_by_id === currentUserId;
-              const commentIsFromFinance = comment.is_finance_team;
+          groupedMessages.map(({ date, messages }) => (
+            <div key={date}>
+              {/* Date Separator */}
+              <div className="flex justify-center my-4" data-message-date={messages[0].created_at}>
+                <div className="bg-white bg-opacity-90 shadow-sm px-3 py-1 rounded-lg">
+                  <span className="text-xs text-gray-600 font-medium">
+                    {formatDateHeader(messages[0].created_at)}
+                  </span>
+                </div>
+              </div>
 
-              return (
-                <div
-                  key={comment.id}
-                  className={`flex ${isOwnComment ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div className={`max-w-[75%] ${isOwnComment ? 'items-end' : 'items-start'} flex flex-col`}>
-                    {/* Message Bubble */}
-                    <div
-                      className={`rounded-lg px-4 py-2 shadow-sm ${
-                        isOwnComment
-                          ? commentIsFromFinance
-                            ? 'bg-[#dcf8c6] text-gray-900' // Finance sent (light green - WhatsApp style)
-                            : 'bg-[#dcf8c6] text-gray-900' // Activity user sent
-                          : commentIsFromFinance
-                          ? 'bg-white text-gray-900 border border-green-200' // Finance received
-                          : 'bg-white text-gray-900' // Activity user received
-                      }`}
-                    >
-                      {/* Sender name (only for received messages) */}
-                      {!isOwnComment && (
-                        <div className={`text-xs font-semibold mb-1 flex items-center gap-1 ${
-                          commentIsFromFinance ? 'text-green-700' : 'text-blue-700'
-                        }`}>
-                          {!!commentIsFromFinance && '🏦 '}
-                          <span>{comment.created_by_name}</span>
-                          {comment.is_online === 1 && (
-                            <span className="inline-block w-2 h-2 bg-green-500 rounded-full" title="Online"></span>
-                          )}
+              {/* Messages for this date */}
+              {messages.map((comment) => {
+                const isOwnComment = comment.created_by_id === currentUserId;
+                const commentIsFromFinance = comment.is_finance_team;
+                const isEditingThis = editingCommentId === comment.id;
+
+                return (
+                  <div key={comment.id} className={`flex ${isOwnComment ? 'justify-end' : 'justify-start'} mb-2`}>
+                    <div className={`max-w-[75%] group relative`}>
+                      {/* Edit/Delete buttons (only for own messages) */}
+                      {isOwnComment && !isEditingThis && (
+                        <div className="absolute -top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                          <button
+                            onClick={() => startEdit(comment)}
+                            className="bg-gray-700 text-white rounded-full p-1 hover:bg-gray-800 text-xs"
+                            title="Edit"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteComment(comment.id)}
+                            className="bg-red-600 text-white rounded-full p-1 hover:bg-red-700 text-xs"
+                            title="Delete"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
                         </div>
                       )}
 
-                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{comment.comment_text}</p>
+                      {/* Message Bubble */}
+                      <div className={`rounded-lg px-4 py-2 shadow-sm ${
+                        isOwnComment
+                          ? 'bg-[#dcf8c6] text-gray-900'  // WhatsApp green for sent
+                          : commentIsFromFinance
+                          ? 'bg-white text-gray-900 border border-green-200'  // Finance received
+                          : 'bg-white text-gray-900'  // Activity user received
+                      }`}>
+                        {/* Sender name (only for received messages) */}
+                        {!isOwnComment && (
+                          <div className={`text-xs font-semibold mb-1 flex items-center gap-1 ${
+                            commentIsFromFinance ? 'text-green-700' : 'text-blue-700'
+                          }`}>
+                            {!!commentIsFromFinance && '🏦 '}
+                            <span>{comment.created_by_name}</span>
+                            {comment.is_online === 1 && (
+                              <span className="inline-block w-2 h-2 bg-green-500 rounded-full" title="Online"></span>
+                            )}
+                          </div>
+                        )}
 
-                      {/* Timestamp and status */}
-                      <div className={`flex items-center gap-1 mt-1 ${isOwnComment ? 'justify-end' : 'justify-start'}`}>
-                        <span className="text-[10px] text-gray-500">
-                          {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        {isOwnComment && (
-                          <span className="text-blue-600 text-xs">✓✓</span>
+                        {/* Message content or edit textarea */}
+                        {isEditingThis ? (
+                          <div className="space-y-2">
+                            <textarea
+                              value={editText}
+                              onChange={(e) => setEditText(e.target.value)}
+                              onKeyDown={(e) => handleEditKeyPress(e, comment.id)}
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-sm resize-none"
+                              rows={3}
+                              autoFocus
+                            />
+                            <div className="flex gap-2 justify-end">
+                              <button
+                                onClick={cancelEdit}
+                                className="px-3 py-1 bg-gray-300 text-gray-700 rounded text-xs hover:bg-gray-400"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handleEditComment(comment.id)}
+                                className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                              >
+                                Save
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{comment.comment_text}</p>
+                        )}
+
+                        {/* Timestamp, edited indicator, and status */}
+                        {!isEditingThis && (
+                          <div className="flex items-center gap-2 mt-1 justify-end">
+                            <span className="text-[10px] text-gray-500">
+                              {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            {isEdited(comment) && (
+                              <span className="text-[10px] text-gray-500 italic">edited</span>
+                            )}
+                            {isOwnComment && (
+                              <span className="text-blue-600 text-xs">✓✓</span>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-            <div ref={messagesEndRef} />
-          </>
+                );
+              })}
+            </div>
+          ))
         )}
+        <div ref={messagesEndRef} />
       </div>
+
+      {/* Scroll to Bottom Button */}
+      {!isAtBottom && (
+        <button
+          onClick={() => scrollToBottom('smooth')}
+          className="absolute bottom-24 right-8 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-shadow border border-gray-200 z-10"
+        >
+          <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+          </svg>
+          {newMessageCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-green-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+              {newMessageCount > 9 ? '9+' : newMessageCount}
+            </span>
+          )}
+        </button>
+      )}
 
       {/* Input Area - Sticky at bottom */}
       <div className="bg-white border-t border-gray-200 p-3">
