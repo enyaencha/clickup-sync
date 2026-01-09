@@ -746,11 +746,10 @@ module.exports = (db) => {
                     u.full_name as created_by_name,
                     0 as is_finance_team,
                     COALESCE(
-                        (SELECT us.is_active
+                        (SELECT MAX(us.is_active)
                          FROM user_sessions us
                          WHERE us.user_id = c.created_by
-                         ORDER BY us.updated_at DESC
-                         LIMIT 1),
+                         AND us.expires_at > NOW()),
                         0
                     ) as is_online
                 FROM comments c
