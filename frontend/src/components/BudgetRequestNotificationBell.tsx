@@ -136,9 +136,9 @@ const BudgetRequestNotificationBell: React.FC<NotificationBellProps> = ({ onOpen
             onClick={() => setShowDropdown(false)}
           />
 
-          {/* Dropdown Content */}
-          <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-20 max-h-96 overflow-y-auto">
-            <div className="p-3 border-b bg-gray-50">
+          {/* Dropdown Content - Made larger and scrollable */}
+          <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-20 max-h-[600px] overflow-y-auto">
+            <div className="p-3 border-b bg-gray-50 sticky top-0 z-10">
               <h3 className="font-semibold text-gray-900 flex items-center gap-2">
                 <span>🔔</span>
                 Notifications
@@ -153,15 +153,15 @@ const BudgetRequestNotificationBell: React.FC<NotificationBellProps> = ({ onOpen
             {/* General Notifications (Approvals, Revisions, etc.) */}
             {generalNotifications.length > 0 && (
               <div className="border-b">
-                <div className="px-3 py-2 bg-gray-50">
+                <div className="px-3 py-2 bg-gray-50 sticky top-[65px] z-10">
                   <p className="text-xs font-semibold text-gray-700">Updates</p>
                 </div>
-                <div className="divide-y max-h-48 overflow-y-auto">
+                <div className="divide-y">
                   {generalNotifications.slice(0, 10).map((notification) => (
                     <button
                       key={notification.id}
                       onClick={() => handleGeneralNotificationClick(notification)}
-                      className={`w-full p-3 text-left hover:bg-gray-50 transition-colors ${
+                      className={`w-full p-3 text-left hover:bg-gray-100 transition-colors ${
                         notification.is_read === 0 ? 'bg-blue-50' : ''
                       }`}
                     >
@@ -170,10 +170,10 @@ const BudgetRequestNotificationBell: React.FC<NotificationBellProps> = ({ onOpen
                           {notification.title}
                         </span>
                         {notification.is_read === 0 && (
-                          <span className="w-2 h-2 bg-blue-600 rounded-full mt-1"></span>
+                          <span className="w-2 h-2 bg-blue-600 rounded-full mt-1 flex-shrink-0 ml-2"></span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-700 mb-1 line-clamp-2">
+                      <p className="text-xs text-gray-700 mb-1 whitespace-normal break-words">
                         {notification.message}
                       </p>
                       <span className="text-xs text-gray-500">
@@ -193,16 +193,16 @@ const BudgetRequestNotificationBell: React.FC<NotificationBellProps> = ({ onOpen
               </div>
             ) : notifications.length > 0 ? (
               <div>
-                <div className="px-3 py-2 bg-gray-50">
-                  <p className="text-xs font-semibold text-gray-700">💬 Budget Messages</p>
+                <div className="px-3 py-2 bg-gray-50 sticky top-[65px] z-10">
+                  <p className="text-xs font-semibold text-gray-700">💬 Budget Conversations</p>
                 </div>
                 <div className="divide-y">
                   {notifications.map((notification) => (
                     <button
                       key={notification.request_id}
                       onClick={() => handleNotificationClick(notification)}
-                      className={`w-full p-3 text-left hover:bg-gray-50 transition-colors ${
-                        notification.unread_count > 0 ? 'bg-blue-50' : ''
+                      className={`w-full p-3 text-left hover:bg-gray-100 transition-colors ${
+                        notification.unread_count > 0 ? 'bg-green-50' : ''
                       }`}
                     >
                       <div className="flex justify-between items-start mb-1">
@@ -210,7 +210,7 @@ const BudgetRequestNotificationBell: React.FC<NotificationBellProps> = ({ onOpen
                           {notification.activity_name}
                         </span>
                         {notification.unread_count > 0 && (
-                          <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-600 rounded-full">
+                          <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-green-600 rounded-full flex-shrink-0 ml-2">
                             {notification.unread_count}
                           </span>
                         )}
@@ -237,13 +237,13 @@ const BudgetRequestNotificationBell: React.FC<NotificationBellProps> = ({ onOpen
               </div>
             ) : null}
 
-            <div className="p-2 border-t bg-gray-50">
+            <div className="p-2 border-t bg-gray-50 sticky bottom-0">
               <button
                 onClick={() => {
                   setShowDropdown(false);
                   window.location.href = '/my-budget-requests';
                 }}
-                className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium"
+                className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium py-1"
               >
                 View All Requests →
               </button>
