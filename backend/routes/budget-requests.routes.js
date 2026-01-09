@@ -694,6 +694,39 @@ module.exports = (db) => {
         }
     });
 
+    /**
+     * PUT /api/budget-requests/:id/mark-conversation-read
+     * Mark all notifications related to a budget request as read
+     */
+    router.put('/:id/mark-conversation-read', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const userId = req.user.id;
+
+            // Mark all notifications for this budget request as read
+            await db.query(
+                `UPDATE notifications
+                 SET is_read = 1
+                 WHERE user_id = ?
+                 AND entity_type = 'budget_request'
+                 AND entity_id = ?
+                 AND is_read = 0`,
+                [userId, id]
+            );
+
+            res.json({
+                success: true,
+                message: 'Conversation notifications marked as read'
+            });
+        } catch (error) {
+            console.error('Error marking conversation as read:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to mark conversation as read'
+            });
+        }
+    });
+
     // ==================== COMMENTS / CONVERSATION ====================
 
     /**
@@ -704,8 +737,7 @@ module.exports = (db) => {
         try {
             const { id } = req.params;
 
-            // Simplified query without modules table dependency
-            // is_finance_team will be determined on frontend based on user context
+            // Query includes online status from user_sessions table
             const query = `
                 SELECT
                     c.id,
@@ -713,9 +745,11 @@ module.exports = (db) => {
                     c.created_at,
                     c.created_by as created_by_id,
                     u.full_name as created_by_name,
-                    0 as is_finance_team
+                    0 as is_finance_team,
+                    COALESCE(us.is_active, 0) as is_online
                 FROM comments c
                 LEFT JOIN users u ON c.created_by = u.id
+                LEFT JOIN user_sessions us ON u.id = us.user_id
                 WHERE c.entity_type = 'budget_request'
                 AND c.entity_id = ?
                 AND c.deleted_at IS NULL

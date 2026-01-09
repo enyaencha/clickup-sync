@@ -4,6 +4,7 @@ import { authFetch } from '../config/api';
 import AddBudgetModal from './AddBudgetModal';
 import AddTransactionModal from './AddTransactionModal';
 import FinanceBudgetReview from './FinanceBudgetReview';
+import ConversationSidePanel from './ConversationSidePanel';
 
 interface BudgetSummary {
   program_module_id: number;
@@ -39,6 +40,15 @@ interface PendingApproval {
   requester_name: string;
 }
 
+interface BudgetConversationNotification {
+  request_id: number;
+  request_number: string;
+  activity_name: string;
+  unread_count: number;
+  last_message_at: string;
+  status: string;
+}
+
 const FinanceDashboard: React.FC = () => {
   const [budgetSummary, setBudgetSummary] = useState<BudgetSummary[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
@@ -50,10 +60,18 @@ const FinanceDashboard: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
+  const [conversationNotifications, setConversationNotifications] = useState<BudgetConversationNotification[]>([]);
+  const [showConversationPanel, setShowConversationPanel] = useState(false);
+  const [selectedConversation, setSelectedConversation] = useState<{ requestId: number; activityName: string } | null>(null);
+  const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
     fetchFinanceData();
+    fetchConversationNotifications();
+    // Poll for new conversation notifications every 30 seconds
+    const interval = setInterval(fetchConversationNotifications, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchFinanceData = async () => {
@@ -86,6 +104,24 @@ const FinanceDashboard: React.FC = () => {
       console.error('Failed to fetch finance data:', error);
       setLoading(false);
     }
+  };
+
+  const fetchConversationNotifications = async () => {
+    try {
+      const response = await authFetch('/api/budget-requests/notifications');
+      if (response.ok) {
+        const data = await response.json();
+        setConversationNotifications(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching conversation notifications:', error);
+    }
+  };
+
+  const handleOpenConversation = (requestId: number, activityName: string) => {
+    setSelectedConversation({ requestId, activityName });
+    setShowConversationPanel(true);
+    setShowNotificationDropdown(false);
   };
 
   const formatCurrency = (amount: number) => {
@@ -206,7 +242,109 @@ const FinanceDashboard: React.FC = () => {
               </h1>
               <p className="mt-1 text-sm text-gray-600">Budget Tracking & Expenditure Management</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-3 items-center">
+              {/* Budget Conversation Notifications */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
+                  className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  title="Budget Conversations"
+                >
+                  <svg
+                    className="w-6 h-6 text-gray-700"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                    />
+                  </svg>
+
+                  {/* Unread Badge */}
+                  {conversationNotifications.reduce((sum, n) => sum + n.unread_count, 0) > 0 && (
+                    <span className="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-green-600 rounded-full">
+                      {conversationNotifications.reduce((sum, n) => sum + n.unread_count, 0) > 9 ? '9+' : conversationNotifications.reduce((sum, n) => sum + n.unread_count, 0)}
+                    </span>
+                  )}
+                </button>
+
+                {/* Notification Dropdown */}
+                {showNotificationDropdown && (
+                  <>
+                    {/* Backdrop */}
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowNotificationDropdown(false)}
+                    />
+
+                    {/* Dropdown Content */}
+                    <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-20 max-h-[500px] overflow-y-auto">
+                      <div className="p-3 border-b bg-gray-50 sticky top-0 z-10">
+                        <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                          <span>💬</span>
+                          Budget Conversations
+                        </h3>
+                        {conversationNotifications.reduce((sum, n) => sum + n.unread_count, 0) > 0 && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            {conversationNotifications.reduce((sum, n) => sum + n.unread_count, 0)} unread message{conversationNotifications.reduce((sum, n) => sum + n.unread_count, 0) !== 1 ? 's' : ''}
+                          </p>
+                        )}
+                      </div>
+
+                      {conversationNotifications.length === 0 ? (
+                        <div className="p-6 text-center text-gray-500">
+                          <p className="text-3xl mb-2">📭</p>
+                          <p className="text-sm">No conversations yet</p>
+                        </div>
+                      ) : (
+                        <div className="divide-y">
+                          {conversationNotifications.map((notification) => (
+                            <button
+                              key={notification.request_id}
+                              onClick={() => handleOpenConversation(notification.request_id, notification.activity_name)}
+                              className={`w-full p-3 text-left hover:bg-gray-100 transition-colors ${
+                                notification.unread_count > 0 ? 'bg-green-50' : ''
+                              }`}
+                            >
+                              <div className="flex justify-between items-start mb-1">
+                                <span className="font-medium text-gray-900 text-sm">
+                                  {notification.activity_name}
+                                </span>
+                                {notification.unread_count > 0 && (
+                                  <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-green-600 rounded-full flex-shrink-0 ml-2">
+                                    {notification.unread_count}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-600 mb-1">
+                                Request #{notification.request_number}
+                              </p>
+                              <div className="flex items-center justify-between">
+                                <span className={`text-xs px-2 py-0.5 rounded ${
+                                  notification.status === 'submitted' ? 'bg-blue-100 text-blue-700' :
+                                  notification.status === 'under_review' ? 'bg-yellow-100 text-yellow-700' :
+                                  notification.status === 'returned_for_amendment' ? 'bg-orange-100 text-orange-700' :
+                                  'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {notification.status.replace(/_/g, ' ')}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {new Date(notification.last_message_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+
               <button
                 onClick={() => setShowBudgetModal(true)}
                 className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
@@ -538,6 +676,19 @@ const FinanceDashboard: React.FC = () => {
         isOpen={showTransactionModal}
         onClose={() => setShowTransactionModal(false)}
         onSuccess={fetchFinanceData}
+      />
+
+      {/* Conversation Side Panel */}
+      <ConversationSidePanel
+        isOpen={showConversationPanel}
+        onClose={() => {
+          setShowConversationPanel(false);
+          fetchConversationNotifications(); // Refresh notifications when closing
+        }}
+        budgetRequestId={selectedConversation?.requestId || null}
+        activityName={selectedConversation?.activityName || ''}
+        currentUserId={user?.id || 0}
+        isFinanceTeam={true}
       />
     </div>
   );
