@@ -39,7 +39,7 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [newVerification, setNewVerification] = useState({
     verification_method: '',
     description: '',
@@ -119,9 +119,11 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
         const verificationId = data.id;
 
         // Upload file if selected
-        if (selectedFile && verificationId) {
+        if (selectedFiles.length > 0 && verificationId) {
           const formData = new FormData();
-          formData.append('file', selectedFile);
+          selectedFiles.forEach((file) => {
+            formData.append('files', file);
+          });
           formData.append('entity_type', 'verification');
           formData.append('entity_id', verificationId.toString());
 
@@ -150,7 +152,7 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
           responsible_person: '',
           notes: '',
         });
-        setSelectedFile(null);
+        setSelectedFiles([]);
         setShowAddForm(false);
         await fetchVerifications();
       } else {
@@ -269,7 +271,7 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setSelectedFile(e.target.files[0]);
+      setSelectedFiles(Array.from(e.target.files));
     }
   };
 
@@ -349,7 +351,7 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
                 <button
                   onClick={() => {
                     setShowAddForm(false);
-                    setSelectedFile(null);
+                    setSelectedFiles([]);
                   }}
                   className="text-gray-600 hover:text-gray-800"
                 >
@@ -469,11 +471,12 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
                     type="file"
                     onChange={handleFileChange}
                     className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx,.xls"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx,.xls,.mp4,.mov,.avi,.mkv,.webm"
+                    multiple
                   />
-                  {selectedFile && (
+                  {selectedFiles.length > 0 && (
                     <p className="mt-2 text-sm text-green-600">
-                      ✓ Selected: {selectedFile.name}
+                      ✓ Selected: {selectedFiles.length} file{selectedFiles.length === 1 ? '' : 's'}
                     </p>
                   )}
                 </div>
@@ -502,7 +505,7 @@ const ActivityVerificationModal: React.FC<ActivityVerificationModalProps> = ({
                   <button
                     onClick={() => {
                       setShowAddForm(false);
-                      setSelectedFile(null);
+                      setSelectedFiles([]);
                     }}
                     className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
                   >
