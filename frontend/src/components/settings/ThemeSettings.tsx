@@ -17,9 +17,6 @@ const ThemeSettings: React.FC = () => {
     setFollowSystemTheme
   } = useTheme();
   const { user } = useAuth();
-    followSystemTheme,
-    setFollowSystemTheme
-  } = useTheme();
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingTheme, setEditingTheme] = useState<any>(null);
   const [sharingTheme, setSharingTheme] = useState<any>(null);
@@ -30,7 +27,6 @@ const ThemeSettings: React.FC = () => {
   const userCustomThemes = availableThemes.filter(t => t.isCustom && t.accessType !== 'shared');
   const sharedThemes = availableThemes.filter(t => t.accessType === 'shared');
   const isSystemAdmin = Boolean(user?.is_system_admin);
-  const userCustomThemes = availableThemes.filter(t => t.isCustom);
 
   const extractGradientStops = (gradient: string, fallbackStart: string, fallbackEnd: string) => {
     const matches = gradient.match(/#[0-9a-fA-F]{3,8}/g);
@@ -96,15 +92,6 @@ const ThemeSettings: React.FC = () => {
     } catch (error) {
       console.error('Failed to save theme:', error);
       alert('Failed to save theme. Please try again.');
-  const handleSaveTheme = (theme: any) => {
-    if (editingTheme) {
-      if (editingTheme.isCustom) {
-        updateCustomTheme(theme);
-      } else {
-        updateDefaultTheme(theme);
-      }
-    } else {
-      addCustomTheme(theme);
     }
   };
 
@@ -561,17 +548,6 @@ const ThemeSettings: React.FC = () => {
                     </button>
                   </div>
                 )}
-                <div className="absolute bottom-3 right-3">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEditTheme(theme);
-                    }}
-                    className="px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-100 rounded hover:bg-blue-200 transition-colors shadow-sm"
-                  >
-                    ✏️ Edit
-                  </button>
-                </div>
               </div>
             );
           })}
