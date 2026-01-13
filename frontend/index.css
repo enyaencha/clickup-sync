@@ -42,8 +42,10 @@ body {
   color: var(--main-text) !important;
 }
 
-/* Apply theme to card-like containers */
-.rounded-lg, .rounded-xl, .rounded-2xl {
+/* Apply theme to card-like containers (avoid overriding buttons/inputs) */
+:is(div, section, article, main, aside, header, footer, nav, li).rounded-lg,
+:is(div, section, article, main, aside, header, footer, nav, li).rounded-xl,
+:is(div, section, article, main, aside, header, footer, nav, li).rounded-2xl {
   background: var(--card-background);
   border-color: var(--card-border);
 }
@@ -145,10 +147,15 @@ input::placeholder, textarea::placeholder {
   backdrop-filter: blur(4px);
 }
 
-/* Ensure contrast on badges and tags */
-.bg-green-100, .bg-blue-100, .bg-red-100, .bg-yellow-100 {
+/* Ensure contrast on badges, tags, and alert surfaces */
+.bg-green-100, .bg-blue-100, .bg-red-100, .bg-yellow-100,
+.bg-yellow-50, .bg-orange-50, .bg-blue-50, .bg-purple-50 {
   background: var(--activity-card-background) !important;
   border: 1px solid var(--activity-card-border);
+}
+
+.border-yellow-400, .border-yellow-200, .border-orange-200, .border-blue-200, .border-purple-200 {
+  border-color: var(--activity-card-border) !important;
 }
 
 /* Link colors */
