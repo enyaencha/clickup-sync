@@ -84,6 +84,13 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     }
   };
 
+  const applySystemTheme = () => {
+    const systemPreference = getSystemThemePreference();
+    const themeId = getThemeForSystemPreference(systemPreference);
+    const themeExists = allThemes.some((theme) => theme.id === themeId);
+    setTheme(themeExists ? themeId : DEFAULT_THEME_ID);
+  };
+
   const setFollowSystemTheme = (follow: boolean) => {
     setFollowSystemThemeState(follow);
     if (hasLoadedThemes.current) {
@@ -92,9 +99,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 
     // If enabling system theme, immediately apply the system preference
     if (follow) {
-      const systemPreference = getSystemThemePreference();
-      const themeId = getThemeForSystemPreference(systemPreference);
-      setTheme(themeId);
+      applySystemTheme();
     }
   };
 
@@ -239,6 +244,12 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     return () => {
       mediaQuery.removeEventListener('change', handleSystemThemeChange);
     };
+  }, [followSystemTheme, allThemes]);
+
+  // Apply system theme once themes are loaded or updated
+  useEffect(() => {
+    if (!followSystemTheme || !hasLoadedThemes.current) return;
+    applySystemTheme();
   }, [followSystemTheme, allThemes]);
 
   useEffect(() => {
