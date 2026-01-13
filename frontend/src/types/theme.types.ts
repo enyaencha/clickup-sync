@@ -43,6 +43,7 @@ export interface Theme {
   description: string;
   icon: string;
   colors: ThemeColors;
+  isCustom?: boolean;
 }
 
 export const themes: Theme[] = [
