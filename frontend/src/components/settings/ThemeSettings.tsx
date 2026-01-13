@@ -3,12 +3,60 @@ import { useTheme } from '../../contexts/ThemeContext';
 import CustomThemeBuilder from './CustomThemeBuilder';
 
 const ThemeSettings: React.FC = () => {
-  const { currentTheme, setTheme, availableThemes, addCustomTheme, updateCustomTheme, deleteCustomTheme, followSystemTheme, setFollowSystemTheme } = useTheme();
+  const {
+    currentTheme,
+    setTheme,
+    availableThemes,
+    addCustomTheme,
+    updateCustomTheme,
+    updateDefaultTheme,
+    deleteCustomTheme,
+    followSystemTheme,
+    setFollowSystemTheme
+  } = useTheme();
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingTheme, setEditingTheme] = useState<any>(null);
 
-  const defaultThemes = availableThemes.filter(t => !(t as any).isCustom);
-  const userCustomThemes = availableThemes.filter(t => (t as any).isCustom);
+  const defaultThemes = availableThemes.filter(t => !t.isCustom);
+  const userCustomThemes = availableThemes.filter(t => t.isCustom);
+
+  const extractGradientStops = (gradient: string, fallbackStart: string, fallbackEnd: string) => {
+    const matches = gradient.match(/#[0-9a-fA-F]{3,8}/g);
+    if (matches && matches.length >= 2) {
+      return [matches[0], matches[1]];
+    }
+    return [fallbackStart, fallbackEnd];
+  };
+
+  const toEditableTheme = (theme: any) => {
+    const [sidebarBg1, sidebarBg2] = extractGradientStops(
+      theme.colors.sidebarBackground,
+      theme.colors.accentPrimary,
+      theme.colors.accentSecondary
+    );
+    const [mainBg1, mainBg2] = extractGradientStops(
+      theme.colors.mainBackground,
+      theme.colors.cardBackground,
+      theme.colors.cardBackground
+    );
+
+    return {
+      ...theme,
+      colors: {
+        ...theme.colors,
+        sidebarBg1,
+        sidebarBg2,
+        sidebarText: theme.colors.sidebarText,
+        sidebarActiveBg: theme.colors.accentPrimary,
+        sidebarActiveBorder: theme.colors.sidebarActiveBorder,
+        mainBg1,
+        mainBg2,
+        mainText: theme.colors.mainText,
+        cardBg: theme.colors.cardBackground,
+        cardBorder: theme.colors.cardBorder,
+      }
+    };
+  };
 
   const handleCreateTheme = () => {
     setEditingTheme(null);
@@ -16,13 +64,17 @@ const ThemeSettings: React.FC = () => {
   };
 
   const handleEditTheme = (theme: any) => {
-    setEditingTheme(theme);
+    setEditingTheme(toEditableTheme(theme));
     setShowBuilder(true);
   };
 
   const handleSaveTheme = (theme: any) => {
     if (editingTheme) {
-      updateCustomTheme(theme);
+      if (editingTheme.isCustom) {
+        updateCustomTheme(theme);
+      } else {
+        updateDefaultTheme(theme);
+      }
     } else {
       addCustomTheme(theme);
     }
@@ -265,9 +317,8 @@ const ThemeSettings: React.FC = () => {
           {defaultThemes.map((theme) => {
             const isActive = currentTheme.id === theme.id;
             return (
-              <button
+              <div
                 key={theme.id}
-                onClick={() => setTheme(theme.id)}
                 className={`
                   relative group text-left rounded-xl overflow-hidden transition-all duration-300 transform
                   ${isActive
@@ -276,74 +327,91 @@ const ThemeSettings: React.FC = () => {
                   }
                 `}
               >
-                {/* Theme Preview */}
-                <div className="h-32 relative" style={{ background: theme.colors.sidebarBackground }}>
-                  <div className="absolute inset-0 opacity-50" style={{ background: theme.colors.mainBackground }}></div>
-                  <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 rounded-full bg-white/80"></div>
-                      <div className="w-3 h-3 rounded-full bg-white/60"></div>
-                      <div className="w-3 h-3 rounded-full bg-white/40"></div>
+                <button
+                  onClick={() => setTheme(theme.id)}
+                  className="w-full text-left"
+                >
+                  {/* Theme Preview */}
+                  <div className="h-32 relative" style={{ background: theme.colors.sidebarBackground }}>
+                    <div className="absolute inset-0 opacity-50" style={{ background: theme.colors.mainBackground }}></div>
+                    <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 rounded-full bg-white/80"></div>
+                        <div className="w-3 h-3 rounded-full bg-white/60"></div>
+                        <div className="w-3 h-3 rounded-full bg-white/40"></div>
+                      </div>
+                      <div className="text-3xl">{theme.icon}</div>
                     </div>
-                    <div className="text-3xl">{theme.icon}</div>
-                  </div>
 
-                  {/* Mini Preview Cards */}
-                  <div className="absolute bottom-3 left-4 right-4 flex space-x-2">
-                    <div
-                      className="flex-1 h-8 rounded shadow-lg"
-                      style={{
-                        background: theme.colors.cardBackground,
-                        border: `1px solid ${theme.colors.cardBorder}`
-                      }}
-                    ></div>
-                    <div
-                      className="flex-1 h-8 rounded shadow-lg"
-                      style={{
-                        background: theme.colors.cardBackground,
-                        border: `1px solid ${theme.colors.cardBorder}`
-                      }}
-                    ></div>
-                  </div>
-
-                  {/* Active Badge */}
-                  {isActive && (
-                    <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg flex items-center space-x-1">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      <span>Active</span>
+                    {/* Mini Preview Cards */}
+                    <div className="absolute bottom-3 left-4 right-4 flex space-x-2">
+                      <div
+                        className="flex-1 h-8 rounded shadow-lg"
+                        style={{
+                          background: theme.colors.cardBackground,
+                          border: `1px solid ${theme.colors.cardBorder}`
+                        }}
+                      ></div>
+                      <div
+                        className="flex-1 h-8 rounded shadow-lg"
+                        style={{
+                          background: theme.colors.cardBackground,
+                          border: `1px solid ${theme.colors.cardBorder}`
+                        }}
+                      ></div>
                     </div>
-                  )}
-                </div>
 
-                {/* Theme Info */}
-                <div className="p-4 bg-white">
-                  <h4 className="font-bold text-gray-900 text-base mb-1 flex items-center justify-between">
-                    {theme.name}
+                    {/* Active Badge */}
                     {isActive && (
-                      <span className="text-blue-500">
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg flex items-center space-x-1">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
-                      </span>
-                    )}
-                  </h4>
-                  <p className="text-sm text-gray-600 mb-3">{theme.description}</p>
-
-                  {/* Color Palette */}
-                  <div className="flex items-center space-x-1">
-                    <div className="w-6 h-6 rounded shadow-sm border border-gray-200" style={{ background: theme.colors.accentPrimary }} title="Primary Color"></div>
-                    <div className="w-6 h-6 rounded shadow-sm border border-gray-200" style={{ background: theme.colors.accentSecondary }} title="Secondary Color"></div>
-                    <div className="flex-1"></div>
-                    {!isActive && (
-                      <span className="text-xs text-blue-600 font-semibold group-hover:text-blue-700">
-                        Apply →
-                      </span>
+                        <span>Active</span>
+                      </div>
                     )}
                   </div>
+
+                  {/* Theme Info */}
+                  <div className="p-4 bg-white">
+                    <h4 className="font-bold text-gray-900 text-base mb-1 flex items-center justify-between">
+                      {theme.name}
+                      {isActive && (
+                        <span className="text-blue-500">
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        </span>
+                      )}
+                    </h4>
+                    <p className="text-sm text-gray-600 mb-3">{theme.description}</p>
+
+                    {/* Color Palette */}
+                    <div className="flex items-center space-x-1">
+                      <div className="w-6 h-6 rounded shadow-sm border border-gray-200" style={{ background: theme.colors.accentPrimary }} title="Primary Color"></div>
+                      <div className="w-6 h-6 rounded shadow-sm border border-gray-200" style={{ background: theme.colors.accentSecondary }} title="Secondary Color"></div>
+                      <div className="flex-1"></div>
+                      {!isActive && (
+                        <span className="text-xs text-blue-600 font-semibold group-hover:text-blue-700">
+                          Apply →
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+
+                <div className="absolute bottom-3 right-3">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditTheme(theme);
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-100 rounded hover:bg-blue-200 transition-colors shadow-sm"
+                  >
+                    ✏️ Edit
+                  </button>
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
