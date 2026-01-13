@@ -43,6 +43,10 @@ export interface Theme {
   description: string;
   icon: string;
   colors: ThemeColors;
+  isCustom?: boolean;
+  isDefault?: boolean;
+  ownerUserId?: number | null;
+  accessType?: 'global' | 'owned' | 'shared';
 }
 
 export const themes: Theme[] = [
@@ -95,7 +99,7 @@ export const themes: Theme[] = [
       cardShadow: '0 4px 15px rgba(0, 0, 0, 0.3)',
       accentPrimary: '#00fff5',
       accentSecondary: '#00d4d4',
-      accentGradient: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+      accentGradient: 'linear-gradient(135deg, #00fff5 0%, #00d4d4 100%)',
       statCardBackground: 'rgba(255, 255, 255, 0.05)',
       statCardBorderColor: 'linear-gradient(to bottom, #00fff5, #00d4d4)',
       activityCardBackground: 'rgba(0, 255, 245, 0.1)',
@@ -188,7 +192,7 @@ export const themes: Theme[] = [
       cardShadow: '0 4px 15px rgba(0, 0, 0, 0.5)',
       accentPrimary: '#ffd700',
       accentSecondary: '#ffed4e',
-      accentGradient: 'linear-gradient(135deg, #000000 0%, #2c2c2c 100%)',
+      accentGradient: 'linear-gradient(135deg, #ffd700 0%, #ffed4e 100%)',
       statCardBackground: 'rgba(255, 215, 0, 0.05)',
       statCardBorderColor: 'linear-gradient(to bottom, #ffd700, #ffed4e)',
       activityCardBackground: 'rgba(255, 215, 0, 0.1)',
@@ -312,7 +316,7 @@ export const themes: Theme[] = [
       cardShadow: '0 4px 15px rgba(52, 73, 94, 0.1)',
       accentPrimary: '#3498db',
       accentSecondary: '#2980b9',
-      accentGradient: 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)',
+      accentGradient: 'linear-gradient(135deg, #3498db 0%, #2980b9 100%)',
       statCardBackground: '#ffffff',
       statCardBorderColor: 'linear-gradient(to bottom, #3498db, #2980b9)',
       activityCardBackground: 'rgba(52, 152, 219, 0.05)',

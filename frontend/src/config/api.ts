@@ -26,21 +26,35 @@ export const getApiUrl = (path: string): string => {
  */
 export const authFetch = async (path: string, options: RequestInit = {}): Promise<Response> => {
   const token = localStorage.getItem('token');
+  const headers = new Headers(options.headers || {});
+  const isFormData = options.body instanceof FormData;
 
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  };
+  if (!isFormData && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  if (isFormData && headers.has('Content-Type')) {
+    headers.delete('Content-Type');
+  }
 
   // Add Authorization header if token exists
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers.set('Authorization', `Bearer ${token}`);
   }
 
   const response = await fetch(path, {
     ...options,
     headers,
   });
+
+  if (response.status === 401 || response.status === 403) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
+  }
 
   return response;
 };

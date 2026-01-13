@@ -67,12 +67,14 @@ const CustomThemeBuilder: React.FC<CustomThemeBuilderProps> = ({ onSave, onCance
       return;
     }
 
+    const isCustom = editingTheme?.isCustom ?? true;
+
     const customTheme = {
       id: editingTheme?.id || `custom-${Date.now()}`,
       name: themeName,
-      description: 'Custom Theme',
+      description: editingTheme?.description || 'Custom Theme',
       icon: themeIcon,
-      isCustom: true,
+      isCustom,
       colors: {
         sidebarBg1,
         sidebarBg2,

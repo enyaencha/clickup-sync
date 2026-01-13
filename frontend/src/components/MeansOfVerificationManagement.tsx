@@ -72,7 +72,7 @@ const MeansOfVerificationManagement: React.FC = () => {
   const [filteredIndicators, setFilteredIndicators] = useState<Entity[]>([]);
 
   // File upload state
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [attachments, setAttachments] = useState<Record<number, Attachment[]>>({});
 
@@ -203,25 +203,27 @@ const MeansOfVerificationManagement: React.FC = () => {
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      setSelectedFile(event.target.files[0]);
+    if (event.target.files) {
+      setSelectedFiles(Array.from(event.target.files));
     }
   };
 
   const handleFileUpload = async (verificationId: number) => {
-    if (!selectedFile) {
-      alert('Please select a file first');
+    if (selectedFiles.length === 0) {
+      alert('Please select file(s) first');
       return;
     }
 
     setUploadingFile(true);
     try {
       const formData = new FormData();
-      formData.append('file', selectedFile);
+      selectedFiles.forEach((file) => {
+        formData.append('files', file);
+      });
       formData.append('entity_type', 'verification');
       formData.append('entity_id', verificationId.toString());
       formData.append('attachment_type', 'document');
-      formData.append('description', selectedFile.name);
+      formData.append('description', selectedFiles.length > 1 ? `${selectedFiles.length} files` : selectedFiles[0].name);
 
       const response = await authFetch('/api/attachments/upload', {
         method: 'POST',
@@ -234,7 +236,7 @@ const MeansOfVerificationManagement: React.FC = () => {
       }
 
       alert('File uploaded successfully!');
-      setSelectedFile(null);
+      setSelectedFiles([]);
 
       // Refresh attachments
       await fetchAttachmentsForVerification(verificationId);
@@ -979,11 +981,12 @@ const MeansOfVerificationManagement: React.FC = () => {
                           type="file"
                           onChange={handleFileSelect}
                           className="text-xs sm:text-sm file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 w-full sm:w-auto"
-                          accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt,.csv"
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt,.csv,.mp4,.mov,.avi,.mkv,.webm"
+                          multiple
                         />
                         <button
                           onClick={() => handleFileUpload(verification.id)}
-                          disabled={!selectedFile || uploadingFile}
+                          disabled={selectedFiles.length === 0 || uploadingFile}
                           className="px-3 py-1 text-xs sm:text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed w-full sm:w-auto"
                         >
                           {uploadingFile ? 'Uploading...' : 'Upload'}
