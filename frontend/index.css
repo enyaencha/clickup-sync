@@ -42,8 +42,10 @@ body {
   color: var(--main-text) !important;
 }
 
-/* Apply theme to card-like containers */
-.rounded-lg, .rounded-xl, .rounded-2xl {
+/* Apply theme to card-like containers (avoid overriding buttons/inputs) */
+:is(div, section, article, main, aside, header, footer, nav, li).rounded-lg,
+:is(div, section, article, main, aside, header, footer, nav, li).rounded-xl,
+:is(div, section, article, main, aside, header, footer, nav, li).rounded-2xl {
   background: var(--card-background);
   border-color: var(--card-border);
 }
