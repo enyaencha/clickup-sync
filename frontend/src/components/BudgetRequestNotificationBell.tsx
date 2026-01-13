@@ -102,11 +102,12 @@ const BudgetRequestNotificationBell: React.FC<NotificationBellProps> = ({ onOpen
       {/* Notification Bell Button */}
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+        className="relative p-2 rounded-lg transition-colors"
+        style={{ color: 'var(--main-text)' }}
         title="Budget Request Messages"
       >
         <svg
-          className="w-6 h-6 text-gray-700"
+          className="w-6 h-6"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -137,14 +138,20 @@ const BudgetRequestNotificationBell: React.FC<NotificationBellProps> = ({ onOpen
           />
 
           {/* Dropdown Content - Made larger and scrollable */}
-          <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-20 max-h-[600px] overflow-y-auto">
-            <div className="p-3 border-b bg-gray-50 sticky top-0 z-10">
-              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+          <div
+            className="absolute right-0 mt-2 w-96 rounded-lg shadow-xl border z-20 max-h-[600px] overflow-y-auto"
+            style={{ background: 'var(--card-background)', borderColor: 'var(--card-border)', color: 'var(--main-text)' }}
+          >
+            <div
+              className="p-3 border-b sticky top-0 z-10"
+              style={{ background: 'var(--main-background)', borderColor: 'var(--card-border)' }}
+            >
+              <h3 className="font-semibold flex items-center gap-2" style={{ color: 'var(--main-text)' }}>
                 <span>🔔</span>
                 Notifications
               </h3>
               {totalUnread > 0 && (
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs mt-1" style={{ color: 'var(--main-text)', opacity: 0.8 }}>
                   {totalUnread} unread notification{totalUnread !== 1 ? 's' : ''}
                 </p>
               )}
@@ -153,30 +160,35 @@ const BudgetRequestNotificationBell: React.FC<NotificationBellProps> = ({ onOpen
             {/* General Notifications (Approvals, Revisions, etc.) */}
             {generalNotifications.length > 0 && (
               <div className="border-b">
-                <div className="px-3 py-2 bg-gray-50 sticky top-[65px] z-10">
-                  <p className="text-xs font-semibold text-gray-700">Updates</p>
+                <div
+                  className="px-3 py-2 sticky top-[65px] z-10"
+                  style={{ background: 'var(--main-background)' }}
+                >
+                  <p className="text-xs font-semibold" style={{ color: 'var(--main-text)', opacity: 0.8 }}>Updates</p>
                 </div>
                 <div className="divide-y">
                   {generalNotifications.slice(0, 10).map((notification) => (
                     <button
                       key={notification.id}
                       onClick={() => handleGeneralNotificationClick(notification)}
-                      className={`w-full p-3 text-left hover:bg-gray-100 transition-colors ${
-                        notification.is_read === 0 ? 'bg-blue-50' : ''
-                      }`}
+                      className="w-full p-3 text-left transition-colors"
+                      style={{
+                        background: notification.is_read === 0 ? 'var(--activity-card-background)' : 'transparent',
+                        color: 'var(--main-text)'
+                      }}
                     >
                       <div className="flex justify-between items-start mb-1">
-                        <span className="font-medium text-gray-900 text-sm">
+                        <span className="font-medium text-sm" style={{ color: 'var(--main-text)' }}>
                           {notification.title}
                         </span>
                         {notification.is_read === 0 && (
                           <span className="w-2 h-2 bg-blue-600 rounded-full mt-1 flex-shrink-0 ml-2"></span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-700 mb-1 whitespace-normal break-words">
+                      <p className="text-xs mb-1 whitespace-normal break-words" style={{ color: 'var(--main-text)', opacity: 0.8 }}>
                         {notification.message}
                       </p>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs" style={{ color: 'var(--main-text)', opacity: 0.6 }}>
                         {new Date(notification.created_at).toLocaleDateString()}
                       </span>
                     </button>
@@ -193,20 +205,25 @@ const BudgetRequestNotificationBell: React.FC<NotificationBellProps> = ({ onOpen
               </div>
             ) : notifications.length > 0 ? (
               <div>
-                <div className="px-3 py-2 bg-gray-50 sticky top-[65px] z-10">
-                  <p className="text-xs font-semibold text-gray-700">💬 Budget Conversations</p>
+                <div
+                  className="px-3 py-2 sticky top-[65px] z-10"
+                  style={{ background: 'var(--main-background)' }}
+                >
+                  <p className="text-xs font-semibold" style={{ color: 'var(--main-text)', opacity: 0.8 }}>💬 Budget Conversations</p>
                 </div>
                 <div className="divide-y">
                   {notifications.map((notification) => (
                     <button
                       key={notification.request_id}
                       onClick={() => handleNotificationClick(notification)}
-                      className={`w-full p-3 text-left hover:bg-gray-100 transition-colors ${
-                        notification.unread_count > 0 ? 'bg-green-50' : ''
-                      }`}
+                      className="w-full p-3 text-left transition-colors"
+                      style={{
+                        background: notification.unread_count > 0 ? 'var(--activity-card-background)' : 'transparent',
+                        color: 'var(--main-text)'
+                      }}
                     >
                       <div className="flex justify-between items-start mb-1">
-                        <span className="font-medium text-gray-900 text-sm">
+                        <span className="font-medium text-sm" style={{ color: 'var(--main-text)' }}>
                           {notification.activity_name}
                         </span>
                         {notification.unread_count > 0 && (
@@ -215,7 +232,7 @@ const BudgetRequestNotificationBell: React.FC<NotificationBellProps> = ({ onOpen
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-600 mb-1">
+                      <p className="text-xs mb-1" style={{ color: 'var(--main-text)', opacity: 0.8 }}>
                         Request #{notification.request_number}
                       </p>
                       <div className="flex items-center justify-between">
@@ -227,7 +244,7 @@ const BudgetRequestNotificationBell: React.FC<NotificationBellProps> = ({ onOpen
                         }`}>
                           {notification.status.replace(/_/g, ' ')}
                         </span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs" style={{ color: 'var(--main-text)', opacity: 0.6 }}>
                           {new Date(notification.last_message_at).toLocaleDateString()}
                         </span>
                       </div>
@@ -237,13 +254,17 @@ const BudgetRequestNotificationBell: React.FC<NotificationBellProps> = ({ onOpen
               </div>
             ) : null}
 
-            <div className="p-2 border-t bg-gray-50 sticky bottom-0">
+            <div
+              className="p-2 border-t sticky bottom-0"
+              style={{ background: 'var(--main-background)', borderColor: 'var(--card-border)' }}
+            >
               <button
                 onClick={() => {
                   setShowDropdown(false);
                   window.location.href = '/my-budget-requests';
                 }}
-                className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium py-1"
+                className="w-full text-sm font-medium py-1"
+                style={{ color: 'var(--accent-primary)' }}
               >
                 View All Requests →
               </button>
