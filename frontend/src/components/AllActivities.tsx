@@ -75,6 +75,7 @@ const AllActivities: React.FC = () => {
   const [approvalFilter, setApprovalFilter] = useState('all');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   // UI states
   const [loading, setLoading] = useState(true);
@@ -203,7 +204,25 @@ const AllActivities: React.FC = () => {
     setApprovalFilter('all');
     setFromDate('');
     setToDate('');
+    setSearchTerm('');
   };
+
+  const filteredActivities = activities.filter((activity) => {
+    if (!searchTerm.trim()) {
+      return true;
+    }
+    const values = [
+      activity.name,
+      activity.description,
+      activity.location,
+      activity.module_name,
+      activity.sub_program_name,
+      activity.component_name,
+    ];
+    return values
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(searchTerm.toLowerCase()));
+  });
 
   const handleViewActivity = (activityId: number) => {
     setSelectedActivityId(activityId);
@@ -354,6 +373,19 @@ const AllActivities: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {/* Search */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Search
+            </label>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by name, location, or program..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
           {/* Module Filter */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -481,7 +513,7 @@ const AllActivities: React.FC = () => {
       {/* View Mode Toggle */}
       <div className="flex justify-between items-center mb-4">
         <div className="text-sm text-gray-600">
-          Showing <span className="font-semibold text-gray-900">{activities.length}</span> activities
+          Showing <span className="font-semibold text-gray-900">{filteredActivities.length}</span> activities
         </div>
         <div className="flex gap-2 bg-white rounded-lg shadow-sm p-1 border border-gray-200">
           <button
@@ -513,7 +545,7 @@ const AllActivities: React.FC = () => {
           <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
           <p className="mt-4 text-gray-600 font-medium">Loading activities...</p>
         </div>
-      ) : activities.length === 0 ? (
+      ) : filteredActivities.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm p-12 text-center border border-gray-200">
           <svg
             className="mx-auto h-16 w-16 text-gray-400"
@@ -536,7 +568,7 @@ const AllActivities: React.FC = () => {
       ) : viewMode === 'card' ? (
         /* Card View */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {activities.map((activity) => (
+          {filteredActivities.map((activity) => (
             <div
               key={activity.id}
               className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-200"
@@ -717,7 +749,7 @@ const AllActivities: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {activities.map((activity) => (
+                {filteredActivities.map((activity) => (
                   <tr key={activity.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="text-sm font-semibold text-gray-900">{activity.name}</div>

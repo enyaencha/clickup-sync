@@ -297,6 +297,19 @@ async function initializeServices() {
             throw error;
         }
 
+        // Register Theme Routes
+        try {
+            console.log('Registering Theme Routes...');
+            const ThemesService = require('./services/themes.service');
+            const themesService = new ThemesService(dbManager);
+            const { authMiddleware } = require('./middleware/auth.middleware');
+            app.use('/api/themes', authMiddleware(app.locals.authService), require('./routes/themes.routes')(themesService));
+            logger.info('✅ Theme Routes registered');
+        } catch (error) {
+            console.error('❌ Failed to register Theme Routes:', error);
+            throw error;
+        }
+
         // Register Activity Checklist Routes
         try {
             console.log('Registering Activity Checklist Routes...');
@@ -802,4 +815,3 @@ process.on('uncaughtException', (error) => {
     logger.error('Uncaught Exception:', error);
     process.exit(1);
 });
-
