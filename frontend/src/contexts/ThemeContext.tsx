@@ -7,6 +7,11 @@ interface ThemeContextType {
   setTheme: (themeId: string) => void;
   availableThemes: Theme[];
   customThemes: Theme[];
+  addCustomTheme: (theme: Theme) => Promise<void>;
+  updateCustomTheme: (theme: Theme) => Promise<void>;
+  updateDefaultTheme: (theme: Theme) => Promise<void>;
+  deleteCustomTheme: (themeId: string) => Promise<void>;
+  shareTheme: (themeId: string, email: string) => Promise<void>;
   addCustomTheme: (theme: Theme) => void;
   updateCustomTheme: (theme: Theme) => void;
   updateDefaultTheme: (theme: Theme) => void;
@@ -45,6 +50,12 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const DEFAULT_THEME_ID = 'theme-2'; // Theme 2: Dark Professional - Modern Cyan/Black
   const LIGHT_THEME_ID = 'theme-1'; // Theme 1 for light mode
   const DARK_THEME_ID = 'theme-2'; // Theme 2 for dark mode
+
+  const [customThemes, setCustomThemes] = useState<Theme[]>([]);
+  const [allThemes, setAllThemes] = useState<Theme[]>(themes);
+
+  // System theme following state
+  const [followSystemTheme, setFollowSystemThemeState] = useState<boolean>(false);
 
   // Load custom themes from localStorage
   const loadCustomThemes = (): Theme[] => {
@@ -166,6 +177,94 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     }
   };
 
+  const fetchThemes = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setAllThemes(themes);
+      setCustomThemes([]);
+      setCurrentTheme(themes.find(t => t.id === DEFAULT_THEME_ID) || themes[1]);
+      hasLoadedThemes.current = true;
+      return;
+    }
+
+    const response = await authFetch('/api/themes');
+    if (!response.ok) {
+      hasLoadedThemes.current = true;
+      return;
+    }
+
+    const payload = await response.json();
+    const themeList = payload?.data?.themes || [];
+    const preferences = payload?.data?.preferences || {};
+    const followSystem = Boolean(preferences.follow_system);
+    const preferredThemeId = preferences.theme_id as string | undefined;
+
+    setAllThemes(themeList);
+    setCustomThemes(themeList.filter((theme: Theme) => theme.isCustom && theme.accessType !== 'shared'));
+    setFollowSystemThemeState(followSystem);
+
+    let selectedTheme = themeList.find((theme: Theme) => theme.id === preferredThemeId);
+
+    if (followSystem) {
+      const systemPreference = getSystemThemePreference();
+      const systemThemeId = getThemeForSystemPreference(systemPreference);
+      const systemTheme = themeList.find((theme: Theme) => theme.id === systemThemeId);
+      if (systemTheme) {
+        selectedTheme = systemTheme;
+      }
+    }
+
+    if (!selectedTheme) {
+      selectedTheme = themeList.find((theme: Theme) => theme.id === DEFAULT_THEME_ID)
+        || themeList[0]
+        || themes.find(t => t.id === DEFAULT_THEME_ID)
+        || themes[1];
+    }
+
+    setCurrentTheme(selectedTheme);
+    hasLoadedThemes.current = true;
+  }, []);
+
+  const addCustomTheme = async (theme: Theme) => {
+    const response = await authFetch('/api/themes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(theme),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to add custom theme');
+    }
+
+    await fetchThemes();
+    if (theme.id) {
+      setTheme(theme.id);
+    }
+  };
+
+  const updateCustomTheme = async (updatedTheme: Theme) => {
+    const response = await authFetch(`/api/themes/${updatedTheme.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedTheme),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update custom theme');
+    }
+
+    await fetchThemes();
+  };
+
+  const updateDefaultTheme = async (updatedTheme: Theme): Promise<void> => {
+    const response = await authFetch(`/api/themes/${updatedTheme.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedTheme),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update default theme');
   const addCustomTheme = (theme: Theme) => {
     const newCustomThemes = [...customThemes, { ...theme, isCustom: true }];
     setCustomThemes(newCustomThemes);
@@ -204,8 +303,18 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     if (currentTheme.id === updatedTheme.id) {
       setCurrentTheme(updatedTheme);
     }
+
+    await fetchThemes();
   };
 
+  const deleteCustomTheme = async (themeId: string) => {
+    const response = await authFetch(`/api/themes/${themeId}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to delete custom theme');
+    }
   const deleteCustomTheme = (themeId: string) => {
     const newCustomThemes = customThemes.filter(t => t.id !== themeId);
     setCustomThemes(newCustomThemes);

@@ -12,6 +12,11 @@ const ThemeSettings: React.FC = () => {
     updateCustomTheme,
     updateDefaultTheme,
     deleteCustomTheme,
+    shareTheme,
+    followSystemTheme,
+    setFollowSystemTheme
+  } = useTheme();
+  const { user } = useAuth();
     followSystemTheme,
     setFollowSystemTheme
   } = useTheme();
@@ -22,6 +27,9 @@ const ThemeSettings: React.FC = () => {
   const [shareError, setShareError] = useState('');
 
   const defaultThemes = availableThemes.filter(t => !t.isCustom);
+  const userCustomThemes = availableThemes.filter(t => t.isCustom && t.accessType !== 'shared');
+  const sharedThemes = availableThemes.filter(t => t.accessType === 'shared');
+  const isSystemAdmin = Boolean(user?.is_system_admin);
   const userCustomThemes = availableThemes.filter(t => t.isCustom);
 
   const extractGradientStops = (gradient: string, fallbackStart: string, fallbackEnd: string) => {
@@ -72,6 +80,22 @@ const ThemeSettings: React.FC = () => {
     setShowBuilder(true);
   };
 
+  const handleSaveTheme = async (theme: any) => {
+    try {
+      if (editingTheme) {
+        if (editingTheme.isCustom) {
+          await updateCustomTheme(theme);
+        } else {
+          await updateDefaultTheme(theme);
+        }
+      } else {
+        await addCustomTheme(theme);
+      }
+      setShowBuilder(false);
+      setEditingTheme(null);
+    } catch (error) {
+      console.error('Failed to save theme:', error);
+      alert('Failed to save theme. Please try again.');
   const handleSaveTheme = (theme: any) => {
     if (editingTheme) {
       if (editingTheme.isCustom) {
@@ -524,6 +548,19 @@ const ThemeSettings: React.FC = () => {
                   </div>
                 </button>
 
+                {isSystemAdmin && (
+                  <div className="absolute bottom-3 right-3">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditTheme(theme);
+                      }}
+                      className="px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-100 rounded hover:bg-blue-200 transition-colors shadow-sm"
+                    >
+                      ✏️ Edit
+                    </button>
+                  </div>
+                )}
                 <div className="absolute bottom-3 right-3">
                   <button
                     onClick={(e) => {

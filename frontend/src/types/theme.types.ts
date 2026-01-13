@@ -44,6 +44,9 @@ export interface Theme {
   icon: string;
   colors: ThemeColors;
   isCustom?: boolean;
+  isDefault?: boolean;
+  ownerUserId?: number | null;
+  accessType?: 'global' | 'owned' | 'shared';
 }
 
 export const themes: Theme[] = [
