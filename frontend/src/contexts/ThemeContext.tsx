@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { Theme, themes } from '../types/theme.types';
+import { authFetch } from '../config/api';
 
 interface ThemeContextType {
   currentTheme: Theme;
@@ -98,37 +99,12 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   ]);
 
   // System theme following state
-  const [followSystemTheme, setFollowSystemThemeState] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem(FOLLOW_SYSTEM_THEME_KEY);
-      return saved === 'true';
-    } catch (error) {
-      console.error('Error loading system theme preference:', error);
-      return false;
-    }
-  });
+  const [followSystemTheme, setFollowSystemThemeState] = useState<boolean>(false);
 
   const [currentTheme, setCurrentTheme] = useState<Theme>(() => {
-    // Try to load theme from localStorage (device-specific)
-    const savedThemeId = localStorage.getItem(THEME_STORAGE_KEY);
-    if (savedThemeId) {
-      const savedTheme = allThemes.find(t => t.id === savedThemeId);
-      if (savedTheme) {
-        return savedTheme;
-      }
-    }
-    // Default to Theme 2
     return themes.find(t => t.id === DEFAULT_THEME_ID) || themes[1];
   });
-
-  // Save custom themes to localStorage
-  const saveCustomThemes = (themes: Theme[]) => {
-    try {
-      localStorage.setItem(CUSTOM_THEMES_STORAGE_KEY, JSON.stringify(themes));
-    } catch (error) {
-      console.error('Error saving custom themes:', error);
-    }
-  };
+  const hasLoadedThemes = useRef(false);
 
   const saveThemeOverrides = (overrides: Theme[]) => {
     try {
@@ -155,17 +131,32 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     }
   };
 
+  const persistPreferences = async (themeId: string | null, followSystem: boolean) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    await authFetch('/api/themes/preferences', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ themeId, followSystem }),
+    });
+  };
+
   const setTheme = (themeId: string) => {
     const theme = allThemes.find(t => t.id === themeId);
     if (theme) {
       setCurrentTheme(theme);
-      localStorage.setItem(THEME_STORAGE_KEY, themeId);
+      if (hasLoadedThemes.current) {
+        void persistPreferences(themeId, followSystemTheme);
+      }
     }
   };
 
   const setFollowSystemTheme = (follow: boolean) => {
     setFollowSystemThemeState(follow);
-    localStorage.setItem(FOLLOW_SYSTEM_THEME_KEY, follow.toString());
+    if (hasLoadedThemes.current) {
+      void persistPreferences(currentTheme.id, follow);
+    }
 
     // If enabling system theme, immediately apply the system preference
     if (follow) {
@@ -192,10 +183,11 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     setAllThemes([...mergeThemeOverrides(themes, themeOverrides), ...newCustomThemes]);
     saveCustomThemes(newCustomThemes);
 
-    // If the updated theme is currently active, update it
-    if (currentTheme.id === updatedTheme.id) {
-      setCurrentTheme(updatedTheme);
+    if (!response.ok) {
+      throw new Error('Failed to update default theme');
     }
+
+    await fetchThemes();
   };
 
   const updateDefaultTheme = (updatedTheme: Theme) => {
@@ -220,10 +212,23 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     setAllThemes([...mergeThemeOverrides(themes, themeOverrides), ...newCustomThemes]);
     saveCustomThemes(newCustomThemes);
 
-    // If the deleted theme was active, switch to default
+    await fetchThemes();
     if (currentTheme.id === themeId) {
       const defaultTheme = themes.find(t => t.id === DEFAULT_THEME_ID) || themes[1];
       setTheme(defaultTheme.id);
+    }
+  };
+
+  const shareTheme = async (themeId: string, email: string) => {
+    const response = await authFetch(`/api/themes/${themeId}/share`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data?.error || 'Failed to share theme');
     }
   };
 
@@ -247,6 +252,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       mediaQuery.removeEventListener('change', handleSystemThemeChange);
     };
   }, [followSystemTheme, allThemes]);
+
+  useEffect(() => {
+    void fetchThemes();
+  }, [fetchThemes]);
 
   // Apply theme to document root
   useEffect(() => {
@@ -293,6 +302,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       updateCustomTheme,
       updateDefaultTheme,
       deleteCustomTheme,
+      shareTheme,
       followSystemTheme,
       setFollowSystemTheme
     }}>

@@ -47,6 +47,15 @@ export const authFetch = async (path: string, options: RequestInit = {}): Promis
     headers,
   });
 
+  if (response.status === 401 || response.status === 403) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
+  }
+
   return response;
 };
 

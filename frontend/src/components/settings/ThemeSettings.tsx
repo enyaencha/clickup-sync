@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import CustomThemeBuilder from './CustomThemeBuilder';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ThemeSettings: React.FC = () => {
   const {
@@ -16,6 +17,9 @@ const ThemeSettings: React.FC = () => {
   } = useTheme();
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingTheme, setEditingTheme] = useState<any>(null);
+  const [sharingTheme, setSharingTheme] = useState<any>(null);
+  const [shareEmail, setShareEmail] = useState('');
+  const [shareError, setShareError] = useState('');
 
   const defaultThemes = availableThemes.filter(t => !t.isCustom);
   const userCustomThemes = availableThemes.filter(t => t.isCustom);
@@ -78,13 +82,34 @@ const ThemeSettings: React.FC = () => {
     } else {
       addCustomTheme(theme);
     }
-    setShowBuilder(false);
-    setEditingTheme(null);
   };
 
-  const handleDeleteTheme = (themeId: string, themeName: string) => {
+  const handleDeleteTheme = async (themeId: string, themeName: string) => {
     if (window.confirm(`Are you sure you want to delete "${themeName}"? This cannot be undone.`)) {
-      deleteCustomTheme(themeId);
+      try {
+        await deleteCustomTheme(themeId);
+      } catch (error) {
+        console.error('Failed to delete theme:', error);
+        alert('Failed to delete theme. Please try again.');
+      }
+    }
+  };
+
+  const handleShareTheme = async () => {
+    if (!sharingTheme) return;
+    if (!shareEmail.trim()) {
+      setShareError('Please enter a user email.');
+      return;
+    }
+
+    try {
+      await shareTheme(sharingTheme.id, shareEmail.trim());
+      setShareEmail('');
+      setShareError('');
+      setSharingTheme(null);
+      alert(`Theme "${sharingTheme.name}" shared successfully.`);
+    } catch (error: any) {
+      setShareError(error?.message || 'Failed to share theme.');
     }
   };
 
@@ -159,7 +184,7 @@ const ThemeSettings: React.FC = () => {
           <div>
             <p className="text-sm font-medium text-blue-900">Theme Preferences</p>
             <p className="text-sm text-blue-700 mt-1">
-              Your theme preference is saved per device. Each device can have its own theme setting. Custom themes are also stored locally on your device.
+              Your theme preference and custom themes are saved to your account, so they stay with you across devices.
             </p>
           </div>
         </div>
@@ -294,12 +319,111 @@ const ThemeSettings: React.FC = () => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            setSharingTheme(theme);
+                            setShareEmail('');
+                            setShareError('');
+                          }}
+                          className="flex-1 px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-100 rounded hover:bg-blue-200 transition-colors"
+                        >
+                          🤝 Share
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
                             handleDeleteTheme(theme.id, theme.name);
                           }}
                           className="flex-1 px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-100 rounded hover:bg-red-200 transition-colors"
                         >
                           🗑️ Delete
                         </button>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Shared Themes Section */}
+      {sharedThemes.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+              <span className="mr-2">🤝</span>
+              Shared With Me ({sharedThemes.length})
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {sharedThemes.map((theme) => {
+              const isActive = currentTheme.id === theme.id;
+              return (
+                <div
+                  key={theme.id}
+                  className={`
+                    relative group rounded-xl overflow-hidden transition-all duration-300 transform
+                    ${isActive
+                      ? 'ring-4 ring-emerald-500 shadow-2xl scale-105'
+                      : 'hover:scale-105 hover:shadow-xl ring-2 ring-emerald-200 hover:ring-emerald-400'
+                    }
+                  `}
+                >
+                  <button
+                    onClick={() => setTheme(theme.id)}
+                    className="w-full text-left"
+                  >
+                    <div className="h-32 relative" style={{ background: theme.colors.sidebarBackground }}>
+                      <div className="absolute inset-0 opacity-50" style={{ background: theme.colors.mainBackground }}></div>
+                      <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 rounded-full bg-white/80"></div>
+                          <div className="w-3 h-3 rounded-full bg-white/60"></div>
+                          <div className="w-3 h-3 rounded-full bg-white/40"></div>
+                        </div>
+                        <div className="text-3xl">{theme.icon}</div>
+                      </div>
+                      <div className="absolute bottom-3 left-4 right-4 flex space-x-2">
+                        <div
+                          className="flex-1 h-8 rounded shadow-lg"
+                          style={{
+                            background: theme.colors.cardBackground,
+                            border: `1px solid ${theme.colors.cardBorder}`
+                          }}
+                        ></div>
+                        <div
+                          className="flex-1 h-8 rounded shadow-lg"
+                          style={{
+                            background: theme.colors.cardBackground,
+                            border: `1px solid ${theme.colors.cardBorder}`
+                          }}
+                        ></div>
+                      </div>
+                      <div className="absolute bottom-2 left-2 bg-emerald-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                        Shared
+                      </div>
+                    </div>
+                    <div className="p-4 bg-white">
+                      <h4 className="font-bold text-gray-900 text-base mb-1 flex items-center justify-between">
+                        {theme.name}
+                        {isActive && (
+                          <span className="text-emerald-500">
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          </span>
+                        )}
+                      </h4>
+                      <p className="text-sm text-gray-600 mb-3">{theme.description}</p>
+                      <div className="flex items-center space-x-1">
+                        <div className="w-6 h-6 rounded shadow-sm border border-gray-200" style={{ background: theme.colors.accentPrimary }} title="Primary Color"></div>
+                        <div className="w-6 h-6 rounded shadow-sm border border-gray-200" style={{ background: theme.colors.accentSecondary }} title="Secondary Color"></div>
+                        <div className="flex-1"></div>
+                        {!isActive && (
+                          <span className="text-xs text-emerald-600 font-semibold group-hover:text-emerald-700">
+                            Apply →
+                          </span>
+                        )}
                       </div>
                     </div>
                   </button>
@@ -428,7 +552,7 @@ const ThemeSettings: React.FC = () => {
         <ul className="space-y-2 text-sm text-gray-700">
           <li className="flex items-start space-x-2">
             <span className="text-blue-500 mt-0.5">•</span>
-            <span>Themes are saved per device - each device can have its own preference</span>
+            <span>Themes are saved to your account, so they stay consistent across devices</span>
           </li>
           <li className="flex items-start space-x-2">
             <span className="text-indigo-500 mt-0.5">🌓</span>
@@ -444,7 +568,7 @@ const ThemeSettings: React.FC = () => {
           </li>
           <li className="flex items-start space-x-2">
             <span className="text-purple-500 mt-0.5">✨</span>
-            <span>Custom themes are stored locally and won't be visible on other devices</span>
+            <span>Custom themes can be shared with teammates who want the same look</span>
           </li>
           <li className="flex items-start space-x-2">
             <span className="text-blue-500 mt-0.5">•</span>
@@ -463,6 +587,48 @@ const ThemeSettings: React.FC = () => {
           }}
           editingTheme={editingTheme}
         />
+      )}
+
+      {sharingTheme && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Share "{sharingTheme.name}"</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Enter the email address of the user you want to share this theme with.
+            </p>
+            <input
+              type="email"
+              value={shareEmail}
+              onChange={(e) => {
+                setShareEmail(e.target.value);
+                setShareError('');
+              }}
+              placeholder="teammate@example.com"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            {shareError && (
+              <p className="mt-2 text-sm text-red-600">{shareError}</p>
+            )}
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setSharingTheme(null);
+                  setShareEmail('');
+                  setShareError('');
+                }}
+                className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleShareTheme}
+                className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+              >
+                Share Theme
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
