@@ -43,23 +43,28 @@ const ConversationSidePanel: React.FC<ConversationSidePanelProps> = ({
 
       {/* Sliding Panel */}
       <div
-        className={`fixed top-0 right-0 h-full w-full md:w-[600px] bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 right-0 h-full w-full md:w-[600px] shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
+        style={{ background: 'var(--card-background)' }}
       >
         {/* Panel Header - Sticky */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10">
+        <div
+          className="sticky top-0 border-b px-6 py-4 flex justify-between items-center z-10"
+          style={{ background: 'var(--card-background)', borderColor: 'var(--card-border)' }}
+        >
           <div className="flex-1">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <h2 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--main-text)' }}>
               <span>💬</span>
               Budget Discussion
             </h2>
-            <p className="text-sm text-gray-600 mt-1">{activityName}</p>
+            <p className="text-sm mt-1" style={{ color: 'var(--main-text)', opacity: 0.8 }}>{activityName}</p>
           </div>
           <button
             onClick={onClose}
-            className="ml-4 text-gray-400 hover:text-gray-600 text-3xl font-light leading-none transition-colors"
+            className="ml-4 text-3xl font-light leading-none transition-colors"
             title="Close panel (Esc)"
+            style={{ color: 'var(--main-text)' }}
           >
             ×
           </button>

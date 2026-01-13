@@ -8,6 +8,7 @@ interface ThemeContextType {
   customThemes: Theme[];
   addCustomTheme: (theme: Theme) => void;
   updateCustomTheme: (theme: Theme) => void;
+  updateDefaultTheme: (theme: Theme) => void;
   deleteCustomTheme: (themeId: string) => void;
   followSystemTheme: boolean;
   setFollowSystemTheme: (follow: boolean) => void;
@@ -38,6 +39,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 
   const THEME_STORAGE_KEY = `me_theme_${getDeviceId()}`;
   const CUSTOM_THEMES_STORAGE_KEY = `me_custom_themes_${getDeviceId()}`;
+  const THEME_OVERRIDES_STORAGE_KEY = `me_theme_overrides_${getDeviceId()}`;
   const FOLLOW_SYSTEM_THEME_KEY = `me_follow_system_${getDeviceId()}`;
   const DEFAULT_THEME_ID = 'theme-2'; // Theme 2: Dark Professional - Modern Cyan/Black
   const LIGHT_THEME_ID = 'theme-1'; // Theme 1 for light mode
@@ -48,7 +50,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     try {
       const saved = localStorage.getItem(CUSTOM_THEMES_STORAGE_KEY);
       if (saved) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved) as Theme[];
+        return parsed.map((theme) => ({ ...theme, isCustom: true }));
       }
     } catch (error) {
       console.error('Error loading custom themes:', error);
@@ -56,8 +59,43 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     return [];
   };
 
+  const loadThemeOverrides = (): Theme[] => {
+    try {
+      const saved = localStorage.getItem(THEME_OVERRIDES_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as Theme[];
+        return parsed.map((theme) => ({ ...theme, isCustom: false }));
+      }
+    } catch (error) {
+      console.error('Error loading theme overrides:', error);
+    }
+    return [];
+  };
+
+  const mergeThemeOverrides = (baseThemes: Theme[], overrides: Theme[]) => {
+    return baseThemes.map((theme) => {
+      const override = overrides.find((item) => item.id === theme.id);
+      if (!override) {
+        return { ...theme, isCustom: false };
+      }
+      return {
+        ...theme,
+        ...override,
+        isCustom: false,
+        colors: {
+          ...theme.colors,
+          ...override.colors,
+        },
+      };
+    });
+  };
+
   const [customThemes, setCustomThemes] = useState<Theme[]>(loadCustomThemes);
-  const [allThemes, setAllThemes] = useState<Theme[]>([...themes, ...loadCustomThemes()]);
+  const [themeOverrides, setThemeOverrides] = useState<Theme[]>(loadThemeOverrides);
+  const [allThemes, setAllThemes] = useState<Theme[]>([
+    ...mergeThemeOverrides(themes, loadThemeOverrides()),
+    ...loadCustomThemes(),
+  ]);
 
   // System theme following state
   const [followSystemTheme, setFollowSystemThemeState] = useState<boolean>(() => {
@@ -89,6 +127,14 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       localStorage.setItem(CUSTOM_THEMES_STORAGE_KEY, JSON.stringify(themes));
     } catch (error) {
       console.error('Error saving custom themes:', error);
+    }
+  };
+
+  const saveThemeOverrides = (overrides: Theme[]) => {
+    try {
+      localStorage.setItem(THEME_OVERRIDES_STORAGE_KEY, JSON.stringify(overrides));
+    } catch (error) {
+      console.error('Error saving theme overrides:', error);
     }
   };
 
@@ -130,9 +176,9 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   };
 
   const addCustomTheme = (theme: Theme) => {
-    const newCustomThemes = [...customThemes, theme];
+    const newCustomThemes = [...customThemes, { ...theme, isCustom: true }];
     setCustomThemes(newCustomThemes);
-    setAllThemes([...themes, ...newCustomThemes]);
+    setAllThemes([...mergeThemeOverrides(themes, themeOverrides), ...newCustomThemes]);
     saveCustomThemes(newCustomThemes);
     // Automatically apply the new theme
     setTheme(theme.id);
@@ -140,10 +186,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 
   const updateCustomTheme = (updatedTheme: Theme) => {
     const newCustomThemes = customThemes.map(t =>
-      t.id === updatedTheme.id ? updatedTheme : t
+      t.id === updatedTheme.id ? { ...updatedTheme, isCustom: true } : t
     );
     setCustomThemes(newCustomThemes);
-    setAllThemes([...themes, ...newCustomThemes]);
+    setAllThemes([...mergeThemeOverrides(themes, themeOverrides), ...newCustomThemes]);
     saveCustomThemes(newCustomThemes);
 
     // If the updated theme is currently active, update it
@@ -152,10 +198,26 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     }
   };
 
+  const updateDefaultTheme = (updatedTheme: Theme) => {
+    const newOverrides = themeOverrides.some((theme) => theme.id === updatedTheme.id)
+      ? themeOverrides.map((theme) =>
+          theme.id === updatedTheme.id ? { ...updatedTheme, isCustom: false } : theme
+        )
+      : [...themeOverrides, { ...updatedTheme, isCustom: false }];
+
+    setThemeOverrides(newOverrides);
+    setAllThemes([...mergeThemeOverrides(themes, newOverrides), ...customThemes]);
+    saveThemeOverrides(newOverrides);
+
+    if (currentTheme.id === updatedTheme.id) {
+      setCurrentTheme(updatedTheme);
+    }
+  };
+
   const deleteCustomTheme = (themeId: string) => {
     const newCustomThemes = customThemes.filter(t => t.id !== themeId);
     setCustomThemes(newCustomThemes);
-    setAllThemes([...themes, ...newCustomThemes]);
+    setAllThemes([...mergeThemeOverrides(themes, themeOverrides), ...newCustomThemes]);
     saveCustomThemes(newCustomThemes);
 
     // If the deleted theme was active, switch to default
@@ -229,6 +291,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       customThemes,
       addCustomTheme,
       updateCustomTheme,
+      updateDefaultTheme,
       deleteCustomTheme,
       followSystemTheme,
       setFollowSystemTheme

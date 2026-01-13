@@ -79,6 +79,7 @@ const Approvals: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'submitted' | 'approved' | 'rejected'>('submitted');
   const [activeTab, setActiveTab] = useState<'activities' | 'verifications'>('activities');
+  const [searchTerm, setSearchTerm] = useState('');
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [checklistStatuses, setChecklistStatuses] = useState<Record<number, ChecklistStatus>>({});
   const [checklistItems, setChecklistItems] = useState<Record<number, ChecklistItem[]>>({});
@@ -99,6 +100,40 @@ const Approvals: React.FC = () => {
     }
     fetchSettings();
   }, [filter, activeTab]);
+
+  useEffect(() => {
+    setSearchTerm('');
+  }, [activeTab]);
+
+  const filteredActivities = activities.filter((activity) => {
+    if (!searchTerm.trim()) return true;
+    const values = [
+      activity.name,
+      activity.description,
+      activity.module_name,
+      activity.sub_program_name,
+      activity.component_name,
+      activity.location_details,
+    ];
+    return values
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(searchTerm.toLowerCase()));
+  });
+
+  const filteredVerifications = verifications.filter((verification) => {
+    if (!searchTerm.trim()) return true;
+    const values = [
+      verification.verification_method,
+      verification.description,
+      verification.entity_name,
+      verification.document_name,
+      verification.collection_frequency,
+      verification.responsible_person,
+    ];
+    return values
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(searchTerm.toLowerCase()));
+  });
 
   const fetchSettings = async () => {
     try {
@@ -481,6 +516,18 @@ const Approvals: React.FC = () => {
             </button>
           </div>
 
+          <div className="mb-4">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={activeTab === 'activities'
+                ? 'Search activities by name, program, or location...'
+                : 'Search verifications by method, document, or person...'}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
           {/* Status Filters */}
           <div className="flex items-center gap-2 overflow-x-auto">
             <button
@@ -521,13 +568,13 @@ const Approvals: React.FC = () => {
         {/* Activities List */}
         {activeTab === 'activities' && (
           <>
-            {activities.length === 0 ? (
+            {filteredActivities.length === 0 ? (
               <div className="bg-white rounded-lg shadow p-12 text-center">
                 <p className="text-gray-500 text-lg">No activities found for this filter</p>
               </div>
             ) : (
               <div className="space-y-4">
-                {activities.map((activity) => (
+                {filteredActivities.map((activity) => (
               <div key={activity.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
                 <div className="p-6">
                   {/* Header */}
@@ -721,13 +768,13 @@ const Approvals: React.FC = () => {
         {/* Verifications List */}
         {activeTab === 'verifications' && (
           <>
-            {verifications.length === 0 ? (
+            {filteredVerifications.length === 0 ? (
               <div className="bg-white rounded-lg shadow p-12 text-center">
                 <p className="text-gray-500 text-lg">No verification evidence found for this filter</p>
               </div>
             ) : (
               <div className="space-y-4">
-                {verifications.map((verification) => (
+                {filteredVerifications.map((verification) => (
                   <div key={verification.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
                     <div className="p-6">
                       {/* Header */}
