@@ -291,22 +291,31 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
   const groupedMessages = groupMessagesByDate();
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 relative">
+    <div className="flex flex-col h-full relative" style={{ background: 'var(--main-background)', color: 'var(--main-text)' }}>
       <style>{`
         .message-bubble:hover .message-actions {
           display: flex !important;
         }
       `}</style>
       {/* Info Bar */}
-      <div className="bg-blue-50 px-4 py-2 border-b border-blue-200">
-        <p className="text-xs text-blue-900">
+      <div
+        className="px-4 py-2 border-b"
+        style={{
+          background: 'var(--activity-card-background)',
+          borderColor: 'var(--activity-card-border)'
+        }}
+      >
+        <p className="text-xs" style={{ color: 'var(--main-text)' }}>
           {isFinanceTeam ? '🏦 Finance Team View' : '👥 Activity Team View'} • Activity: {activityName}
         </p>
       </div>
 
       {/* Sticky Date Header - Shows when scrolling */}
       {visibleDate && !isAtBottom && (
-        <div className="sticky top-0 z-10 bg-gray-700 bg-opacity-90 text-white text-center py-1 text-xs">
+        <div
+          className="sticky top-0 z-10 text-center py-1 text-xs"
+          style={{ background: 'var(--card-background)', color: 'var(--main-text)' }}
+        >
           {visibleDate}
         </div>
       )}
@@ -315,22 +324,22 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
       <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#e5ddd5]"
-        style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4c5b9' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }}
+        className="flex-1 overflow-y-auto p-4 space-y-3"
+        style={{ background: 'var(--main-background)' }}
       >
         {loading && comments.length === 0 ? (
           <div className="flex justify-center items-center py-12">
-            <div className="bg-white rounded-lg shadow-sm px-6 py-4">
+            <div className="rounded-lg shadow-sm px-6 py-4" style={{ background: 'var(--card-background)' }}>
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-              <p className="text-sm text-gray-600">Loading conversation...</p>
+              <p className="text-sm" style={{ color: 'var(--main-text)', opacity: 0.8 }}>Loading conversation...</p>
             </div>
           </div>
         ) : comments.length === 0 ? (
           <div className="flex justify-center items-center py-12">
-            <div className="bg-white rounded-lg shadow-sm px-8 py-6 text-center">
+            <div className="rounded-lg shadow-sm px-8 py-6 text-center" style={{ background: 'var(--card-background)' }}>
               <p className="text-4xl mb-3">💭</p>
-              <p className="text-gray-700 font-medium mb-1">No messages yet</p>
-              <p className="text-sm text-gray-500">Start the conversation below!</p>
+              <p className="font-medium mb-1" style={{ color: 'var(--main-text)' }}>No messages yet</p>
+              <p className="text-sm" style={{ color: 'var(--main-text)', opacity: 0.7 }}>Start the conversation below!</p>
             </div>
           </div>
         ) : (
@@ -338,8 +347,8 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
             <div key={date}>
               {/* Date Separator */}
               <div className="flex justify-center my-4" data-message-date={messages[0].created_at}>
-                <div className="bg-white bg-opacity-90 shadow-sm px-3 py-1 rounded-lg">
-                  <span className="text-xs text-gray-600 font-medium">
+                <div className="shadow-sm px-3 py-1 rounded-lg" style={{ background: 'var(--card-background)' }}>
+                  <span className="text-xs font-medium" style={{ color: 'var(--main-text)', opacity: 0.8 }}>
                     {formatDateHeader(messages[0].created_at)}
                   </span>
                 </div>
@@ -379,13 +388,18 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
                       )}
 
                       {/* Message Bubble */}
-                      <div className={`message-bubble rounded-lg px-4 py-2 shadow-sm ${
-                        isOwnComment
-                          ? 'bg-[#dcf8c6] text-gray-900'  // WhatsApp green for sent
-                          : commentIsFromFinance
-                          ? 'bg-white text-gray-900 border border-green-200'  // Finance received
-                          : 'bg-white text-gray-900'  // Activity user received
-                      }`}>
+                      <div
+                        className="message-bubble rounded-lg px-4 py-2 shadow-sm"
+                        style={{
+                          background: isOwnComment
+                            ? 'var(--activity-card-background)'
+                            : 'var(--card-background)',
+                          color: 'var(--main-text)',
+                          border: commentIsFromFinance || isOwnComment
+                            ? `1px solid var(--activity-card-border)`
+                            : `1px solid var(--card-border)`
+                        }}
+                      >
                         {/* Sender name (only for received messages) */}
                         {!isOwnComment && (
                           <div className={`text-xs font-semibold mb-1 flex items-center gap-1 ${
@@ -432,14 +446,14 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
                         {/* Timestamp, edited indicator, and status */}
                         {!isEditingThis && (
                           <div className="flex items-center gap-2 mt-1 justify-end">
-                            <span className="text-[10px] text-gray-500">
+                            <span className="text-[10px]" style={{ color: 'var(--main-text)', opacity: 0.6 }}>
                               {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                             {isEdited(comment) && (
-                              <span className="text-[10px] text-gray-500 italic">edited</span>
+                              <span className="text-[10px] italic" style={{ color: 'var(--main-text)', opacity: 0.6 }}>edited</span>
                             )}
                             {isOwnComment && (
-                              <span className="text-blue-600 text-xs">✓✓</span>
+                              <span className="text-xs" style={{ color: 'var(--accent-primary)' }}>✓✓</span>
                             )}
                           </div>
                         )}
@@ -458,9 +472,10 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
       {!isAtBottom && (
         <button
           onClick={() => scrollToBottom('smooth')}
-          className="absolute bottom-24 right-8 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-shadow border border-gray-200 z-10"
+          className="absolute bottom-24 right-8 rounded-full p-3 shadow-lg hover:shadow-xl transition-shadow border z-10"
+          style={{ background: 'var(--card-background)', borderColor: 'var(--card-border)' }}
         >
-          <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" style={{ color: 'var(--main-text)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
           </svg>
           {newMessageCount > 0 && (
@@ -472,7 +487,7 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
       )}
 
       {/* Input Area - Sticky at bottom */}
-      <div className="bg-white border-t border-gray-200 p-3">
+      <div className="border-t p-3" style={{ background: 'var(--card-background)', borderColor: 'var(--card-border)' }}>
         <div className="flex items-end gap-2">
           <div className="flex-1">
             <textarea
@@ -481,15 +496,21 @@ const BudgetRequestConversation: React.FC<BudgetRequestConversationProps> = ({
               onKeyPress={handleKeyPress}
               placeholder="Type a message..."
               rows={1}
-              className="w-full px-4 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden"
-              style={{ minHeight: '40px', maxHeight: '120px' }}
+              className="w-full px-4 py-2 border rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden"
+              style={{
+                background: 'var(--main-background)',
+                color: 'var(--main-text)',
+                borderColor: 'var(--card-border)',
+                minHeight: '40px',
+                maxHeight: '120px'
+              }}
               onInput={(e) => {
                 const target = e.target as HTMLTextAreaElement;
                 target.style.height = 'auto';
                 target.style.height = target.scrollHeight + 'px';
               }}
             />
-            <p className="text-[10px] text-gray-400 mt-1 ml-4">
+            <p className="text-[10px] mt-1 ml-4" style={{ color: 'var(--main-text)', opacity: 0.5 }}>
               Press Enter to send, Shift+Enter for new line
             </p>
           </div>

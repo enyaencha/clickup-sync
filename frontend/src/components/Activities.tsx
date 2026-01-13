@@ -67,6 +67,7 @@ const Activities: React.FC = () => {
   // Filters
   const [statusFilter, setStatusFilter] = useState('all');
   const [approvalFilter, setApprovalFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -277,7 +278,15 @@ const Activities: React.FC = () => {
   };
 
   const filteredActivities = activities.filter((activity) => {
+    const matchesSearch = searchTerm.trim() === '' || [
+      activity.name,
+      activity.description,
+      activity.location,
+    ]
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(searchTerm.toLowerCase()));
     const userStatus = getUserStatus(activity);
+    if (!matchesSearch) return false;
     if (statusFilter !== 'all' && userStatus !== statusFilter) return false;
     if (approvalFilter !== 'all' && activity.approval_status !== approvalFilter) return false;
     return true;
@@ -447,6 +456,17 @@ const Activities: React.FC = () => {
           <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
             {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-4 flex-1">
+              <div className="flex-1 min-w-[200px]">
+                <label className="block text-sm font-medium mb-2">Search</label>
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search by name, description, or location..."
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  style={{ background: 'var(--card-background)', borderColor: 'var(--card-border)' }}
+                />
+              </div>
               <div className="flex-1 min-w-[200px]">
                 <label className="block text-sm font-medium mb-2">Status</label>
                 <select

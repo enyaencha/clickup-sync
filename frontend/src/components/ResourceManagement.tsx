@@ -48,6 +48,8 @@ const ResourceManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [requestSearchTerm, setRequestSearchTerm] = useState('');
+  const [maintenanceSearchTerm, setMaintenanceSearchTerm] = useState('');
   const [showResourceModal, setShowResourceModal] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -199,6 +201,32 @@ const ResourceManagement: React.FC = () => {
     const matchesCategory = filterCategory === 'all' || resource.category === filterCategory;
     const matchesStatus = filterStatus === 'all' || resource.availability_status === filterStatus;
     return matchesSearch && matchesCategory && matchesStatus;
+  });
+
+  const filteredRequests = requests.filter((request) => {
+    if (!requestSearchTerm.trim()) return true;
+    const values = [
+      request.resource_name,
+      request.request_number,
+      request.requester_name,
+      request.purpose,
+    ];
+    return values
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(requestSearchTerm.toLowerCase()));
+  });
+
+  const filteredMaintenance = maintenanceResources.filter((resource) => {
+    if (!maintenanceSearchTerm.trim()) return true;
+    const values = [
+      resource.name,
+      resource.resource_code,
+      resource.location,
+      resource.assigned_to_user,
+    ];
+    return values
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(maintenanceSearchTerm.toLowerCase()));
   });
 
   const pendingRequests = requests.filter(r => r.status === 'pending');
@@ -465,9 +493,18 @@ const ResourceManagement: React.FC = () => {
 
             {activeTab === 'requests' && (
               <div>
-                <h2 className="text-xl font-semibold mb-4">Resource Requests</h2>
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                  <h2 className="text-xl font-semibold">Resource Requests</h2>
+                  <input
+                    type="text"
+                    placeholder="Search requests..."
+                    value={requestSearchTerm}
+                    onChange={(e) => setRequestSearchTerm(e.target.value)}
+                    className="w-full md:w-72 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
                 <div className="space-y-4">
-                  {requests.map((request) => (
+                  {filteredRequests.map((request) => (
                     <div key={request.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
@@ -511,10 +548,10 @@ const ResourceManagement: React.FC = () => {
                       </div>
                     </div>
                   ))}
-                  {requests.length === 0 && (
+                  {filteredRequests.length === 0 && (
                     <div className="text-center py-12 text-gray-500">
                       <p className="text-4xl mb-2">📋</p>
-                      <p>No resource requests</p>
+                      <p>No resource requests found</p>
                     </div>
                   )}
                 </div>
@@ -523,9 +560,18 @@ const ResourceManagement: React.FC = () => {
 
             {activeTab === 'maintenance' && (
               <div>
-                <h2 className="text-xl font-semibold mb-4">Maintenance Schedule</h2>
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                  <h2 className="text-xl font-semibold">Maintenance Schedule</h2>
+                  <input
+                    type="text"
+                    placeholder="Search maintenance..."
+                    value={maintenanceSearchTerm}
+                    onChange={(e) => setMaintenanceSearchTerm(e.target.value)}
+                    className="w-full md:w-72 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
                 <div className="space-y-4">
-                  {maintenanceResources.map((resource) => (
+                  {filteredMaintenance.map((resource) => (
                     <div key={resource.id} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -541,10 +587,10 @@ const ResourceManagement: React.FC = () => {
                       </div>
                     </div>
                   ))}
-                  {maintenanceResources.length === 0 && (
+                  {filteredMaintenance.length === 0 && (
                     <div className="text-center py-12 text-gray-500">
                       <p className="text-4xl mb-2">✅</p>
-                      <p>No resources under maintenance</p>
+                      <p>No resources under maintenance found</p>
                     </div>
                   )}
                 </div>
