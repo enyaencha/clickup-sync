@@ -293,6 +293,7 @@ const Programs: React.FC = () => {
                     </p>
                     <p className="text-xs text-gray-500">
                       Spent: {formatCurrency(program.program_expenditure_spent ?? program.program_budget_spent ?? 0)}
+                      Spent: {formatCurrency(program.program_budget_spent ?? 0)}
                     </p>
                   </div>
                   <span

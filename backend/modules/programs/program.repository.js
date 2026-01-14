@@ -22,7 +22,15 @@ class ProgramRepository {
                 pb.status AS program_budget_status,
                 pb.approval_status AS program_budget_approval_status,
                 COALESCE(pb.total_budget, program_modules.budget) AS budget,
-                COALESCE(exp.total_spent, 0) AS program_expenditure_spent
+                COALESCE((
+                    SELECT SUM(ae.amount)
+                    FROM activity_expenditures ae
+                    INNER JOIN activities a ON ae.activity_id = a.id AND a.deleted_at IS NULL
+                    INNER JOIN project_components pc ON a.component_id = pc.id AND pc.deleted_at IS NULL
+                    INNER JOIN sub_programs sp ON pc.sub_program_id = sp.id AND sp.deleted_at IS NULL
+                    WHERE sp.module_id = program_modules.id
+                ), 0) AS program_expenditure_spent
+                COALESCE(pb.total_budget, program_modules.budget) AS budget
             FROM program_modules
             LEFT JOIN program_budgets pb
                 ON pb.id = (
@@ -34,14 +42,6 @@ class ProgramRepository {
                     ORDER BY pb2.budget_end_date DESC, pb2.id DESC
                     LIMIT 1
                 )
-            LEFT JOIN (
-                SELECT sp.module_id, SUM(ae.amount) AS total_spent
-                FROM activity_expenditures ae
-                INNER JOIN activities a ON ae.activity_id = a.id AND a.deleted_at IS NULL
-                INNER JOIN project_components pc ON a.component_id = pc.id AND pc.deleted_at IS NULL
-                INNER JOIN sub_programs sp ON pc.sub_program_id = sp.id AND sp.deleted_at IS NULL
-                GROUP BY sp.module_id
-            ) exp ON exp.module_id = program_modules.id
             WHERE program_modules.deleted_at IS NULL
         `;
         const params = [];
@@ -109,7 +109,14 @@ class ProgramRepository {
                 pb.status AS program_budget_status,
                 pb.approval_status AS program_budget_approval_status,
                 COALESCE(pb.total_budget, program_modules.budget) AS budget,
-                COALESCE(exp.total_spent, 0) AS program_expenditure_spent
+                COALESCE((
+                    SELECT SUM(ae.amount)
+                    FROM activity_expenditures ae
+                    INNER JOIN activities a ON ae.activity_id = a.id AND a.deleted_at IS NULL
+                    INNER JOIN project_components pc ON a.component_id = pc.id AND pc.deleted_at IS NULL
+                    INNER JOIN sub_programs sp ON pc.sub_program_id = sp.id AND sp.deleted_at IS NULL
+                    WHERE sp.module_id = program_modules.id
+                ), 0) AS program_expenditure_spent
             FROM program_modules
             LEFT JOIN program_budgets pb
                 ON pb.id = (
@@ -121,14 +128,6 @@ class ProgramRepository {
                     ORDER BY pb2.budget_end_date DESC, pb2.id DESC
                     LIMIT 1
                 )
-            LEFT JOIN (
-                SELECT sp.module_id, SUM(ae.amount) AS total_spent
-                FROM activity_expenditures ae
-                INNER JOIN activities a ON ae.activity_id = a.id AND a.deleted_at IS NULL
-                INNER JOIN project_components pc ON a.component_id = pc.id AND pc.deleted_at IS NULL
-                INNER JOIN sub_programs sp ON pc.sub_program_id = sp.id AND sp.deleted_at IS NULL
-                GROUP BY sp.module_id
-            ) exp ON exp.module_id = program_modules.id
             WHERE program_modules.id = ? AND program_modules.deleted_at IS NULL
         `;
         return await db.queryOne(sql, [id]);

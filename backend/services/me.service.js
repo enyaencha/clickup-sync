@@ -77,7 +77,15 @@ class MEService {
                    pb.committed_budget AS program_budget_committed,
                    pb.status AS program_budget_status,
                    pb.approval_status AS program_budget_approval_status,
-                   COALESCE(exp.total_spent, 0) AS program_expenditure_spent
+                   COALESCE((
+                       SELECT SUM(ae.amount)
+                       FROM activity_expenditures ae
+                       INNER JOIN activities a ON ae.activity_id = a.id AND a.deleted_at IS NULL
+                       INNER JOIN project_components pc ON a.component_id = pc.id AND pc.deleted_at IS NULL
+                       INNER JOIN sub_programs sp ON pc.sub_program_id = sp.id AND sp.deleted_at IS NULL
+                       WHERE sp.module_id = pm.id
+                   ), 0) AS program_expenditure_spent
+                   pb.approval_status AS program_budget_approval_status
             FROM program_modules pm
             LEFT JOIN program_budgets pb
                 ON pb.id = (
@@ -86,17 +94,10 @@ class MEService {
                     WHERE pb2.program_module_id = pm.id
                       AND pb2.deleted_at IS NULL
                       AND (pb2.approval_status = 'approved' OR pb2.status = 'approved')
+                      AND pb2.approval_status = 'approved'
                     ORDER BY pb2.budget_end_date DESC, pb2.id DESC
                     LIMIT 1
                 )
-            LEFT JOIN (
-                SELECT sp.module_id, SUM(ae.amount) AS total_spent
-                FROM activity_expenditures ae
-                INNER JOIN activities a ON ae.activity_id = a.id AND a.deleted_at IS NULL
-                INNER JOIN project_components pc ON a.component_id = pc.id AND pc.deleted_at IS NULL
-                INNER JOIN sub_programs sp ON pc.sub_program_id = sp.id AND sp.deleted_at IS NULL
-                GROUP BY sp.module_id
-            ) exp ON exp.module_id = pm.id
         `;
         let params = [];
 
