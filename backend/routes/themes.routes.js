@@ -135,5 +135,36 @@ module.exports = (themesService) => {
         }
     });
 
+    router.delete('/:id/share', async (req, res) => {
+        try {
+            const { email } = req.body || {};
+            if (!email) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Email is required'
+                });
+            }
+
+            await themesService.unshareTheme(
+                req.params.id,
+                req.user.id,
+                email,
+                Boolean(req.user?.is_system_admin)
+            );
+
+            return res.json({ success: true });
+        } catch (error) {
+            const message = error.message || '';
+            const status = message.includes('not found') ? 404
+                : message.includes('permission') ? 403
+                    : message.includes('custom themes') ? 400
+                        : 500;
+            return res.status(status).json({
+                success: false,
+                error: error.message || 'Failed to unshare theme'
+            });
+        }
+    });
+
     return router;
 };

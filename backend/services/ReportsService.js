@@ -20,7 +20,7 @@ class ReportsService {
         COUNT(DISTINCT CASE WHEN a.status = 'cancelled' THEN a.id END) as cancelled_activities,
         COUNT(DISTINCT ab.beneficiary_id) as total_beneficiaries,
         SUM(COALESCE(ae.amount, 0)) as total_spent,
-        SUM(COALESCE(a.budget_allocated, 0)) as total_budget,
+        SUM(COALESCE(abud.approved_budget, abud.allocated_budget, 0)) as total_budget,
         AVG(CASE
           WHEN a.status = 'completed' THEN 100
           WHEN a.status = 'ongoing' THEN 50
@@ -33,6 +33,7 @@ class ReportsService {
       LEFT JOIN sub_programs sp ON pm.id = sp.module_id AND sp.deleted_at IS NULL
       LEFT JOIN project_components pc ON sp.id = pc.sub_program_id AND pc.deleted_at IS NULL
       LEFT JOIN activities a ON pc.id = a.component_id AND a.deleted_at IS NULL
+      LEFT JOIN activity_budgets abud ON a.id = abud.activity_id
       LEFT JOIN activity_beneficiaries ab ON a.id = ab.activity_id
       LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
       WHERE pm.deleted_at IS NULL
@@ -91,7 +92,7 @@ class ReportsService {
         a.status,
         a.approval_status,
         a.risk_level,
-        a.budget_allocated,
+        COALESCE(abud.approved_budget, abud.allocated_budget, a.budget_allocated) as budget_allocated,
         COUNT(DISTINCT ab.beneficiary_id) as beneficiary_count,
         SUM(COALESCE(ae.amount, 0)) as total_spent,
         COUNT(DISTINCT ac.id) as total_checklist_items,
@@ -110,6 +111,7 @@ class ReportsService {
       LEFT JOIN attachments att ON a.id = att.entity_id AND att.entity_type = 'activity'
       LEFT JOIN time_entries te ON a.id = te.activity_id
       LEFT JOIN locations l ON a.location_id = l.id
+      LEFT JOIN activity_budgets abud ON a.id = abud.activity_id
       WHERE a.deleted_at IS NULL
     `;
 
@@ -166,7 +168,7 @@ class ReportsService {
         sp.name as subprogram_name,
         pc.id as component_id,
         pc.name as component_name,
-        SUM(COALESCE(a.budget_allocated, 0)) as total_budget,
+        SUM(COALESCE(abud.approved_budget, abud.allocated_budget, 0)) as total_budget,
         SUM(COALESCE(ae.amount, 0)) as total_spent,
         COUNT(DISTINCT a.id) as activity_count,
         COUNT(DISTINCT ab.beneficiary_id) as beneficiary_count,
@@ -175,6 +177,7 @@ class ReportsService {
       LEFT JOIN sub_programs sp ON pm.id = sp.module_id AND sp.deleted_at IS NULL
       LEFT JOIN project_components pc ON sp.id = pc.sub_program_id AND pc.deleted_at IS NULL
       LEFT JOIN activities a ON pc.id = a.component_id AND a.deleted_at IS NULL
+      LEFT JOIN activity_budgets abud ON a.id = abud.activity_id
       LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
       LEFT JOIN activity_beneficiaries ab ON a.id = ab.activity_id
       WHERE pm.deleted_at IS NULL
