@@ -14,6 +14,7 @@ interface Program {
   program_budget_total?: number | null;
   program_budget_allocated?: number | null;
   program_budget_spent?: number | null;
+  program_expenditure_spent?: number | null;
 }
 
 interface Statistics {
@@ -291,6 +292,7 @@ const Programs: React.FC = () => {
                       {formatCurrency(program.program_budget_total ?? program.budget ?? 0)}
                     </p>
                     <p className="text-xs text-gray-500">
+                      Spent: {formatCurrency(program.program_expenditure_spent ?? program.program_budget_spent ?? 0)}
                       Spent: {formatCurrency(program.program_budget_spent ?? 0)}
                     </p>
                   </div>
