@@ -11,6 +11,10 @@ interface Program {
   description: string;
   status: string;
   budget: number;
+  program_budget_total?: number | null;
+  program_budget_allocated?: number | null;
+  program_budget_spent?: number | null;
+  program_expenditure_spent?: number | null;
 }
 
 interface Statistics {
@@ -82,6 +86,14 @@ const Programs: React.FC = () => {
     } catch (err) {
       console.error('Failed to fetch statistics:', err);
     }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-KE', {
+      style: 'currency',
+      currency: 'KES',
+      minimumFractionDigits: 0
+    }).format(amount);
   };
 
   if (loading) {
@@ -277,7 +289,10 @@ const Programs: React.FC = () => {
                   <div>
                     <span className="text-xs text-gray-500">Budget</span>
                     <p className="text-sm font-semibold text-gray-900">
-                      ${program.budget ? program.budget.toLocaleString() : '0'}
+                      {formatCurrency(program.program_budget_total ?? program.budget ?? 0)}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Spent: {formatCurrency(program.program_expenditure_spent ?? program.program_budget_spent ?? 0)}
                     </p>
                   </div>
                   <span
