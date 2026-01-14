@@ -30,6 +30,7 @@ class ProgramRepository {
                     INNER JOIN sub_programs sp ON pc.sub_program_id = sp.id AND sp.deleted_at IS NULL
                     WHERE sp.module_id = program_modules.id
                 ), 0) AS program_expenditure_spent
+                COALESCE(pb.total_budget, program_modules.budget) AS budget
             FROM program_modules
             LEFT JOIN program_budgets pb
                 ON pb.id = (
