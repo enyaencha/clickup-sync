@@ -35,7 +35,11 @@ interface Activity {
   target_beneficiaries: number;
   actual_beneficiaries: number;
   budget_allocated: number;
+  budget_approved?: number | null;
+  budget_committed?: number | null;
+  budget_remaining?: number | null;
   budget_spent: number;
+  budget_spent_expenditures?: number;
 }
 
 interface ComponentStatistics {
@@ -119,7 +123,17 @@ const Activities: React.FC = () => {
       const activitiesRes = await authFetch(`/api/activities?component_id=${componentId}`);
       if (!activitiesRes.ok) throw new Error('Failed to fetch activities');
       const activitiesData = await activitiesRes.json();
-      setActivities(activitiesData.data || []);
+      const fetchedActivities = activitiesData.data || [];
+      const expenditureTotals = await fetchActivityExpenditureTotals(fetchedActivities);
+      const enrichedActivities = fetchedActivities.map((activity: Activity) => {
+        const totalSpent = expenditureTotals.get(activity.id) ?? 0;
+        return {
+          ...activity,
+          budget_spent_expenditures: totalSpent,
+          budget_spent: totalSpent || activity.budget_spent
+        };
+      });
+      setActivities(enrichedActivities);
       setLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -136,6 +150,38 @@ const Activities: React.FC = () => {
     } catch (err) {
       console.error('Failed to fetch statistics:', err);
     }
+  };
+
+  const fetchActivityExpenditureTotals = async (activitiesList: Activity[]) => {
+    const totals = await Promise.all(
+      activitiesList.map(async (activity) => {
+        try {
+          const response = await authFetch(`/api/budget-requests/activity/${activity.id}/expenditures`);
+          if (!response.ok) {
+            return { id: activity.id, total: 0 };
+          }
+          const data = await response.json();
+          const total = (data.data || []).reduce(
+            (sum: number, exp: { amount: number }) => sum + (exp.amount || 0),
+            0
+          );
+          return { id: activity.id, total };
+        } catch (error) {
+          console.error('Failed to fetch expenditures:', error);
+          return { id: activity.id, total: 0 };
+        }
+      })
+    );
+
+    return new Map(totals.map(({ id, total }) => [id, total]));
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-KE', {
+      style: 'currency',
+      currency: 'KES',
+      minimumFractionDigits: 0
+    }).format(amount);
   };
 
   const handleActivityCreated = () => {
@@ -693,7 +739,10 @@ const Activities: React.FC = () => {
                     <div>
                       <span className="opacity-60">Budget:</span>
                       <p className="font-medium">
-                        ${(activity.budget_spent || 0).toLocaleString()}
+                        {formatCurrency(activity.budget_spent_expenditures ?? activity.budget_spent ?? 0)}
+                      </p>
+                      <p className="text-xs opacity-60">
+                        Approved: {formatCurrency(activity.budget_approved ?? activity.budget_allocated ?? 0)}
                       </p>
                     </div>
                   </div>
@@ -1045,7 +1094,7 @@ const Activities: React.FC = () => {
                   <ActivityExpenditureTracking
                     activityId={selectedActivity.id}
                     activityName={selectedActivity.name}
-                    approvedBudget={selectedActivity.budget_allocated || 0}
+                    approvedBudget={selectedActivity.budget_approved ?? selectedActivity.budget_allocated ?? 0}
                   />
                 </div>
               </div>
