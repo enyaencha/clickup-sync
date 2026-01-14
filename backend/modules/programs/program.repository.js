@@ -15,6 +15,7 @@ class ProgramRepository {
         let sql = `
             SELECT
                 pm.*,
+                program_modules.*,
                 pb.total_budget AS program_budget_total,
                 pb.allocated_budget AS program_budget_allocated,
                 pb.spent_budget AS program_budget_spent,
@@ -24,6 +25,19 @@ class ProgramRepository {
                 COALESCE(pb.total_budget, pm.budget) AS budget,
                 COALESCE(exp.total_spent, 0) AS program_expenditure_spent
             FROM program_modules pm
+                pb.status AS program_budget_status,
+                pb.approval_status AS program_budget_approval_status,
+                COALESCE(pb.total_budget, program_modules.budget) AS budget,
+                COALESCE((
+                    SELECT SUM(ae.amount)
+                    FROM activity_expenditures ae
+                    INNER JOIN activities a ON ae.activity_id = a.id AND a.deleted_at IS NULL
+                    INNER JOIN project_components pc ON a.component_id = pc.id AND pc.deleted_at IS NULL
+                    INNER JOIN sub_programs sp ON pc.sub_program_id = sp.id AND sp.deleted_at IS NULL
+                    WHERE sp.module_id = program_modules.id
+                ), 0) AS program_expenditure_spent
+                COALESCE(pb.total_budget, program_modules.budget) AS budget
+            FROM program_modules
             LEFT JOIN program_budgets pb
                 ON pb.id = (
                     SELECT pb2.id
@@ -43,6 +57,13 @@ class ProgramRepository {
                 GROUP BY sp.module_id
             ) exp ON exp.module_id = pm.id
             WHERE pm.deleted_at IS NULL
+                    WHERE pb2.program_module_id = program_modules.id
+                      AND pb2.deleted_at IS NULL
+                      AND (pb2.approval_status = 'approved' OR pb2.status = 'approved')
+                    ORDER BY pb2.budget_end_date DESC, pb2.id DESC
+                    LIMIT 1
+                )
+            WHERE program_modules.deleted_at IS NULL
         `;
         const params = [];
 
@@ -102,6 +123,7 @@ class ProgramRepository {
         const sql = `
             SELECT
                 pm.*,
+                program_modules.*,
                 pb.total_budget AS program_budget_total,
                 pb.allocated_budget AS program_budget_allocated,
                 pb.spent_budget AS program_budget_spent,
@@ -111,6 +133,18 @@ class ProgramRepository {
                 COALESCE(pb.total_budget, pm.budget) AS budget,
                 COALESCE(exp.total_spent, 0) AS program_expenditure_spent
             FROM program_modules pm
+                pb.status AS program_budget_status,
+                pb.approval_status AS program_budget_approval_status,
+                COALESCE(pb.total_budget, program_modules.budget) AS budget,
+                COALESCE((
+                    SELECT SUM(ae.amount)
+                    FROM activity_expenditures ae
+                    INNER JOIN activities a ON ae.activity_id = a.id AND a.deleted_at IS NULL
+                    INNER JOIN project_components pc ON a.component_id = pc.id AND pc.deleted_at IS NULL
+                    INNER JOIN sub_programs sp ON pc.sub_program_id = sp.id AND sp.deleted_at IS NULL
+                    WHERE sp.module_id = program_modules.id
+                ), 0) AS program_expenditure_spent
+            FROM program_modules
             LEFT JOIN program_budgets pb
                 ON pb.id = (
                     SELECT pb2.id
@@ -130,6 +164,13 @@ class ProgramRepository {
                 GROUP BY sp.module_id
             ) exp ON exp.module_id = pm.id
             WHERE pm.id = ? AND pm.deleted_at IS NULL
+                    WHERE pb2.program_module_id = program_modules.id
+                      AND pb2.deleted_at IS NULL
+                      AND (pb2.approval_status = 'approved' OR pb2.status = 'approved')
+                    ORDER BY pb2.budget_end_date DESC, pb2.id DESC
+                    LIMIT 1
+                )
+            WHERE program_modules.id = ? AND program_modules.deleted_at IS NULL
         `;
         return await db.queryOne(sql, [id]);
     }
