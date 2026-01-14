@@ -20,7 +20,10 @@ class ReportsService {
         COUNT(DISTINCT CASE WHEN a.status = 'cancelled' THEN a.id END) as cancelled_activities,
         COUNT(DISTINCT ab.beneficiary_id) as total_beneficiaries,
         SUM(COALESCE(ae.amount, 0)) as total_spent,
-        SUM(COALESCE(abud.approved_budget, abud.allocated_budget, 0)) as total_budget,
+        COALESCE(
+          pb.total_budget,
+          SUM(COALESCE(abud.approved_budget, abud.allocated_budget, 0))
+        ) as total_budget,
         AVG(CASE
           WHEN a.status = 'completed' THEN 100
           WHEN a.status = 'ongoing' THEN 50
@@ -36,6 +39,16 @@ class ReportsService {
       LEFT JOIN activity_budgets abud ON a.id = abud.activity_id
       LEFT JOIN activity_beneficiaries ab ON a.id = ab.activity_id
       LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
+      LEFT JOIN program_budgets pb
+        ON pb.id = (
+          SELECT pb2.id
+          FROM program_budgets pb2
+          WHERE pb2.program_module_id = pm.id
+            AND pb2.deleted_at IS NULL
+            AND (pb2.\`approval_status\` = 'approved' OR pb2.\`status\` = 'approved')
+          ORDER BY pb2.budget_end_date DESC, pb2.id DESC
+          LIMIT 1
+        )
       WHERE pm.deleted_at IS NULL
     `;
 
@@ -168,7 +181,13 @@ class ReportsService {
         sp.name as subprogram_name,
         pc.id as component_id,
         pc.name as component_name,
-        SUM(COALESCE(abud.approved_budget, abud.allocated_budget, 0)) as total_budget,
+        ${groupBy === 'module'
+          ? `COALESCE(
+              pb.total_budget,
+              SUM(COALESCE(abud.approved_budget, abud.allocated_budget, 0))
+            )`
+          : `SUM(COALESCE(abud.approved_budget, abud.allocated_budget, 0))`
+        } as total_budget,
         SUM(COALESCE(ae.amount, 0)) as total_spent,
         COUNT(DISTINCT a.id) as activity_count,
         COUNT(DISTINCT ab.beneficiary_id) as beneficiary_count,
@@ -180,6 +199,16 @@ class ReportsService {
       LEFT JOIN activity_budgets abud ON a.id = abud.activity_id
       LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
       LEFT JOIN activity_beneficiaries ab ON a.id = ab.activity_id
+      LEFT JOIN program_budgets pb
+        ON pb.id = (
+          SELECT pb2.id
+          FROM program_budgets pb2
+          WHERE pb2.program_module_id = pm.id
+            AND pb2.deleted_at IS NULL
+            AND (pb2.\`approval_status\` = 'approved' OR pb2.\`status\` = 'approved')
+          ORDER BY pb2.budget_end_date DESC, pb2.id DESC
+          LIMIT 1
+        )
       WHERE pm.deleted_at IS NULL
     `;
 
