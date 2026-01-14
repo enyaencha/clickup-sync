@@ -828,21 +828,58 @@ class ReportsService {
         COUNT(DISTINCT pc.id) as total_components,
         COUNT(DISTINCT a.id) as total_activities,
         COUNT(DISTINCT CASE WHEN a.status = 'completed' THEN a.id END) as completed_activities,
-        COUNT(DISTINCT b.id) as total_beneficiaries,
-        SUM(COALESCE(a.budget_allocated, 0)) as total_budget,
-        SUM(COALESCE(ae.amount, 0)) as total_spent
+        COUNT(DISTINCT b.id) as total_beneficiaries
       FROM program_modules pm
       LEFT JOIN sub_programs sp ON pm.id = sp.module_id AND sp.deleted_at IS NULL
       LEFT JOIN project_components pc ON sp.id = pc.sub_program_id AND pc.deleted_at IS NULL
       LEFT JOIN activities a ON pc.id = a.component_id AND a.deleted_at IS NULL ${dateCondition}
       LEFT JOIN activity_beneficiaries ab ON a.id = ab.activity_id
       LEFT JOIN beneficiaries b ON ab.beneficiary_id = b.id AND b.deleted_at IS NULL
-      LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
       WHERE pm.deleted_at IS NULL
     `;
 
     const overallResults = await db.query(overallQuery, params);
     const summary = overallResults[0];
+
+    const spentQuery = `
+      SELECT SUM(COALESCE(ae.amount, 0)) as total_spent
+      FROM activities a
+      LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
+      WHERE a.deleted_at IS NULL ${dateCondition}
+    `;
+    const spentResult = await db.query(spentQuery, params);
+    summary.total_spent = spentResult[0]?.total_spent || 0;
+
+    const budgetQuery = `
+      SELECT SUM(module_budget) as total_budget
+      FROM (
+        SELECT
+          pm.id,
+          COALESCE(
+            pb.total_budget,
+            SUM(COALESCE(abud.approved_budget, abud.allocated_budget, a.budget_allocated, 0))
+          ) as module_budget
+        FROM program_modules pm
+        LEFT JOIN sub_programs sp ON pm.id = sp.module_id AND sp.deleted_at IS NULL
+        LEFT JOIN project_components pc ON sp.id = pc.sub_program_id AND pc.deleted_at IS NULL
+        LEFT JOIN activities a ON pc.id = a.component_id AND a.deleted_at IS NULL ${dateCondition}
+        LEFT JOIN activity_budgets abud ON a.id = abud.activity_id
+        LEFT JOIN program_budgets pb
+          ON pb.id = (
+            SELECT pb2.id
+            FROM program_budgets pb2
+            WHERE pb2.program_module_id = pm.id
+              AND pb2.deleted_at IS NULL
+              AND (pb2.\`approval_status\` = 'approved' OR pb2.\`status\` = 'approved')
+            ORDER BY pb2.budget_end_date DESC, pb2.id DESC
+            LIMIT 1
+          )
+        WHERE pm.deleted_at IS NULL
+        GROUP BY pm.id, pb.total_budget
+      ) module_budgets
+    `;
+    const budgetResult = await db.query(budgetQuery, params);
+    summary.total_budget = budgetResult[0]?.total_budget || 0;
 
     // Count strategic goals separately
     const goalsQuery = `
