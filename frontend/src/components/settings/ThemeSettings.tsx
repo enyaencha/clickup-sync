@@ -13,6 +13,7 @@ const ThemeSettings: React.FC = () => {
     updateDefaultTheme,
     deleteCustomTheme,
     shareTheme,
+    unshareTheme,
     followSystemTheme,
     setFollowSystemTheme
   } = useTheme();
@@ -123,6 +124,26 @@ const ThemeSettings: React.FC = () => {
       setShareError(error?.message || 'Failed to share theme.');
     }
   };
+
+  const handleUnshareTheme = async () => {
+    if (!sharingTheme) return;
+    if (!shareEmail.trim()) {
+      setShareError('Please enter a user email.');
+      return;
+    }
+
+    try {
+      await unshareTheme(sharingTheme.id, shareEmail.trim());
+      setShareEmail('');
+      setShareError('');
+      setSharingTheme(null);
+      alert(`Access removed for "${sharingTheme.name}".`);
+    } catch (error: any) {
+      setShareError(error?.message || 'Failed to remove access.');
+    }
+  };
+
+  const isOwnerTheme = (theme: any) => theme.accessType === 'owned' || theme.ownerUserId === user?.id;
 
   return (
     <div className="space-y-6">
@@ -293,6 +314,11 @@ const ThemeSettings: React.FC = () => {
                       <div className="absolute bottom-2 left-2 bg-purple-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                         Custom
                       </div>
+                      {isOwnerTheme(theme) && (
+                        <div className="absolute bottom-2 right-2 bg-emerald-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                          Owned
+                        </div>
+                      )}
                     </div>
 
                     {/* Theme Info */}
@@ -317,37 +343,39 @@ const ThemeSettings: React.FC = () => {
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="flex items-center space-x-2 pt-2 border-t border-gray-200">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditTheme(theme);
-                          }}
-                          className="flex-1 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-100 rounded hover:bg-purple-200 transition-colors"
-                        >
-                          ✏️ Edit
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSharingTheme(theme);
-                            setShareEmail('');
-                            setShareError('');
-                          }}
-                          className="flex-1 px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-100 rounded hover:bg-blue-200 transition-colors"
-                        >
-                          🤝 Share
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteTheme(theme.id, theme.name);
-                          }}
-                          className="flex-1 px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-100 rounded hover:bg-red-200 transition-colors"
-                        >
-                          🗑️ Delete
-                        </button>
-                      </div>
+                      {isOwnerTheme(theme) && (
+                        <div className="flex items-center space-x-2 pt-2 border-t border-gray-200">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditTheme(theme);
+                            }}
+                            className="flex-1 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-100 rounded hover:bg-purple-200 transition-colors"
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSharingTheme(theme);
+                              setShareEmail('');
+                              setShareError('');
+                            }}
+                            className="flex-1 px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-100 rounded hover:bg-blue-200 transition-colors"
+                          >
+                            🤝 Share
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteTheme(theme.id, theme.name);
+                            }}
+                            className="flex-1 px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-100 rounded hover:bg-red-200 transition-colors"
+                          >
+                            🗑️ Delete
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </button>
                 </div>
@@ -366,6 +394,9 @@ const ThemeSettings: React.FC = () => {
               Shared With Me ({sharedThemes.length})
             </h3>
           </div>
+          <p className="text-sm text-gray-600 mb-4">
+            Shared themes are view-only. Only the owner can edit, delete, or share them with others.
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {sharedThemes.map((theme) => {
               const isActive = currentTheme.id === theme.id;
@@ -412,6 +443,9 @@ const ThemeSettings: React.FC = () => {
                       </div>
                       <div className="absolute bottom-2 left-2 bg-emerald-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                         Shared
+                      </div>
+                      <div className="absolute bottom-2 right-2 bg-gray-800 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                        View Only
                       </div>
                     </div>
                     <div className="p-4 bg-white">
@@ -607,7 +641,7 @@ const ThemeSettings: React.FC = () => {
           <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-2">Share "{sharingTheme.name}"</h3>
             <p className="text-sm text-gray-600 mb-4">
-              Enter the email address of the user you want to share this theme with.
+              Enter the email address of the user you want to share this theme with, or remove their access.
             </p>
             <input
               type="email"
@@ -633,6 +667,14 @@ const ThemeSettings: React.FC = () => {
               >
                 Cancel
               </button>
+              {isOwnerTheme(sharingTheme) && (
+                <button
+                  onClick={handleUnshareTheme}
+                  className="px-4 py-2 text-sm font-semibold text-white bg-rose-500 rounded-lg hover:bg-rose-600"
+                >
+                  Remove Access
+                </button>
+              )}
               <button
                 onClick={handleShareTheme}
                 className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700"

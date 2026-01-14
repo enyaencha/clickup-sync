@@ -235,6 +235,39 @@ class ThemesService {
             [themeId, user.id, ownerId]
         );
     }
+
+    async unshareTheme(themeId, ownerId, email, isAdmin) {
+        const theme = await this.db.queryOne(
+            'SELECT id, owner_user_id, is_custom FROM themes WHERE id = ?',
+            [themeId]
+        );
+
+        if (!theme) {
+            throw new Error('Theme not found');
+        }
+
+        if (!theme.is_custom) {
+            throw new Error('Only custom themes can be unshared');
+        }
+
+        if (theme.owner_user_id !== ownerId && !isAdmin) {
+            throw new Error('You do not have permission to unshare this theme');
+        }
+
+        const user = await this.db.queryOne(
+            'SELECT id FROM users WHERE email = ?',
+            [email]
+        );
+
+        if (!user) {
+            throw new Error('User not found');
+        }
+
+        await this.db.query(
+            'DELETE FROM theme_shares WHERE theme_id = ? AND shared_with_user_id = ?',
+            [themeId, user.id]
+        );
+    }
 }
 
 module.exports = ThemesService;

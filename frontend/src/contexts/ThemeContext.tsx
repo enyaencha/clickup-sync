@@ -12,6 +12,7 @@ interface ThemeContextType {
   updateDefaultTheme: (theme: Theme) => Promise<void>;
   deleteCustomTheme: (themeId: string) => Promise<void>;
   shareTheme: (themeId: string, email: string) => Promise<void>;
+  unshareTheme: (themeId: string, email: string) => Promise<void>;
   followSystemTheme: boolean;
   setFollowSystemTheme: (follow: boolean) => void;
 }
@@ -225,6 +226,19 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     }
   };
 
+  const unshareTheme = async (themeId: string, email: string) => {
+    const response = await authFetch(`/api/themes/${themeId}/share`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data?.error || 'Failed to unshare theme');
+    }
+  };
+
   // Listen for system theme changes
   useEffect(() => {
     if (!followSystemTheme) return;
@@ -302,6 +316,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       updateDefaultTheme,
       deleteCustomTheme,
       shareTheme,
+      unshareTheme,
       followSystemTheme,
       setFollowSystemTheme
     }}>
