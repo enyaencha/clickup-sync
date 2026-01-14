@@ -13,8 +13,27 @@ class ProgramRepository {
      */
     async findAll(filters = {}) {
         let sql = `
-            SELECT * FROM program_modules
-            WHERE deleted_at IS NULL
+            SELECT
+                program_modules.*,
+                pb.total_budget AS program_budget_total,
+                pb.allocated_budget AS program_budget_allocated,
+                pb.spent_budget AS program_budget_spent,
+                pb.committed_budget AS program_budget_committed,
+                pb.status AS program_budget_status,
+                pb.approval_status AS program_budget_approval_status,
+                COALESCE(pb.total_budget, program_modules.budget) AS budget
+            FROM program_modules
+            LEFT JOIN program_budgets pb
+                ON pb.id = (
+                    SELECT pb2.id
+                    FROM program_budgets pb2
+                    WHERE pb2.program_module_id = program_modules.id
+                      AND pb2.deleted_at IS NULL
+                      AND pb2.approval_status = 'approved'
+                    ORDER BY pb2.budget_end_date DESC, pb2.id DESC
+                    LIMIT 1
+                )
+            WHERE program_modules.deleted_at IS NULL
         `;
         const params = [];
 
@@ -71,7 +90,29 @@ class ProgramRepository {
      * Find program module by ID
      */
     async findById(id) {
-        const sql = 'SELECT * FROM program_modules WHERE id = ? AND deleted_at IS NULL';
+        const sql = `
+            SELECT
+                program_modules.*,
+                pb.total_budget AS program_budget_total,
+                pb.allocated_budget AS program_budget_allocated,
+                pb.spent_budget AS program_budget_spent,
+                pb.committed_budget AS program_budget_committed,
+                pb.status AS program_budget_status,
+                pb.approval_status AS program_budget_approval_status,
+                COALESCE(pb.total_budget, program_modules.budget) AS budget
+            FROM program_modules
+            LEFT JOIN program_budgets pb
+                ON pb.id = (
+                    SELECT pb2.id
+                    FROM program_budgets pb2
+                    WHERE pb2.program_module_id = program_modules.id
+                      AND pb2.deleted_at IS NULL
+                      AND pb2.approval_status = 'approved'
+                    ORDER BY pb2.budget_end_date DESC, pb2.id DESC
+                    LIMIT 1
+                )
+            WHERE program_modules.id = ? AND program_modules.deleted_at IS NULL
+        `;
         return await db.queryOne(sql, [id]);
     }
 
@@ -176,14 +217,28 @@ class ProgramRepository {
             SELECT
                 pm.id,
                 pm.name,
-                pm.budget,
+                COALESCE(pb.total_budget, pm.budget) as budget,
                 COUNT(DISTINCT sp.id) as total_sub_programs,
                 COUNT(DISTINCT pc.id) as total_components,
                 COUNT(DISTINCT a.id) as total_activities,
-                SUM(sp.budget) as total_sub_program_budget,
+                SUM(DISTINCT spb.total_budget) as total_sub_program_budget,
                 AVG(sp.progress_percentage) as avg_progress
             FROM program_modules pm
+            LEFT JOIN program_budgets pb
+                ON pb.id = (
+                    SELECT pb2.id
+                    FROM program_budgets pb2
+                    WHERE pb2.program_module_id = pm.id
+                      AND pb2.deleted_at IS NULL
+                      AND pb2.approval_status = 'approved'
+                    ORDER BY pb2.budget_end_date DESC, pb2.id DESC
+                    LIMIT 1
+                )
             LEFT JOIN sub_programs sp ON pm.id = sp.module_id AND sp.deleted_at IS NULL
+            LEFT JOIN program_budgets spb
+                ON spb.sub_program_id = sp.id
+               AND spb.deleted_at IS NULL
+               AND spb.approval_status = 'approved'
             LEFT JOIN project_components pc ON sp.id = pc.sub_program_id AND pc.deleted_at IS NULL
             LEFT JOIN activities a ON pc.id = a.component_id AND a.deleted_at IS NULL
             WHERE pm.id = ? AND pm.deleted_at IS NULL
