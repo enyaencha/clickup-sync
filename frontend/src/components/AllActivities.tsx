@@ -30,6 +30,8 @@ interface Activity {
   target_beneficiaries: number;
   actual_beneficiaries: number;
   budget_allocated: number;
+  budget_approved?: number | null;
+  budget_spent_expenditures?: number;
   budget_spent: number;
 }
 
@@ -188,12 +190,46 @@ const AllActivities: React.FC = () => {
       const response = await authFetch(`/api/activities?${params.toString()}`);
       if (!response.ok) throw new Error('Failed to fetch activities');
       const data = await response.json();
-      setActivities(data.data || []);
+      const fetchedActivities = data.data || [];
+      const expenditureTotals = await fetchActivityExpenditureTotals(fetchedActivities);
+      const enrichedActivities = fetchedActivities.map((activity: Activity) => {
+        const totalSpent = expenditureTotals.get(activity.id) ?? 0;
+        return {
+          ...activity,
+          budget_spent_expenditures: totalSpent,
+          budget_spent: totalSpent || activity.budget_spent
+        };
+      });
+      setActivities(enrichedActivities);
       setLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setLoading(false);
     }
+  };
+
+  const fetchActivityExpenditureTotals = async (activitiesList: Activity[]) => {
+    const totals = await Promise.all(
+      activitiesList.map(async (activity) => {
+        try {
+          const response = await authFetch(`/api/budget-requests/activity/${activity.id}/expenditures`);
+          if (!response.ok) {
+            return { id: activity.id, total: 0 };
+          }
+          const responseData = await response.json();
+          const total = (responseData.data || []).reduce(
+            (sum: number, exp: { amount: number }) => sum + (exp.amount || 0),
+            0
+          );
+          return { id: activity.id, total };
+        } catch (error) {
+          console.error('Failed to fetch expenditures:', error);
+          return { id: activity.id, total: 0 };
+        }
+      })
+    );
+
+    return new Map(totals.map(({ id, total }) => [id, total]));
   };
 
   const handleResetFilters = () => {
@@ -260,9 +296,10 @@ const AllActivities: React.FC = () => {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-KE', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'KES',
+      minimumFractionDigits: 0
     }).format(amount || 0);
   };
 
@@ -704,7 +741,9 @@ const AllActivities: React.FC = () => {
                   <div>
                     <div className="text-xs text-gray-500 mb-1">Budget</div>
                     <div className="text-sm font-semibold text-gray-900">
-                      {formatCurrency(activity.budget_spent)} / {formatCurrency(activity.budget_allocated)}
+                      {formatCurrency(activity.budget_spent_expenditures ?? activity.budget_spent)}
+                      {' / '}
+                      {formatCurrency(activity.budget_approved ?? activity.budget_allocated)}
                     </div>
                   </div>
                 </div>
@@ -795,10 +834,10 @@ const AllActivities: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {formatCurrency(activity.budget_spent)}
+                        {formatCurrency(activity.budget_spent_expenditures ?? activity.budget_spent)}
                       </div>
                       <div className="text-xs text-gray-500">
-                        / {formatCurrency(activity.budget_allocated)}
+                        / {formatCurrency(activity.budget_approved ?? activity.budget_allocated)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
