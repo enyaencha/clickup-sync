@@ -77,18 +77,8 @@ class MEService {
                    pb.committed_budget AS program_budget_committed,
                    pb.\`status\` AS program_budget_status,
                    pb.\`approval_status\` AS program_budget_approval_status,
+                   COALESCE(pb.total_budget, pm.budget) AS budget,
                    COALESCE(exp.total_spent, 0) AS program_expenditure_spent
-                   pb.status AS program_budget_status,
-                   pb.approval_status AS program_budget_approval_status,
-                   COALESCE((
-                       SELECT SUM(ae.amount)
-                       FROM activity_expenditures ae
-                       INNER JOIN activities a ON ae.activity_id = a.id AND a.deleted_at IS NULL
-                       INNER JOIN project_components pc ON a.component_id = pc.id AND pc.deleted_at IS NULL
-                       INNER JOIN sub_programs sp ON pc.sub_program_id = sp.id AND sp.deleted_at IS NULL
-                       WHERE sp.module_id = pm.id
-                   ), 0) AS program_expenditure_spent
-                   pb.approval_status AS program_budget_approval_status
             FROM program_modules pm
             LEFT JOIN program_budgets pb
                 ON pb.id = (
@@ -108,11 +98,6 @@ class MEService {
                 INNER JOIN sub_programs sp ON pc.sub_program_id = sp.id AND sp.deleted_at IS NULL
                 GROUP BY sp.module_id
             ) exp ON exp.module_id = pm.id
-                      AND (pb2.approval_status = 'approved' OR pb2.status = 'approved')
-                      AND pb2.approval_status = 'approved'
-                    ORDER BY pb2.budget_end_date DESC, pb2.id DESC
-                    LIMIT 1
-                )
         `;
         let params = [];
 
@@ -193,8 +178,24 @@ class MEService {
 
     async getSubPrograms(moduleId = null, userId = null, isSystemAdmin = false) {
         let query = `
-            SELECT DISTINCT sp.*
+            SELECT DISTINCT
+                sp.*,
+                COALESCE(budget_totals.activity_budget_total, 0) as activity_budget_total,
+                COALESCE(budget_totals.activity_spent_total, 0) as activity_spent_total
             FROM sub_programs sp
+            LEFT JOIN (
+                SELECT
+                    sp_inner.id as sub_program_id,
+                    SUM(COALESCE(abud.approved_budget, abud.allocated_budget, a.budget_allocated, 0)) as activity_budget_total,
+                    SUM(COALESCE(ae.amount, 0)) as activity_spent_total
+                FROM sub_programs sp_inner
+                LEFT JOIN project_components pc ON sp_inner.id = pc.sub_program_id AND pc.deleted_at IS NULL
+                LEFT JOIN activities a ON pc.id = a.component_id AND a.deleted_at IS NULL
+                LEFT JOIN activity_budgets abud ON a.id = abud.activity_id
+                LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
+                WHERE sp_inner.deleted_at IS NULL
+                GROUP BY sp_inner.id
+            ) budget_totals ON budget_totals.sub_program_id = sp.id
         `;
         let params = [];
 

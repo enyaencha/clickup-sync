@@ -9,6 +9,8 @@ interface SubProgram {
   name: string;
   description: string;
   budget: number;
+  activity_budget_total?: number;
+  activity_spent_total?: number;
   start_date: string;
   end_date: string;
   status: string;
@@ -45,6 +47,14 @@ const SubPrograms: React.FC = () => {
     fetchSubPrograms();
     fetchStatistics();
   }, [programId]);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-KE', {
+      style: 'currency',
+      currency: 'KES',
+      minimumFractionDigits: 0
+    }).format(amount);
+  };
 
   const fetchProgram = async () => {
     try {
@@ -285,7 +295,10 @@ const SubPrograms: React.FC = () => {
                     <div>
                       <span className="text-xs text-gray-500">Budget</span>
                       <p className="text-sm font-semibold text-gray-900">
-                        ${subProgram.budget ? subProgram.budget.toLocaleString() : '0'}
+                        {formatCurrency(subProgram.activity_budget_total ?? subProgram.budget ?? 0)}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Spent: {formatCurrency(subProgram.activity_spent_total ?? 0)}
                       </p>
                     </div>
                     <div>

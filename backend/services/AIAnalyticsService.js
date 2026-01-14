@@ -56,14 +56,27 @@ class AIAnalyticsService {
     // Get current budget status
     const budgetData = await db.query(`
       SELECT
-        SUM(COALESCE(a.budget_allocated, 0)) as total_budget,
+        COALESCE(
+          MAX(pb.total_budget),
+          SUM(COALESCE(a.budget_allocated, 0))
+        ) as total_budget,
         SUM(COALESCE(ae.amount, 0)) as total_spent
-      FROM activities a
-      JOIN project_components pc ON a.component_id = pc.id
-      JOIN sub_programs sp ON pc.sub_program_id = sp.id
-      JOIN program_modules pm ON sp.module_id = pm.id
+      FROM program_modules pm
+      LEFT JOIN sub_programs sp ON pm.id = sp.module_id AND sp.deleted_at IS NULL
+      LEFT JOIN project_components pc ON sp.id = pc.sub_program_id AND pc.deleted_at IS NULL
+      LEFT JOIN activities a ON pc.id = a.component_id AND a.deleted_at IS NULL
       LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
-      WHERE pm.id = ? AND a.deleted_at IS NULL
+      LEFT JOIN program_budgets pb
+        ON pb.id = (
+          SELECT pb2.id
+          FROM program_budgets pb2
+          WHERE pb2.program_module_id = pm.id
+            AND pb2.deleted_at IS NULL
+            AND (pb2.\`approval_status\` = 'approved' OR pb2.\`status\` = 'approved')
+          ORDER BY pb2.budget_end_date DESC, pb2.id DESC
+          LIMIT 1
+        )
+      WHERE pm.id = ? AND pm.deleted_at IS NULL
     `, [moduleId]);
 
     const budget = budgetData[0];
@@ -107,12 +120,16 @@ class AIAnalyticsService {
       exhaustionDate.setDate(exhaustionDate.getDate() + Math.ceil(daysUntilExhaustion));
     }
 
+    const utilizationPercentage = budget.total_budget > 0
+      ? ((budget.total_spent / budget.total_budget) * 100).toFixed(2)
+      : '0.00';
+
     return {
       current_status: {
         total_budget: parseFloat(budget.total_budget).toFixed(2),
         total_spent: parseFloat(budget.total_spent).toFixed(2),
         remaining_budget: remainingBudget.toFixed(2),
-        utilization_percentage: ((budget.total_spent / budget.total_budget) * 100).toFixed(2)
+        utilization_percentage: utilizationPercentage
       },
       spending_statistics: {
         avg_daily_spending: avgDailySpending.toFixed(2),
@@ -591,17 +608,33 @@ class AIAnalyticsService {
     // Budget insights
     const budgetData = await db.query(`
       SELECT
-        SUM(a.budget_allocated) as total_budget,
-        SUM(ae.amount) as total_spent
-      FROM activities a
-      JOIN project_components pc ON a.component_id = pc.id
-      JOIN sub_programs sp ON pc.sub_program_id = sp.id
+        COALESCE(
+          MAX(pb.total_budget),
+          SUM(COALESCE(a.budget_allocated, 0))
+        ) as total_budget,
+        SUM(COALESCE(ae.amount, 0)) as total_spent
+      FROM program_modules pm
+      LEFT JOIN sub_programs sp ON pm.id = sp.module_id AND sp.deleted_at IS NULL
+      LEFT JOIN project_components pc ON sp.id = pc.sub_program_id AND pc.deleted_at IS NULL
+      LEFT JOIN activities a ON pc.id = a.component_id AND a.deleted_at IS NULL
       LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
-      WHERE sp.module_id = ? AND a.deleted_at IS NULL
+      LEFT JOIN program_budgets pb
+        ON pb.id = (
+          SELECT pb2.id
+          FROM program_budgets pb2
+          WHERE pb2.program_module_id = pm.id
+            AND pb2.deleted_at IS NULL
+            AND (pb2.\`approval_status\` = 'approved' OR pb2.\`status\` = 'approved')
+          ORDER BY pb2.budget_end_date DESC, pb2.id DESC
+          LIMIT 1
+        )
+      WHERE pm.id = ? AND pm.deleted_at IS NULL
     `, [moduleId]);
 
     const budget = budgetData[0];
-    const budgetUtilization = (budget.total_spent / budget.total_budget) * 100;
+    const budgetUtilization = budget.total_budget > 0
+      ? (budget.total_spent / budget.total_budget) * 100
+      : 0;
 
     if (budgetUtilization > 90) {
       insights.push({
@@ -710,15 +743,29 @@ class AIAnalyticsService {
     // 1. BUDGET EFFICIENCY SCORE (0-100)
     const budgetQuery = `
       SELECT
-        SUM(COALESCE(a.budget_allocated, 0)) as total_budget,
+        COALESCE(
+          MAX(pb.total_budget),
+          SUM(COALESCE(a.budget_allocated, 0))
+        ) as total_budget,
         SUM(COALESCE(ae.amount, 0)) as total_spent,
         COUNT(DISTINCT a.id) as total_activities,
         COUNT(DISTINCT CASE WHEN a.status = 'completed' THEN a.id END) as completed_activities
-      FROM activities a
-      JOIN project_components pc ON a.component_id = pc.id
-      JOIN sub_programs sp ON pc.sub_program_id = sp.id
+      FROM program_modules pm
+      LEFT JOIN sub_programs sp ON pm.id = sp.module_id AND sp.deleted_at IS NULL
+      LEFT JOIN project_components pc ON sp.id = pc.sub_program_id AND pc.deleted_at IS NULL
+      LEFT JOIN activities a ON pc.id = a.component_id AND a.deleted_at IS NULL
       LEFT JOIN activity_expenditures ae ON a.id = ae.activity_id
-      WHERE sp.module_id = ? AND a.deleted_at IS NULL
+      LEFT JOIN program_budgets pb
+        ON pb.id = (
+          SELECT pb2.id
+          FROM program_budgets pb2
+          WHERE pb2.program_module_id = pm.id
+            AND pb2.deleted_at IS NULL
+            AND (pb2.\`approval_status\` = 'approved' OR pb2.\`status\` = 'approved')
+          ORDER BY pb2.budget_end_date DESC, pb2.id DESC
+          LIMIT 1
+        )
+      WHERE pm.id = ? AND pm.deleted_at IS NULL
     `;
     const budgetData = (await db.query(budgetQuery, [moduleId]))[0];
 
