@@ -408,9 +408,34 @@ module.exports = (db) => {
 
             const result = await db.query(query, values);
 
+            const transactionId = result.insertId;
+            const approvalNumber = `FIN-${Date.now()}-${transactionId}`;
+            const requestTitle = `Transaction - ${transaction_type || 'unspecified'} - ${payee_name || 'Unknown Payee'}`;
+            const requestDescription = `Transaction ${transactionNumber} on ${transaction_date || 'unspecified date'} for KES ${amount?.toLocaleString() || '0'}.`;
+            const justification = purpose || description || 'Transaction requires approval.';
+
+            const approvalQuery = `
+                INSERT INTO finance_approvals (
+                    approval_number, request_type, program_budget_id, transaction_id,
+                    requested_amount, request_title, request_description, justification,
+                    priority, status, requested_by, requested_at
+                ) VALUES (?, 'transaction', ?, ?, ?, ?, ?, ?, 'medium', 'pending', ?, NOW())
+            `;
+
+            await db.query(approvalQuery, [
+                approvalNumber,
+                program_budget_id,
+                transactionId,
+                amount,
+                requestTitle,
+                requestDescription,
+                justification,
+                req.user.id
+            ].map((value) => (value === undefined ? null : value)));
+
             res.status(201).json({
                 success: true,
-                data: { id: result.insertId, transaction_number: transactionNumber },
+                data: { id: transactionId, transaction_number: transactionNumber },
                 message: 'Transaction recorded successfully'
             });
         } catch (error) {
