@@ -396,7 +396,7 @@ module.exports = (db) => {
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, NOW())
             `;
 
-            const result = await db.query(query, [
+            const values = [
                 transactionNumber, program_budget_id, component_budget_id, activity_id,
                 transaction_date, transaction_type, amount,
                 expense_category, expense_subcategory, budget_line,
@@ -404,7 +404,9 @@ module.exports = (db) => {
                 payee_name, payee_type, payee_id_number,
                 description, purpose,
                 req.user.id
-            ]);
+            ].map((value) => (value === undefined ? null : value));
+
+            const result = await db.query(query, values);
 
             res.status(201).json({
                 success: true,
