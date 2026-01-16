@@ -39,6 +39,23 @@ interface PendingApproval {
   requester_name: string;
 }
 
+interface PendingExpenditure {
+  id: number;
+  activity_id: number;
+  activity_name: string;
+  activity_code: string;
+  expense_category: string;
+  description: string;
+  amount: number;
+  expense_date: string;
+  payment_method: string;
+  status: string;
+  approved_budget: number | null;
+  spent_budget: number | null;
+  remaining_budget: number | null;
+  request_number: string | null;
+}
+
 interface BudgetConversationNotification {
   request_id: number;
   request_number: string;
@@ -52,6 +69,7 @@ const FinanceDashboard: React.FC = () => {
   const [budgetSummary, setBudgetSummary] = useState<BudgetSummary[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
+  const [pendingExpenditures, setPendingExpenditures] = useState<PendingExpenditure[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'approvals' | 'budget-requests'>('overview');
   const [searchTerm, setSearchTerm] = useState('');
@@ -94,6 +112,12 @@ const FinanceDashboard: React.FC = () => {
       if (approvalsResponse.ok) {
         const approvalsData = await approvalsResponse.json();
         setPendingApprovals(approvalsData.data || []);
+      }
+
+      const expendituresResponse = await authFetch('/api/budget-requests/expenditures?status=pending');
+      if (expendituresResponse.ok) {
+        const expendituresData = await expendituresResponse.json();
+        setPendingExpenditures(expendituresData.data || []);
       }
 
       setLoading(false);
@@ -207,6 +231,57 @@ const FinanceDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error rejecting finance approval:', error);
       alert(error instanceof Error ? error.message : 'Failed to reject');
+    }
+  };
+
+  const handleApproveExpenditure = async (expenditureId: number) => {
+    const notes = prompt('Add approval notes (optional):');
+    if (notes === null) return;
+
+    try {
+      const response = await authFetch(`/api/budget-requests/expenditures/${expenditureId}/approve`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to approve expenditure');
+      }
+
+      alert('Expenditure approved successfully!');
+      await fetchFinanceData();
+    } catch (error) {
+      console.error('Error approving expenditure:', error);
+      alert(error instanceof Error ? error.message : 'Failed to approve expenditure');
+    }
+  };
+
+  const handleRejectExpenditure = async (expenditureId: number) => {
+    const notes = prompt('Reason for rejection (required):');
+    if (!notes || notes.trim() === '') {
+      alert('Rejection reason is required');
+      return;
+    }
+
+    try {
+      const response = await authFetch(`/api/budget-requests/expenditures/${expenditureId}/reject`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to reject expenditure');
+      }
+
+      alert('Expenditure rejected');
+      await fetchFinanceData();
+    } catch (error) {
+      console.error('Error rejecting expenditure:', error);
+      alert(error instanceof Error ? error.message : 'Failed to reject expenditure');
     }
   };
 
@@ -653,6 +728,74 @@ const FinanceDashboard: React.FC = () => {
                       <p>No pending approvals</p>
                     </div>
                   )}
+                </div>
+
+                <div className="mt-8">
+                  <h3 className="text-lg font-semibold mb-3">Pending Expenditure Approvals</h3>
+                  <div className="space-y-4">
+                    {pendingExpenditures.map((expenditure) => {
+                      const approved = Number(expenditure.approved_budget) || 0;
+                      const spent = Number(expenditure.spent_budget) || 0;
+                      const remaining = Number(expenditure.remaining_budget) || 0;
+                      const remainingAfter = remaining - expenditure.amount;
+
+                      return (
+                        <div key={expenditure.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-semibold text-lg">{expenditure.activity_name}</h3>
+                                <span className="text-sm text-gray-500">{expenditure.activity_code}</span>
+                              </div>
+                              <p className="text-sm text-gray-600 mb-2">
+                                {expenditure.expense_category} • {expenditure.description}
+                              </p>
+                              <div className="flex flex-wrap gap-4 text-sm text-gray-500">
+                                <span>{new Date(expenditure.expense_date).toLocaleDateString()}</span>
+                                {expenditure.request_number && (
+                                  <>
+                                    <span>•</span>
+                                    <span>Request: {expenditure.request_number}</span>
+                                  </>
+                                )}
+                              </div>
+                              <div className="mt-3 text-sm text-gray-600">
+                                <span>Approved Budget: {formatCurrency(approved)}</span>
+                                <span className="mx-2">•</span>
+                                <span>Spent: {formatCurrency(spent)}</span>
+                                <span className="mx-2">•</span>
+                                <span>Remaining: {formatCurrency(remaining)}</span>
+                                <span className="mx-2">•</span>
+                                <span>After Approval: {formatCurrency(remainingAfter)}</span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-2xl font-bold text-gray-900">{formatCurrency(expenditure.amount)}</p>
+                              <div className="flex gap-2 mt-3">
+                                <button
+                                  onClick={() => handleApproveExpenditure(expenditure.id)}
+                                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() => handleRejectExpenditure(expenditure.id)}
+                                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {pendingExpenditures.length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        <p>No pending expenditure approvals</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
+import { formatNumberInput, parseNumberInput } from '../utils/numberInput';
 
 interface BudgetRequest {
   id: number;
@@ -65,13 +66,13 @@ const FinanceBudgetReview: React.FC = () => {
     setSelectedRequest(request);
     setActionType(action);
     setActionData({
-      approved_amount: request.requested_amount.toString(),
+      approved_amount: formatNumberInput(request.requested_amount.toString()),
       finance_notes: '',
       rejection_reason: '',
       amendment_notes: '',
-      requested_amount: request.requested_amount.toString(),
+      requested_amount: formatNumberInput(request.requested_amount.toString()),
       justification: request.justification,
-      new_amount: request.approved_amount?.toString() || request.requested_amount.toString(),
+      new_amount: formatNumberInput((request.approved_amount ?? request.requested_amount).toString()),
       revision_reason: ''
     });
     setShowActionModal(true);
@@ -138,7 +139,7 @@ const FinanceBudgetReview: React.FC = () => {
           }
           endpoint = `/api/budget-requests/${selectedRequest.id}/approve`;
           body = {
-            approved_amount: parseFloat(actionData.approved_amount),
+            approved_amount: parseNumberInput(actionData.approved_amount) ?? 0,
             finance_notes: actionData.finance_notes
           };
           break;
@@ -164,7 +165,7 @@ const FinanceBudgetReview: React.FC = () => {
         case 'edit':
           endpoint = `/api/budget-requests/${selectedRequest.id}/edit`;
           body = {
-            requested_amount: parseFloat(actionData.requested_amount),
+            requested_amount: parseNumberInput(actionData.requested_amount) ?? 0,
             justification: actionData.justification,
             finance_notes: actionData.finance_notes
           };
@@ -177,7 +178,7 @@ const FinanceBudgetReview: React.FC = () => {
           }
           endpoint = `/api/budget-requests/${selectedRequest.id}/revise`;
           body = {
-            new_amount: parseFloat(actionData.new_amount),
+            new_amount: parseNumberInput(actionData.new_amount) ?? 0,
             revision_reason: actionData.revision_reason
           };
           break;
@@ -447,11 +448,11 @@ const FinanceBudgetReview: React.FC = () => {
                         Approved Amount (KES) *
                       </label>
                       <input
-                        type="number"
-                        step="0.01"
+                        type="text"
                         required
                         value={actionData.approved_amount}
-                        onChange={(e) => setActionData({ ...actionData, approved_amount: e.target.value })}
+                        onChange={(e) => setActionData({ ...actionData, approved_amount: formatNumberInput(e.target.value) })}
+                        inputMode="decimal"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                       />
                       <p className="text-xs text-gray-500 mt-1">
@@ -512,11 +513,11 @@ const FinanceBudgetReview: React.FC = () => {
                         Requested Amount (KES) *
                       </label>
                       <input
-                        type="number"
-                        step="0.01"
+                        type="text"
                         required
                         value={actionData.requested_amount}
-                        onChange={(e) => setActionData({ ...actionData, requested_amount: e.target.value })}
+                        onChange={(e) => setActionData({ ...actionData, requested_amount: formatNumberInput(e.target.value) })}
+                        inputMode="decimal"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
@@ -559,11 +560,11 @@ const FinanceBudgetReview: React.FC = () => {
                         New Approved Amount (KES) *
                       </label>
                       <input
-                        type="number"
-                        step="0.01"
+                        type="text"
                         required
                         value={actionData.new_amount}
-                        onChange={(e) => setActionData({ ...actionData, new_amount: e.target.value })}
+                        onChange={(e) => setActionData({ ...actionData, new_amount: formatNumberInput(e.target.value) })}
+                        inputMode="decimal"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                       />
                       <p className="text-xs text-gray-500 mt-1">

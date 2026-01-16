@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
+import { formatNumberInput, parseNumberInput } from '../utils/numberInput';
 
 interface Activity {
   id: number;
@@ -33,7 +34,7 @@ const ActivityOutcomeModal: React.FC<ActivityOutcomeModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     actual_beneficiaries: 0,
-    budget_spent: 0,
+    budget_spent: '',
     outcome_notes: '',
     challenges_faced: '',
     lessons_learned: '',
@@ -55,7 +56,7 @@ const ActivityOutcomeModal: React.FC<ActivityOutcomeModalProps> = ({
         setActivity(data.data);
         setFormData({
           actual_beneficiaries: data.data.actual_beneficiaries || 0,
-          budget_spent: data.data.budget_spent || 0,
+          budget_spent: formatNumberInput((data.data.budget_spent || 0).toString()),
           outcome_notes: data.data.outcome_notes || '',
           challenges_faced: data.data.challenges_faced || '',
           lessons_learned: data.data.lessons_learned || '',
@@ -78,7 +79,7 @@ const ActivityOutcomeModal: React.FC<ActivityOutcomeModalProps> = ({
         ...activity, // Start with all existing fields
         // Override only outcome-related fields with proper null handling
         actual_beneficiaries: formData.actual_beneficiaries || null,
-        budget_spent: formData.budget_spent || null,
+        budget_spent: parseNumberInput(formData.budget_spent),
         outcome_notes: formData.outcome_notes.trim() || null,
         challenges_faced: formData.challenges_faced.trim() || null,
         lessons_learned: formData.lessons_learned.trim() || null,
@@ -228,10 +229,10 @@ const ActivityOutcomeModal: React.FC<ActivityOutcomeModalProps> = ({
                         <div className="flex items-center gap-1">
                           <span className="text-lg font-bold">$</span>
                           <input
-                            type="number"
-                            step="0.01"
+                            type="text"
                             value={formData.budget_spent}
-                            onChange={(e) => setFormData({ ...formData, budget_spent: parseFloat(e.target.value) || 0 })}
+                            onChange={(e) => setFormData({ ...formData, budget_spent: formatNumberInput(e.target.value) })}
+                            inputMode="decimal"
                             className="w-32 px-3 py-1 border border-gray-300 rounded-lg text-right font-bold text-lg focus:ring-2 focus:ring-green-500"
                           />
                         </div>
@@ -240,25 +241,25 @@ const ActivityOutcomeModal: React.FC<ActivityOutcomeModalProps> = ({
                         <div className="flex justify-between items-center">
                           <span className="text-sm font-medium text-gray-700">Utilization:</span>
                           <span className={`text-xl font-bold ${
-                            calculateAchievementPercentage(formData.budget_spent, activity.budget_allocated) > 100
+                            calculateAchievementPercentage(parseNumberInput(formData.budget_spent) ?? 0, activity.budget_allocated) > 100
                               ? 'text-red-600'
-                              : calculateAchievementPercentage(formData.budget_spent, activity.budget_allocated) >= 90
+                              : calculateAchievementPercentage(parseNumberInput(formData.budget_spent) ?? 0, activity.budget_allocated) >= 90
                               ? 'text-yellow-600'
                               : 'text-green-600'
                           }`}>
-                            {calculateAchievementPercentage(formData.budget_spent, activity.budget_allocated)}%
+                            {calculateAchievementPercentage(parseNumberInput(formData.budget_spent) ?? 0, activity.budget_allocated)}%
                           </span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                           <div
                             className={`h-2 rounded-full transition-all ${
-                              calculateAchievementPercentage(formData.budget_spent, activity.budget_allocated) > 100
+                              calculateAchievementPercentage(parseNumberInput(formData.budget_spent) ?? 0, activity.budget_allocated) > 100
                                 ? 'bg-red-600'
-                                : calculateAchievementPercentage(formData.budget_spent, activity.budget_allocated) >= 90
+                                : calculateAchievementPercentage(parseNumberInput(formData.budget_spent) ?? 0, activity.budget_allocated) >= 90
                                 ? 'bg-yellow-600'
                                 : 'bg-green-600'
                             }`}
-                            style={{ width: `${Math.min(calculateAchievementPercentage(formData.budget_spent, activity.budget_allocated), 100)}%` }}
+                            style={{ width: `${Math.min(calculateAchievementPercentage(parseNumberInput(formData.budget_spent) ?? 0, activity.budget_allocated), 100)}%` }}
                           ></div>
                         </div>
                       </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
 import LocationSelector from './LocationSelector';
+import { formatNumberInput, parseNumberInput } from '../utils/numberInput';
 
 interface AddActivityModalProps {
   isOpen: boolean;
@@ -140,7 +141,10 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
       let moduleSpecificData = null;
       if (moduleId === 6) {
         // Finance Module
-        moduleSpecificData = financeData;
+        moduleSpecificData = {
+          ...financeData,
+          expected_amount: parseNumberInput(financeData.expected_amount)
+        };
       } else if (moduleId === 5) {
         // Resource Management Module
         moduleSpecificData = resourceData;
@@ -165,9 +169,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
           ? parseInt(formData.target_beneficiaries)
           : null,
         beneficiary_type: formData.beneficiary_type || null,
-        budget_allocated: formData.budget_allocated
-          ? parseFloat(formData.budget_allocated)
-          : null,
+        budget_allocated: parseNumberInput(formData.budget_allocated),
         status: formData.status,
         approval_status: formData.approval_status,
         priority: formData.priority,
@@ -437,12 +439,11 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
                         Expected Amount ($)
                       </label>
                       <input
-                        type="number"
+                        type="text"
                         name="expected_amount"
                         value={financeData.expected_amount}
-                        onChange={handleFinanceChange}
-                        min="0"
-                        step="0.01"
+                        onChange={(e) => setFinanceData({ ...financeData, expected_amount: formatNumberInput(e.target.value) })}
+                        inputMode="decimal"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                         placeholder="0.00"
                       />
@@ -825,12 +826,11 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
                     Budget Allocated ($)
                   </label>
                   <input
-                    type="number"
+                    type="text"
                     name="budget_allocated"
                     value={formData.budget_allocated}
-                    onChange={handleChange}
-                    min="0"
-                    step="0.01"
+                    onChange={(e) => setFormData({ ...formData, budget_allocated: formatNumberInput(e.target.value) })}
+                    inputMode="decimal"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="0.00"
                   />

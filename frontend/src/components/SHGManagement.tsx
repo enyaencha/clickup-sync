@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
+import { formatNumberInput, parseNumberInput } from '../utils/numberInput';
 import {
   Box,
   Button,
@@ -171,6 +172,7 @@ const SHGManagement: React.FC = () => {
         body: JSON.stringify({
           ...formData,
           program_module_id: programModuleId,
+          share_value: parseNumberInput(formData.share_value),
         }),
       });
 
@@ -457,9 +459,10 @@ const SHGManagement: React.FC = () => {
                 <TextField
                   fullWidth
                   label="Share Value (KES)"
-                  type="number"
+                  type="text"
                   value={formData.share_value}
-                  onChange={(e) => setFormData({ ...formData, share_value: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, share_value: formatNumberInput(e.target.value) })}
+                  inputProps={{ inputMode: 'decimal' }}
                 />
               </Grid>
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
+import { formatNumberInput, parseNumberInput } from '../utils/numberInput';
 
 interface EditResourceModalProps {
   isOpen: boolean;
@@ -66,7 +67,7 @@ const EditResourceModal: React.FC<EditResourceModalProps> = ({ isOpen, onClose, 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          current_value: formData.current_value ? parseFloat(formData.current_value) : null
+          current_value: parseNumberInput(formData.current_value)
         })
       });
 
@@ -197,10 +198,10 @@ const EditResourceModal: React.FC<EditResourceModalProps> = ({ isOpen, onClose, 
                   Current Value (KES)
                 </label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
                   value={formData.current_value}
-                  onChange={(e) => setFormData({ ...formData, current_value: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, current_value: formatNumberInput(e.target.value) })}
+                  inputMode="decimal"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>

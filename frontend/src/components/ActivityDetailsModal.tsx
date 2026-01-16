@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
+import { formatNumberInput, parseNumberInput } from '../utils/numberInput';
 import ActivityChecklist from './ActivityChecklist';
 import ActivityBudgetWidget from './ActivityBudgetWidget';
 
@@ -48,6 +49,10 @@ const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Activity>>({});
   const [moduleSpecificData, setModuleSpecificData] = useState<any>(null);
+  const [budgetInputs, setBudgetInputs] = useState({
+    budget_allocated: '',
+    budget_spent: ''
+  });
 
   // Parse module-specific data when activity is loaded
   const parseModuleSpecificData = (jsonString: string | undefined) => {
@@ -169,6 +174,10 @@ const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
         start_date: formatDateForInput(activity.start_date),
         end_date: formatDateForInput(activity.end_date),
       });
+      setBudgetInputs({
+        budget_allocated: formatNumberInput((activity.budget_allocated ?? 0).toString()),
+        budget_spent: formatNumberInput((activity.budget_spent ?? 0).toString())
+      });
       setIsEditing(true);
     } catch (err) {
       console.error('Validation error:', err);
@@ -178,6 +187,10 @@ const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
         activity_date: formatDateForInput(activity.activity_date),
         start_date: formatDateForInput(activity.start_date),
         end_date: formatDateForInput(activity.end_date),
+      });
+      setBudgetInputs({
+        budget_allocated: formatNumberInput((activity.budget_allocated ?? 0).toString()),
+        budget_spent: formatNumberInput((activity.budget_spent ?? 0).toString())
       });
       setIsEditing(true); // Allow editing if validation fails
     }
@@ -439,10 +452,15 @@ const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
                     Budget Allocated
                   </label>
                   <input
-                    type="number"
+                    type="text"
                     name="budget_allocated"
-                    value={isEditing ? formData.budget_allocated : activity.budget_allocated}
-                    onChange={handleChange}
+                    value={isEditing ? budgetInputs.budget_allocated : activity.budget_allocated}
+                    onChange={(e) => {
+                      const formatted = formatNumberInput(e.target.value);
+                      setBudgetInputs((prev) => ({ ...prev, budget_allocated: formatted }));
+                      setFormData((prev) => ({ ...prev, budget_allocated: parseNumberInput(formatted) }));
+                    }}
+                    inputMode="decimal"
                     disabled={!isEditing}
                     className="w-full px-3 py-2 border rounded-lg disabled:bg-gray-50"
                   />
@@ -453,10 +471,15 @@ const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
                     Budget Spent
                   </label>
                   <input
-                    type="number"
+                    type="text"
                     name="budget_spent"
-                    value={isEditing ? formData.budget_spent : activity.budget_spent}
-                    onChange={handleChange}
+                    value={isEditing ? budgetInputs.budget_spent : activity.budget_spent}
+                    onChange={(e) => {
+                      const formatted = formatNumberInput(e.target.value);
+                      setBudgetInputs((prev) => ({ ...prev, budget_spent: formatted }));
+                      setFormData((prev) => ({ ...prev, budget_spent: parseNumberInput(formatted) }));
+                    }}
+                    inputMode="decimal"
                     disabled={!isEditing}
                     className="w-full px-3 py-2 border rounded-lg disabled:bg-gray-50"
                   />

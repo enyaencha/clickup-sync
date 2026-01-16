@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { authFetch } from '../config/api';
+import { formatNumberInput, parseNumberInput } from '../utils/numberInput';
 
 interface AddComponentModalProps {
   isOpen: boolean;
@@ -43,7 +44,7 @@ const AddComponentModal: React.FC<AddComponentModalProps> = ({
         name: formData.name,
         code: formData.code,
         description: formData.description,
-        budget: formData.budget ? parseFloat(formData.budget) : null,
+        budget: parseNumberInput(formData.budget),
         responsible_person: formData.responsible_person || null,
         status: formData.status,
       };
@@ -165,12 +166,11 @@ const AddComponentModal: React.FC<AddComponentModalProps> = ({
               Budget ($)
             </label>
             <input
-              type="number"
+              type="text"
               name="budget"
               value={formData.budget}
-              onChange={handleChange}
-              min="0"
-              step="0.01"
+              onChange={(e) => setFormData({ ...formData, budget: formatNumberInput(e.target.value) })}
+              inputMode="decimal"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="0.00"
             />

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
+import { formatNumberInput, parseNumberInput } from '../utils/numberInput';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Expenditure {
@@ -24,6 +25,17 @@ interface Expenditure {
   request_number: string | null;
 }
 
+interface ActivityTransaction {
+  id: number;
+  transaction_number: string;
+  transaction_date: string;
+  amount: number;
+  budget_line: string | null;
+  expense_category: string;
+  approval_status: string;
+  payee_name: string | null;
+}
+
 interface ActivityExpenditureTrackingProps {
   activityId: number;
   activityName: string;
@@ -37,7 +49,13 @@ const ActivityExpenditureTracking: React.FC<ActivityExpenditureTrackingProps> = 
 }) => {
   const { user } = useAuth();
   const [expenditures, setExpenditures] = useState<Expenditure[]>([]);
-  const [approvedBudget, setApprovedBudget] = useState(0);
+  const [transactions, setTransactions] = useState<ActivityTransaction[]>([]);
+  const [budgetSummary, setBudgetSummary] = useState({
+    approved_budget: 0,
+    spent_budget: 0,
+    committed_budget: 0,
+    remaining_budget: 0
+  });
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -53,7 +71,8 @@ const ActivityExpenditureTracking: React.FC<ActivityExpenditureTrackingProps> = 
 
   useEffect(() => {
     fetchExpenditures();
-    fetchApprovedBudget();
+    fetchTransactions();
+    fetchBudgetSummary();
   }, [activityId]);
 
   const fetchExpenditures = async () => {
@@ -71,15 +90,33 @@ const ActivityExpenditureTracking: React.FC<ActivityExpenditureTrackingProps> = 
     }
   };
 
-  const fetchApprovedBudget = async () => {
+  const fetchTransactions = async () => {
     try {
-      const response = await authFetch(`/api/budget-requests/activity/${activityId}/approved-budget`);
+      const response = await authFetch(`/api/finance/transactions?activity_id=${activityId}&limit=100`);
       if (response.ok) {
         const data = await response.json();
-        setApprovedBudget(data.data.approved_budget || 0);
+        setTransactions(data.data || []);
       }
     } catch (error) {
-      console.error('Error fetching approved budget:', error);
+      console.error('Error fetching transactions:', error);
+    }
+  };
+
+  const fetchBudgetSummary = async () => {
+    try {
+      const response = await authFetch(`/api/budget-requests/activity/${activityId}/budget`);
+      if (response.ok) {
+        const data = await response.json();
+        const summary = data.data || {};
+        setBudgetSummary({
+          approved_budget: Number(summary.approved_budget) || 0,
+          spent_budget: Number(summary.spent_budget) || 0,
+          committed_budget: Number(summary.committed_budget) || 0,
+          remaining_budget: Number(summary.remaining_budget) || 0
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching budget summary:', error);
     }
   };
 
@@ -98,7 +135,7 @@ const ActivityExpenditureTracking: React.FC<ActivityExpenditureTrackingProps> = 
         body: JSON.stringify({
           activity_id: activityId,
           ...formData,
-          amount: parseFloat(formData.amount)
+          amount: parseNumberInput(formData.amount) ?? 0
         })
       });
 
@@ -124,9 +161,28 @@ const ActivityExpenditureTracking: React.FC<ActivityExpenditureTrackingProps> = 
     }
   };
 
-  const totalSpent = expenditures.reduce((sum, exp) => sum + exp.amount, 0);
-  const remaining = approvedBudget - totalSpent;
-  const spentPercentage = approvedBudget > 0 ? (totalSpent / approvedBudget) * 100 : 0;
+  const statusIs = (value: string | undefined, match: string) =>
+    (value || '').toLowerCase() === match;
+
+  const spentExpenditures = expenditures
+    .filter((exp) => statusIs(exp.status, 'approved'))
+    .reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+  const committedExpenditures = expenditures
+    .filter((exp) => statusIs(exp.status, 'pending'))
+    .reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+  const spentTransactions = transactions
+    .filter((tx) => statusIs(tx.approval_status, 'approved'))
+    .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+  const committedTransactions = transactions
+    .filter((tx) => statusIs(tx.approval_status, 'pending'))
+    .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+
+  const totalSpent = spentExpenditures + spentTransactions;
+  const totalCommitted = committedExpenditures + committedTransactions;
+  const remaining = budgetSummary.approved_budget - (totalSpent + totalCommitted);
+  const spentPercentage = budgetSummary.approved_budget > 0
+    ? (totalSpent / budgetSummary.approved_budget) * 100
+    : 0;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-KE', {
@@ -166,7 +222,7 @@ const ActivityExpenditureTracking: React.FC<ActivityExpenditureTrackingProps> = 
         <div className="grid grid-cols-3 gap-4 mb-3">
           <div>
             <p className="text-sm text-gray-600">Approved Budget</p>
-            <p className="text-lg font-bold text-blue-600">{formatCurrency(approvedBudget)}</p>
+            <p className="text-lg font-bold text-blue-600">{formatCurrency(budgetSummary.approved_budget)}</p>
           </div>
           <div>
             <p className="text-sm text-gray-600">Total Spent</p>
@@ -256,6 +312,36 @@ const ActivityExpenditureTracking: React.FC<ActivityExpenditureTrackingProps> = 
         </div>
       )}
 
+      {/* Transactions List */}
+      <div className="mt-8">
+        <h3 className="text-lg font-semibold text-gray-900 mb-3">Related Transactions</h3>
+        {transactions.length === 0 ? (
+          <div className="text-center py-6 bg-gray-50 rounded-lg">
+            <p className="text-gray-600">No transactions recorded yet</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {transactions.map((tx) => (
+              <div key={tx.id} className="border rounded-lg p-3 flex justify-between items-center">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{tx.transaction_number}</p>
+                  <p className="text-xs text-gray-500">
+                    {new Date(tx.transaction_date).toLocaleDateString()} • {tx.expense_category}
+                    {tx.budget_line ? ` • ${tx.budget_line}` : ''}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-gray-900">{formatCurrency(tx.amount)}</p>
+                  <span className={`text-xs px-2 py-1 rounded ${getStatusColor(tx.approval_status)}`}>
+                    {tx.approval_status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Add Expense Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -327,11 +413,11 @@ const ActivityExpenditureTracking: React.FC<ActivityExpenditureTrackingProps> = 
                       Amount (KES) *
                     </label>
                     <input
-                      type="number"
-                      step="0.01"
+                      type="text"
                       required
                       value={formData.amount}
-                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, amount: formatNumberInput(e.target.value) })}
+                      inputMode="decimal"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       placeholder="0.00"
                     />

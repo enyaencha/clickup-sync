@@ -144,6 +144,62 @@ module.exports = (db) => {
     });
 
     /**
+     * GET /api/finance/budgets/:id/activities
+     * Get activities linked to a program budget (via program -> sub program -> component)
+     */
+    router.get('/budgets/:id/activities', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { status } = req.query;
+
+            let query = `
+                SELECT
+                    a.id,
+                    a.name,
+                    a.code,
+                    a.status,
+                    a.approval_status
+                FROM program_budgets pb
+                LEFT JOIN sub_programs sp ON sp.module_id = pb.program_module_id
+                LEFT JOIN project_components pc ON pc.sub_program_id = sp.id
+                LEFT JOIN activities a ON a.component_id = pc.id AND a.deleted_at IS NULL
+                WHERE pb.id = ? AND pb.deleted_at IS NULL
+            `;
+
+            const params = [id];
+
+            if (!req.user.is_system_admin && req.user.module_assignments && req.user.module_assignments.length > 0) {
+                const assignedModuleIds = req.user.module_assignments.map(m => m.module_id);
+                query += ` AND pb.program_module_id IN (${assignedModuleIds.map(() => '?').join(',')})`;
+                params.push(...assignedModuleIds);
+            }
+
+            if (status) {
+                const statuses = status.split(',').map((value) => value.trim()).filter(Boolean);
+                if (statuses.length > 0) {
+                    query += ` AND a.status IN (${statuses.map(() => '?').join(',')})`;
+                    params.push(...statuses);
+                }
+            }
+
+            query += ` AND a.id IS NOT NULL ORDER BY a.activity_date DESC`;
+
+            const results = await db.query(query, params);
+
+            res.json({
+                success: true,
+                data: results
+            });
+        } catch (error) {
+            console.error('Error fetching budget activities:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch budget activities'
+            });
+        }
+    });
+
+    /**
      * POST /api/finance/budgets
      * Create a new program budget
      */
@@ -268,6 +324,7 @@ module.exports = (db) => {
         try {
             const {
                 program_budget_id,
+                activity_id,
                 approval_status,
                 verification_status,
                 start_date,
@@ -306,6 +363,11 @@ module.exports = (db) => {
             if (program_budget_id) {
                 query += ` AND ft.program_budget_id = ?`;
                 params.push(program_budget_id);
+            }
+
+            if (activity_id) {
+                query += ` AND ft.activity_id = ?`;
+                params.push(activity_id);
             }
 
             if (approval_status) {
@@ -378,7 +440,8 @@ module.exports = (db) => {
                 payee_type,
                 payee_id_number,
                 description,
-                purpose
+                purpose,
+                verification_notes
             } = req.body;
 
             // Generate transaction number
@@ -391,9 +454,9 @@ module.exports = (db) => {
                     expense_category, expense_subcategory, budget_line,
                     payment_method, payment_reference, receipt_number, invoice_number,
                     payee_name, payee_type, payee_id_number,
-                    description, purpose,
+                    description, purpose, verification_notes,
                     approval_status, requested_by, requested_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, NOW())
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, NOW())
             `;
 
             const values = [
@@ -402,7 +465,7 @@ module.exports = (db) => {
                 expense_category, expense_subcategory, budget_line,
                 payment_method, payment_reference, receipt_number, invoice_number,
                 payee_name, payee_type, payee_id_number,
-                description, purpose,
+                description, purpose, verification_notes,
                 req.user.id
             ].map((value) => (value === undefined ? null : value));
 
@@ -443,6 +506,68 @@ module.exports = (db) => {
             res.status(500).json({
                 success: false,
                 error: 'Failed to record transaction'
+            });
+        }
+    });
+
+    /**
+     * PUT /api/finance/transactions/:id/documents
+     * Update transaction document URLs and verification notes
+     */
+    router.put('/transactions/:id/documents', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { receipt_url, invoice_url, approval_document_url, verification_notes } = req.body;
+
+            const fields = [];
+            const params = [];
+
+            if (receipt_url !== undefined) {
+                fields.push('receipt_url = ?');
+                params.push(receipt_url);
+            }
+
+            if (invoice_url !== undefined) {
+                fields.push('invoice_url = ?');
+                params.push(invoice_url);
+            }
+
+            if (approval_document_url !== undefined) {
+                fields.push('approval_document_url = ?');
+                params.push(approval_document_url);
+            }
+
+            if (verification_notes !== undefined) {
+                fields.push('verification_notes = ?');
+                params.push(verification_notes);
+            }
+
+            if (fields.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'No document fields provided'
+                });
+            }
+
+            const query = `
+                UPDATE financial_transactions
+                SET ${fields.join(', ')}, updated_at = NOW()
+                WHERE id = ? AND deleted_at IS NULL
+            `;
+
+            params.push(id);
+
+            await db.query(query, params);
+
+            res.json({
+                success: true,
+                message: 'Transaction documents updated'
+            });
+        } catch (error) {
+            console.error('Error updating transaction documents:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to update transaction documents'
             });
         }
     });
@@ -675,7 +800,7 @@ module.exports = (db) => {
             // Legacy budgets come through GET endpoint with id from program_budgets
             // First try to get from finance_approvals
             let approval = await db.query(
-                'SELECT program_budget_id, requested_amount, request_type FROM finance_approvals WHERE id = ? AND deleted_at IS NULL',
+                'SELECT program_budget_id, requested_amount, request_type, transaction_id, approval_number FROM finance_approvals WHERE id = ? AND deleted_at IS NULL',
                 [id]
             );
 
@@ -796,6 +921,31 @@ module.exports = (db) => {
                         approvalData.program_budget_id
                     ]);
                 }
+
+                if (approvalData.request_type === 'transaction') {
+                    let transactionId = approvalData.transaction_id;
+
+                    if (!transactionId && approvalData.approval_number) {
+                        const parts = approvalData.approval_number.split('-');
+                        const parsed = parseInt(parts[parts.length - 1], 10);
+                        if (!Number.isNaN(parsed)) {
+                            transactionId = parsed;
+                        }
+                    }
+
+                    if (transactionId) {
+                        const transactionQuery = `
+                            UPDATE financial_transactions
+                            SET
+                                approval_status = 'approved',
+                                approved_by = ?,
+                                approved_at = NOW()
+                            WHERE id = ?
+                        `;
+
+                        await db.query(transactionQuery, [req.user.id, transactionId]);
+                    }
+                }
             }
 
             res.json({
@@ -822,7 +972,7 @@ module.exports = (db) => {
 
             // Check if this is a legacy budget (ID from program_budgets table)
             let approval = await db.query(
-                'SELECT program_budget_id, request_type FROM finance_approvals WHERE id = ? AND deleted_at IS NULL',
+                'SELECT program_budget_id, request_type, transaction_id, approval_number FROM finance_approvals WHERE id = ? AND deleted_at IS NULL',
                 [id]
             );
 
@@ -915,6 +1065,31 @@ module.exports = (db) => {
                     `;
 
                     await db.query(budgetQuery, [approvalData.program_budget_id]);
+                }
+
+                if (approvalData.request_type === 'transaction') {
+                    let transactionId = approvalData.transaction_id;
+
+                    if (!transactionId && approvalData.approval_number) {
+                        const parts = approvalData.approval_number.split('-');
+                        const parsed = parseInt(parts[parts.length - 1], 10);
+                        if (!Number.isNaN(parsed)) {
+                            transactionId = parsed;
+                        }
+                    }
+
+                    if (transactionId) {
+                        const transactionQuery = `
+                            UPDATE financial_transactions
+                            SET
+                                approval_status = 'rejected',
+                                approved_by = ?,
+                                approved_at = NOW()
+                            WHERE id = ?
+                        `;
+
+                        await db.query(transactionQuery, [req.user.id, transactionId]);
+                    }
                 }
             }
 

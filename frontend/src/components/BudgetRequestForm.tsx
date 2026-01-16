@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
+import { formatNumberInput, parseNumberInput } from '../utils/numberInput';
 
 interface BudgetRequestFormProps {
   activityId: number;
@@ -16,7 +17,7 @@ interface BudgetRequestFormProps {
 }
 
 interface BudgetBreakdown {
-  [key: string]: number;
+  [key: string]: string;
 }
 
 const BudgetRequestForm: React.FC<BudgetRequestFormProps> = ({
@@ -27,29 +28,33 @@ const BudgetRequestForm: React.FC<BudgetRequestFormProps> = ({
   onClose
 }) => {
   const [formData, setFormData] = useState({
-    requested_amount: editingRequest?.requested_amount.toString() || '',
+    requested_amount: editingRequest ? formatNumberInput(editingRequest.requested_amount.toString()) : '',
     justification: editingRequest?.justification || '',
     priority: editingRequest?.priority || 'medium'
   });
   const [breakdown, setBreakdown] = useState<BudgetBreakdown>(
     editingRequest?.breakdown && Object.keys(editingRequest.breakdown).length > 0
-      ? editingRequest.breakdown
+      ? Object.fromEntries(
+          Object.entries(editingRequest.breakdown).map(([category, amount]) => [
+            category,
+            formatNumberInput(String(amount ?? 0))
+          ])
+        )
       : {
-          'Materials': 0,
-          'Personnel': 0,
-          'Venue': 0,
-          'Transport': 0,
-          'Other': 0
+          'Materials': '0',
+          'Personnel': '0',
+          'Venue': '0',
+          'Transport': '0',
+          'Other': '0'
         }
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleBreakdownChange = (category: string, value: string) => {
-    const numValue = parseFloat(value) || 0;
     setBreakdown(prev => ({
       ...prev,
-      [category]: numValue
+      [category]: formatNumberInput(value)
     }));
   };
 
@@ -71,13 +76,16 @@ const BudgetRequestForm: React.FC<BudgetRequestFormProps> = ({
     });
   };
 
-  const totalBreakdown = Object.values(breakdown).reduce((sum, val) => sum + val, 0);
+  const totalBreakdown = Object.values(breakdown).reduce(
+    (sum, val) => sum + (parseNumberInput(val) ?? 0),
+    0
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    const requestedAmount = parseFloat(formData.requested_amount);
+    const requestedAmount = parseNumberInput(formData.requested_amount) ?? 0;
 
     if (requestedAmount <= 0) {
       setError('Requested amount must be greater than 0');
@@ -101,6 +109,13 @@ const BudgetRequestForm: React.FC<BudgetRequestFormProps> = ({
 
       if (editingRequest) {
         // Update existing request and change status back to submitted
+        const normalizedBreakdown = Object.fromEntries(
+          Object.entries(breakdown).map(([category, amount]) => [
+            category,
+            parseNumberInput(amount) ?? 0
+          ])
+        );
+
         response = await authFetch(`/api/budget-requests/${editingRequest.id}/status`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -108,7 +123,7 @@ const BudgetRequestForm: React.FC<BudgetRequestFormProps> = ({
             status: 'submitted',
             requested_amount: requestedAmount,
             justification: formData.justification,
-            breakdown: breakdown,
+            breakdown: normalizedBreakdown,
             priority: formData.priority
           })
         });
@@ -121,6 +136,13 @@ const BudgetRequestForm: React.FC<BudgetRequestFormProps> = ({
         alert('Budget request resubmitted successfully!');
       } else {
         // Create new request
+        const normalizedBreakdown = Object.fromEntries(
+          Object.entries(breakdown).map(([category, amount]) => [
+            category,
+            parseNumberInput(amount) ?? 0
+          ])
+        );
+
         response = await authFetch('/api/budget-requests', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -128,7 +150,7 @@ const BudgetRequestForm: React.FC<BudgetRequestFormProps> = ({
             activity_id: activityId,
             requested_amount: requestedAmount,
             justification: formData.justification,
-            breakdown: breakdown,
+            breakdown: normalizedBreakdown,
             priority: formData.priority
           })
         });
@@ -182,11 +204,11 @@ const BudgetRequestForm: React.FC<BudgetRequestFormProps> = ({
                 Requested Amount (KES) *
               </label>
               <input
-                type="number"
-                step="0.01"
+                type="text"
                 required
                 value={formData.requested_amount}
-                onChange={(e) => setFormData({ ...formData, requested_amount: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, requested_amount: formatNumberInput(e.target.value) })}
+                inputMode="decimal"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
                 placeholder="0.00"
               />
@@ -249,10 +271,10 @@ const BudgetRequestForm: React.FC<BudgetRequestFormProps> = ({
                       className="flex-1 px-3 py-2 border border-gray-300 rounded bg-white text-gray-700"
                     />
                     <input
-                      type="number"
-                      step="0.01"
+                      type="text"
                       value={amount || ''}
                       onChange={(e) => handleBreakdownChange(category, e.target.value)}
+                      inputMode="decimal"
                       className="w-40 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                       placeholder="0.00"
                     />
@@ -269,14 +291,14 @@ const BudgetRequestForm: React.FC<BudgetRequestFormProps> = ({
                 ))}
                 <div className="flex justify-between items-center pt-2 border-t border-gray-300 font-semibold">
                   <span>Total Breakdown:</span>
-                  <span className={totalBreakdown > parseFloat(formData.requested_amount || '0') ? 'text-red-600' : 'text-green-600'}>
+                  <span className={totalBreakdown > (parseNumberInput(formData.requested_amount) ?? 0) ? 'text-red-600' : 'text-green-600'}>
                     KES {totalBreakdown.toFixed(2)}
                   </span>
                 </div>
-                {totalBreakdown > 0 && totalBreakdown !== parseFloat(formData.requested_amount || '0') && (
+                {totalBreakdown > 0 && totalBreakdown !== (parseNumberInput(formData.requested_amount) ?? 0) && (
                   <p className="text-sm text-gray-600">
-                    {totalBreakdown < parseFloat(formData.requested_amount || '0')
-                      ? `Unallocated: KES ${(parseFloat(formData.requested_amount || '0') - totalBreakdown).toFixed(2)}`
+                    {totalBreakdown < (parseNumberInput(formData.requested_amount) ?? 0)
+                      ? `Unallocated: KES ${((parseNumberInput(formData.requested_amount) ?? 0) - totalBreakdown).toFixed(2)}`
                       : 'Breakdown exceeds requested amount'}
                   </p>
                 )}

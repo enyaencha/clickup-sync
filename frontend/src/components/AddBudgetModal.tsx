@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
+import { formatNumberInput, parseNumberInput } from '../utils/numberInput';
 
 interface AddBudgetModalProps {
   isOpen: boolean;
@@ -96,10 +97,10 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({ isOpen, onClose, onSucc
           ...formData,
           program_module_id: parseInt(formData.program_module_id),
           sub_program_id: formData.sub_program_id ? parseInt(formData.sub_program_id) : null,
-          total_budget: parseFloat(formData.total_budget),
-          operational_budget: formData.operational_budget ? parseFloat(formData.operational_budget) : null,
-          program_budget: formData.program_budget ? parseFloat(formData.program_budget) : null,
-          capital_budget: formData.capital_budget ? parseFloat(formData.capital_budget) : null,
+          total_budget: parseNumberInput(formData.total_budget) ?? 0,
+          operational_budget: parseNumberInput(formData.operational_budget),
+          program_budget: parseNumberInput(formData.program_budget),
+          capital_budget: parseNumberInput(formData.capital_budget),
         })
       });
 
@@ -249,13 +250,12 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({ isOpen, onClose, onSucc
                 Total Budget (KES) <span className="text-red-500">*</span>
               </label>
               <input
-                type="number"
+                type="text"
                 name="total_budget"
                 value={formData.total_budget}
-                onChange={handleChange}
+                onChange={(e) => setFormData({ ...formData, total_budget: formatNumberInput(e.target.value) })}
                 required
-                min="0"
-                step="0.01"
+                inputMode="decimal"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -265,12 +265,11 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({ isOpen, onClose, onSucc
                 Operational Budget (KES)
               </label>
               <input
-                type="number"
+                type="text"
                 name="operational_budget"
                 value={formData.operational_budget}
-                onChange={handleChange}
-                min="0"
-                step="0.01"
+                onChange={(e) => setFormData({ ...formData, operational_budget: formatNumberInput(e.target.value) })}
+                inputMode="decimal"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -280,12 +279,11 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({ isOpen, onClose, onSucc
                 Program Budget (KES)
               </label>
               <input
-                type="number"
+                type="text"
                 name="program_budget"
                 value={formData.program_budget}
-                onChange={handleChange}
-                min="0"
-                step="0.01"
+                onChange={(e) => setFormData({ ...formData, program_budget: formatNumberInput(e.target.value) })}
+                inputMode="decimal"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -295,12 +293,11 @@ const AddBudgetModal: React.FC<AddBudgetModalProps> = ({ isOpen, onClose, onSucc
                 Capital Budget (KES)
               </label>
               <input
-                type="number"
+                type="text"
                 name="capital_budget"
                 value={formData.capital_budget}
-                onChange={handleChange}
-                min="0"
-                step="0.01"
+                onChange={(e) => setFormData({ ...formData, capital_budget: formatNumberInput(e.target.value) })}
+                inputMode="decimal"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>

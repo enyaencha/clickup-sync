@@ -478,45 +478,114 @@ module.exports = (db) => {
         try {
             const { activityId } = req.params;
 
-            // Get total approved budget from approved budget requests
-            const approvedQuery = `
+            // Prefer activity_budgets snapshot for approved budget
+            const budgetSnapshotQuery = `
                 SELECT
-                    COALESCE(SUM(abr.approved_amount), 0) as total_approved_budget
-                FROM activity_budget_requests abr
-                WHERE abr.activity_id = ?
-                AND abr.status = 'approved'
-                AND abr.deleted_at IS NULL
+                    ab.approved_budget,
+                    ab.allocated_budget,
+                    ab.budget_source,
+                    ab.last_allocation_date
+                FROM activity_budgets ab
+                WHERE ab.activity_id = ?
+                ORDER BY ab.id DESC
+                LIMIT 1
             `;
-            const approvedResult = await db.query(approvedQuery, [activityId]);
-            const approvedBudget = approvedResult[0]?.total_approved_budget || 0;
+            const [budgetSnapshot] = await db.query(budgetSnapshotQuery, [activityId]);
 
-            // Get total spent from activity expenditures
-            const spentQuery = `
-                SELECT
-                    COALESCE(SUM(ae.amount), 0) as total_spent
+            let approvedBudget = 0;
+            let spentBudget = 0;
+            let committedBudget = 0;
+            let remainingBudget = 0;
+            let allocatedBudget = 0;
+            let budgetSource = 'activity_budget_requests';
+            let lastAllocationDate = null;
+
+            if (budgetSnapshot) {
+                approvedBudget = budgetSnapshot.approved_budget || 0;
+                allocatedBudget = budgetSnapshot.allocated_budget || 0;
+                budgetSource = budgetSnapshot.budget_source || 'activity_budgets';
+                lastAllocationDate = budgetSnapshot.last_allocation_date || null;
+            } else {
+                // Fallback to computed values
+                const approvedQuery = `
+                    SELECT
+                        COALESCE(SUM(abr.approved_amount), 0) as total_approved_budget
+                    FROM activity_budget_requests abr
+                    WHERE abr.activity_id = ?
+                    AND abr.status = 'approved'
+                    AND abr.deleted_at IS NULL
+                `;
+                const approvedResult = await db.query(approvedQuery, [activityId]);
+                approvedBudget = approvedResult[0]?.total_approved_budget || 0;
+
+                const spentQuery = `
+                    SELECT
+                        COALESCE(SUM(ae.amount), 0) as total_spent
+                    FROM activity_expenditures ae
+                    WHERE ae.activity_id = ?
+                    AND ae.status = 'approved'
+                    AND ae.deleted_at IS NULL
+                `;
+                const spentResult = await db.query(spentQuery, [activityId]);
+                const spentBudgetFallback = spentResult[0]?.total_spent || 0;
+
+                const committedQuery = `
+                    SELECT
+                        COALESCE(SUM(ae.amount), 0) as total_committed
+                    FROM activity_expenditures ae
+                    WHERE ae.activity_id = ?
+                    AND ae.status = 'pending'
+                    AND ae.deleted_at IS NULL
+                `;
+                const committedResult = await db.query(committedQuery, [activityId]);
+                const committedBudgetFallback = committedResult[0]?.total_committed || 0;
+
+                spentBudget = spentBudgetFallback;
+                committedBudget = committedBudgetFallback;
+                remainingBudget = approvedBudget - (spentBudget + committedBudget);
+            }
+
+            // Pull totals from expenditures + transactions to keep figures accurate
+            const spentExpenditureQuery = `
+                SELECT COALESCE(SUM(ae.amount), 0) as total_spent
                 FROM activity_expenditures ae
                 WHERE ae.activity_id = ?
+                AND LOWER(ae.status) = 'approved'
                 AND ae.deleted_at IS NULL
             `;
-            const spentResult = await db.query(spentQuery, [activityId]);
-            const spentBudget = spentResult[0]?.total_spent || 0;
+            const [spentExpenditure] = await db.query(spentExpenditureQuery, [activityId]);
 
-            // Get committed budget (pending expenditures awaiting approval)
-            const committedQuery = `
-                SELECT
-                    COALESCE(SUM(ae.amount), 0) as total_committed
+            const committedExpenditureQuery = `
+                SELECT COALESCE(SUM(ae.amount), 0) as total_committed
                 FROM activity_expenditures ae
                 WHERE ae.activity_id = ?
-                AND ae.status = 'pending'
+                AND LOWER(ae.status) = 'pending'
                 AND ae.deleted_at IS NULL
             `;
-            const committedResult = await db.query(committedQuery, [activityId]);
-            const committedBudget = committedResult[0]?.total_committed || 0;
+            const [committedExpenditure] = await db.query(committedExpenditureQuery, [activityId]);
 
-            // Calculate remaining
-            const remainingBudget = approvedBudget - (spentBudget + committedBudget);
+            const spentTransactionQuery = `
+                SELECT COALESCE(SUM(ft.amount), 0) as total_spent
+                FROM financial_transactions ft
+                WHERE ft.activity_id = ?
+                AND LOWER(ft.approval_status) = 'approved'
+                AND ft.deleted_at IS NULL
+            `;
+            const [spentTransaction] = await db.query(spentTransactionQuery, [activityId]);
 
-            // Get activity details for reference
+            const committedTransactionQuery = `
+                SELECT COALESCE(SUM(ft.amount), 0) as total_committed
+                FROM financial_transactions ft
+                WHERE ft.activity_id = ?
+                AND LOWER(ft.approval_status) = 'pending'
+                AND ft.deleted_at IS NULL
+            `;
+            const [committedTransaction] = await db.query(committedTransactionQuery, [activityId]);
+
+            spentBudget = (spentExpenditure?.total_spent || 0) + (spentTransaction?.total_spent || 0);
+            committedBudget = (committedExpenditure?.total_committed || 0) + (committedTransaction?.total_committed || 0);
+            remainingBudget = approvedBudget - (spentBudget + committedBudget);
+
             const activityQuery = `
                 SELECT name, code FROM activities WHERE id = ?
             `;
@@ -526,13 +595,13 @@ module.exports = (db) => {
                 activity_id: parseInt(activityId),
                 activity_name: activity?.name || '',
                 activity_code: activity?.code || '',
-                allocated_budget: 0, // Not using this field anymore
+                allocated_budget: allocatedBudget,
                 approved_budget: approvedBudget,
                 spent_budget: spentBudget,
                 committed_budget: committedBudget,
                 remaining_budget: remainingBudget,
-                budget_source: 'activity_budget_requests',
-                last_allocation_date: null
+                budget_source: budgetSource,
+                last_allocation_date: lastAllocationDate
             };
 
             res.json({
@@ -1185,17 +1254,28 @@ module.exports = (db) => {
         try {
             const { activityId } = req.params;
 
-            const query = `
-                SELECT
-                    COALESCE(SUM(abr.approved_amount), 0) as total_approved_budget
-                FROM activity_budget_requests abr
-                WHERE abr.activity_id = ?
-                AND abr.status = 'approved'
-                AND abr.deleted_at IS NULL
+            const snapshotQuery = `
+                SELECT approved_budget
+                FROM activity_budgets
+                WHERE activity_id = ?
+                ORDER BY id DESC
+                LIMIT 1
             `;
+            const [snapshot] = await db.query(snapshotQuery, [activityId]);
+            let approvedBudget = snapshot?.approved_budget || 0;
 
-            const result = await db.query(query, [activityId]);
-            const approvedBudget = result[0]?.total_approved_budget || 0;
+            if (!snapshot) {
+                const query = `
+                    SELECT
+                        COALESCE(SUM(abr.approved_amount), 0) as total_approved_budget
+                    FROM activity_budget_requests abr
+                    WHERE abr.activity_id = ?
+                    AND abr.status = 'approved'
+                    AND abr.deleted_at IS NULL
+                `;
+                const result = await db.query(query, [activityId]);
+                approvedBudget = result[0]?.total_approved_budget || 0;
+            }
 
             res.json({
                 success: true,
@@ -1208,6 +1288,61 @@ module.exports = (db) => {
             res.status(500).json({
                 success: false,
                 error: 'Failed to fetch approved budget'
+            });
+        }
+    });
+
+    /**
+     * GET /api/budget-requests/expenditures
+     * Get expenditures with optional filtering
+     */
+    router.get('/expenditures', async (req, res) => {
+        try {
+            const { status, activity_id } = req.query;
+
+            let query = `
+                SELECT
+                    ae.*,
+                    a.name as activity_name,
+                    a.code as activity_code,
+                    ab.approved_budget,
+                    ab.spent_budget,
+                    ab.remaining_budget,
+                    abr.request_number
+                FROM activity_expenditures ae
+                LEFT JOIN activities a ON ae.activity_id = a.id
+                LEFT JOIN activity_budgets ab ON ab.id = (
+                    SELECT MAX(ab2.id) FROM activity_budgets ab2 WHERE ab2.activity_id = ae.activity_id
+                )
+                LEFT JOIN activity_budget_requests abr ON ae.budget_request_id = abr.id
+                WHERE ae.deleted_at IS NULL
+            `;
+
+            const params = [];
+
+            if (status) {
+                query += ` AND ae.status = ?`;
+                params.push(status);
+            }
+
+            if (activity_id) {
+                query += ` AND ae.activity_id = ?`;
+                params.push(activity_id);
+            }
+
+            query += ` ORDER BY ae.created_at DESC`;
+
+            const results = await db.query(query, params);
+
+            res.json({
+                success: true,
+                data: results || []
+            });
+        } catch (error) {
+            console.error('Error fetching expenditures:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch expenditures'
             });
         }
     });
@@ -1264,10 +1399,12 @@ module.exports = (db) => {
             // Update activity budget spent amount
             const updateBudgetQuery = `
                 UPDATE activity_budgets
-                SET spent_budget = spent_budget + ?
+                SET
+                    spent_budget = spent_budget + ?,
+                    remaining_budget = approved_budget - (spent_budget + ? + committed_budget)
                 WHERE activity_id = ?
             `;
-            await db.query(updateBudgetQuery, [amount, activity_id]);
+            await db.query(updateBudgetQuery, [amount, amount, activity_id]);
 
             res.status(201).json({
                 success: true,
@@ -1315,6 +1452,40 @@ module.exports = (db) => {
             res.status(500).json({
                 success: false,
                 error: 'Failed to approve expenditure'
+            });
+        }
+    });
+
+    /**
+     * PUT /api/budget-requests/expenditures/:id/reject
+     * Reject an expenditure
+     */
+    router.put('/expenditures/:id/reject', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { notes } = req.body;
+
+            const query = `
+                UPDATE activity_expenditures
+                SET
+                    status = 'rejected',
+                    approved_by = ?,
+                    approved_at = NOW(),
+                    notes = CONCAT(COALESCE(notes, ''), '\n\nREJECTION NOTE: ', ?)
+                WHERE id = ? AND deleted_at IS NULL
+            `;
+
+            await db.query(query, [req.user.id, notes || 'Rejected', id]);
+
+            res.json({
+                success: true,
+                message: 'Expenditure rejected'
+            });
+        } catch (error) {
+            console.error('Error rejecting expenditure:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to reject expenditure'
             });
         }
     });

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
 import { useAuth } from '../contexts/AuthContext';
+import { formatNumberInput, parseNumberInput } from '../utils/numberInput';
 
 interface AddResourceModalProps {
   isOpen: boolean;
@@ -69,9 +70,9 @@ const AddResourceModal: React.FC<AddResourceModalProps> = ({ isOpen, onClose, on
         body: JSON.stringify({
           ...formData,
           resource_type_id: formData.resource_type_id ? parseInt(formData.resource_type_id) : null,
-          acquisition_cost: formData.acquisition_cost ? parseFloat(formData.acquisition_cost) : null,
+          acquisition_cost: parseNumberInput(formData.acquisition_cost),
           quantity: parseInt(formData.quantity) || 1,
-          current_value: formData.current_value ? parseFloat(formData.current_value) : null,
+          current_value: parseNumberInput(formData.current_value),
         })
       });
 
@@ -226,12 +227,11 @@ const AddResourceModal: React.FC<AddResourceModalProps> = ({ isOpen, onClose, on
                   Acquisition Cost (KES)
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   name="acquisition_cost"
                   value={formData.acquisition_cost}
-                  onChange={handleChange}
-                  min="0"
-                  step="0.01"
+                  onChange={(e) => setFormData({ ...formData, acquisition_cost: formatNumberInput(e.target.value) })}
+                  inputMode="decimal"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -426,12 +426,11 @@ const AddResourceModal: React.FC<AddResourceModalProps> = ({ isOpen, onClose, on
                   Current Value (KES)
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   name="current_value"
                   value={formData.current_value}
-                  onChange={handleChange}
-                  min="0"
-                  step="0.01"
+                  onChange={(e) => setFormData({ ...formData, current_value: formatNumberInput(e.target.value) })}
+                  inputMode="decimal"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
