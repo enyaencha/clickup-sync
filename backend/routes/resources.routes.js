@@ -7,6 +7,35 @@ const express = require('express');
 const router = express.Router();
 
 module.exports = (db) => {
+    const createNotification = async (notification) => {
+        const {
+            user_id,
+            title,
+            message,
+            entity_type = 'resource_request',
+            entity_id = null,
+            action_url = null
+        } = notification;
+
+        if (!user_id) return;
+
+        await db.query(
+            `INSERT INTO notifications (user_id, type, title, message, entity_type, entity_id, action_url)
+             VALUES (?, 'general', ?, ?, ?, ?, ?)`,
+            [user_id, title, message, entity_type, entity_id, action_url]
+        );
+    };
+
+    const overlapClause = `
+        AND rr.start_date <= ?
+        AND rr.end_date >= ?
+    `;
+
+    const overlapParams = (startDate, endDate) => ([
+        endDate,
+        startDate
+    ]);
+
     // ==================== RESOURCE TYPES ====================
 
     /**
@@ -138,6 +167,28 @@ module.exports = (db) => {
                 program_module_id
             } = req.query;
 
+            await db.query(`
+                UPDATE resource_requests rr
+                SET
+                    rr.status = 'returned',
+                    rr.actual_return_date = COALESCE(rr.actual_return_date, CURDATE())
+                WHERE rr.status IN ('allocated', 'in_use')
+                AND rr.end_date IS NOT NULL
+                AND rr.end_date < CURDATE()
+                AND rr.deleted_at IS NULL
+            `);
+
+            await db.query(`
+                UPDATE resources r
+                JOIN resource_requests rr ON rr.resource_id = r.id
+                SET r.availability_status = 'in_use'
+                WHERE rr.status = 'allocated'
+                AND rr.start_date <= CURDATE()
+                AND (rr.end_date IS NULL OR rr.end_date >= CURDATE())
+                AND r.availability_status = 'reserved'
+                AND rr.deleted_at IS NULL
+            `);
+
             // Safely parse limit and offset with defaults
             const limit = Math.max(1, parseInt(req.query.limit) || 50);
             const offset = Math.max(0, parseInt(req.query.offset) || 0);
@@ -145,8 +196,10 @@ module.exports = (db) => {
             let query = `
                 SELECT
                     rr.*,
+                    rr.resource_id,
                     r.name as resource_name,
                     r.resource_code,
+                    r.availability_status as resource_status,
                     rt.name as resource_type_name,
                     u.full_name as requester_name,
                     pm.name as program_module_name,
@@ -186,9 +239,73 @@ module.exports = (db) => {
 
             const results = await db.query(query, params);
 
+            const enriched = await Promise.all(results.map(async (request) => {
+                if (!request.resource_id || !request.start_date || !request.end_date) {
+                    return {
+                        ...request,
+                        has_conflict: false,
+                        queue_position: null,
+                        conflict_details: null
+                    };
+                }
+
+                const conflictQuery = `
+                    SELECT
+                        rr.id,
+                        rr.request_number,
+                        rr.status,
+                        rr.start_date,
+                        rr.end_date,
+                        u.full_name as requester_name
+                    FROM resource_requests rr
+                    LEFT JOIN users u ON rr.requested_by = u.id
+                    WHERE rr.resource_id = ?
+                    AND rr.id <> ?
+                    AND rr.status IN ('approved', 'allocated', 'in_use')
+                    AND rr.deleted_at IS NULL
+                    ${overlapClause}
+                    ORDER BY rr.start_date ASC
+                    LIMIT 1
+                `;
+
+                const conflicts = await db.query(conflictQuery, [
+                    request.resource_id,
+                    request.id,
+                    ...overlapParams(request.start_date, request.end_date)
+                ]);
+
+                let queuePosition = null;
+                if (request.status === 'pending') {
+                    const queueQuery = `
+                        SELECT COUNT(*) as queue_count
+                        FROM resource_requests rr
+                        WHERE rr.resource_id = ?
+                        AND rr.status = 'pending'
+                        AND rr.deleted_at IS NULL
+                        ${overlapClause}
+                        AND rr.created_at < ?
+                    `;
+
+                    const queueResults = await db.query(queueQuery, [
+                        request.resource_id,
+                        ...overlapParams(request.start_date, request.end_date),
+                        request.created_at
+                    ]);
+
+                    queuePosition = (queueResults[0]?.queue_count || 0) + 1;
+                }
+
+                return {
+                    ...request,
+                    has_conflict: conflicts.length > 0,
+                    conflict_details: conflicts.length > 0 ? conflicts[0] : null,
+                    queue_position: queuePosition
+                };
+            }));
+
             res.json({
                 success: true,
-                data: results
+                data: enriched
             });
         } catch (error) {
             console.error('Error fetching resource requests:', error);
@@ -218,9 +335,10 @@ module.exports = (db) => {
                 priority
             } = req.body;
 
-            // Check for date conflicts with approved requests
+            // Check for date conflicts with approved/allocated requests
             let hasConflict = false;
             let conflictDetails = null;
+            let queuePosition = null;
 
             if (resource_id && start_date && end_date) {
                 const conflictQuery = `
@@ -233,27 +351,37 @@ module.exports = (db) => {
                     FROM resource_requests rr
                     LEFT JOIN users u ON rr.requested_by = u.id
                     WHERE rr.resource_id = ?
-                    AND rr.status IN ('approved', 'fulfilled')
+                    AND rr.status IN ('approved', 'allocated', 'in_use')
                     AND rr.deleted_at IS NULL
-                    AND (
-                        (rr.start_date <= ? AND rr.end_date >= ?)
-                        OR (rr.start_date <= ? AND rr.end_date >= ?)
-                        OR (rr.start_date >= ? AND rr.end_date <= ?)
-                    )
+                    ${overlapClause}
                     LIMIT 1
                 `;
 
                 const conflicts = await db.query(conflictQuery, [
                     resource_id,
-                    start_date, start_date,  // Check if new request starts during existing
-                    end_date, end_date,      // Check if new request ends during existing
-                    start_date, end_date     // Check if new request contains existing
+                    ...overlapParams(start_date, end_date)
                 ]);
 
                 if (conflicts.length > 0) {
                     hasConflict = true;
                     conflictDetails = conflicts[0];
                 }
+
+                const queueQuery = `
+                    SELECT COUNT(*) as queue_count
+                    FROM resource_requests rr
+                    WHERE rr.resource_id = ?
+                    AND rr.status = 'pending'
+                    AND rr.deleted_at IS NULL
+                    ${overlapClause}
+                `;
+
+                const queueResults = await db.query(queueQuery, [
+                    resource_id,
+                    ...overlapParams(start_date, end_date)
+                ]);
+
+                queuePosition = (queueResults[0]?.queue_count || 0) + 1;
             }
 
             // Generate request number
@@ -273,8 +401,9 @@ module.exports = (db) => {
                     program_module_id, activity_id,
                     request_type, quantity_requested, purpose,
                     start_date, end_date, duration_days,
+                    expected_return_date,
                     priority, status, requested_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
             `;
 
             const result = await db.query(query, [
@@ -289,9 +418,21 @@ module.exports = (db) => {
                 start_date || null,
                 end_date || null,
                 durationDays,
+                end_date || null,
                 priority || 'medium',
                 req.user.id
             ]);
+
+            if (hasConflict || (queuePosition && queuePosition > 1)) {
+                await createNotification({
+                    user_id: req.user.id,
+                    title: 'Resource request queued',
+                    message: hasConflict
+                        ? `Your request ${requestNumber} conflicts with an existing booking and is queued for review.`
+                        : `Your request ${requestNumber} has been placed in the queue (position ${queuePosition}).`,
+                    entity_id: result.insertId
+                });
+            }
 
             res.status(201).json({
                 success: true,
@@ -299,7 +440,8 @@ module.exports = (db) => {
                     id: result.insertId,
                     request_number: requestNumber,
                     has_conflict: hasConflict,
-                    conflict_details: conflictDetails
+                    conflict_details: conflictDetails,
+                    queue_position: queuePosition
                 },
                 message: hasConflict
                     ? '⚠️ Request created but conflicts with an existing approved booking. Review required.'
@@ -332,6 +474,20 @@ module.exports = (db) => {
             `;
 
             await db.query(query, [req.user.id, id]);
+
+            const requestRows = await db.query(
+                `SELECT requested_by, request_number FROM resource_requests WHERE id = ?`,
+                [id]
+            );
+
+            if (requestRows.length > 0) {
+                await createNotification({
+                    user_id: requestRows[0].requested_by,
+                    title: 'Resource request approved',
+                    message: `Your resource request ${requestRows[0].request_number} has been approved.`,
+                    entity_id: id
+                });
+            }
 
             res.json({
                 success: true,
@@ -367,6 +523,20 @@ module.exports = (db) => {
 
             await db.query(query, [rejection_reason, req.user.id, id]);
 
+            const requestRows = await db.query(
+                `SELECT requested_by, request_number FROM resource_requests WHERE id = ?`,
+                [id]
+            );
+
+            if (requestRows.length > 0) {
+                await createNotification({
+                    user_id: requestRows[0].requested_by,
+                    title: 'Resource request rejected',
+                    message: `Your resource request ${requestRows[0].request_number} was rejected. ${rejection_reason || ''}`.trim(),
+                    entity_id: id
+                });
+            }
+
             res.json({
                 success: true,
                 message: 'Resource request rejected'
@@ -376,6 +546,301 @@ module.exports = (db) => {
             res.status(500).json({
                 success: false,
                 error: 'Failed to reject resource request'
+            });
+        }
+    });
+
+    /**
+     * PUT /api/resources/requests/:id/allocate
+     * Allocate a resource for an approved request
+     */
+    router.put('/requests/:id/allocate', async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            const requestRows = await db.query(
+                `SELECT * FROM resource_requests WHERE id = ? AND deleted_at IS NULL`,
+                [id]
+            );
+
+            if (requestRows.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Resource request not found'
+                });
+            }
+
+            const request = requestRows[0];
+
+            if (request.status !== 'approved') {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Only approved requests can be allocated'
+                });
+            }
+
+            if (!request.resource_id) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Request must specify a resource before allocation'
+                });
+            }
+
+            if (!request.start_date || !request.end_date) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Start and end dates are required for allocation'
+                });
+            }
+
+            const conflictQuery = `
+                SELECT rr.id
+                FROM resource_requests rr
+                WHERE rr.resource_id = ?
+                AND rr.id <> ?
+                AND rr.status IN ('allocated', 'in_use')
+                AND rr.deleted_at IS NULL
+                ${overlapClause}
+                LIMIT 1
+            `;
+
+            const conflicts = await db.query(conflictQuery, [
+                request.resource_id,
+                request.id,
+                ...overlapParams(request.start_date, request.end_date)
+            ]);
+
+            if (conflicts.length > 0) {
+                return res.status(409).json({
+                    success: false,
+                    error: 'Resource is already allocated for the selected dates'
+                });
+            }
+
+            const [resource] = await db.query(
+                `SELECT id FROM resources WHERE id = ? AND deleted_at IS NULL`,
+                [request.resource_id]
+            );
+
+            if (!resource) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Resource not found'
+                });
+            }
+
+            const allocationStatusQuery = `
+                UPDATE resource_requests
+                SET
+                    status = 'allocated',
+                    fulfilled_by = ?,
+                    fulfilled_at = NOW()
+                WHERE id = ? AND deleted_at IS NULL
+            `;
+
+            await db.query(allocationStatusQuery, [req.user.id, id]);
+
+            const availabilityStatus = new Date(request.start_date) > new Date()
+                ? 'reserved'
+                : 'in_use';
+
+            await db.query(
+                `UPDATE resources
+                 SET
+                    availability_status = ?,
+                    assigned_to_program = ?,
+                    assignment_date = CURDATE(),
+                    updated_at = NOW()
+                 WHERE id = ?`,
+                [availabilityStatus, request.program_module_id || null, request.resource_id]
+            );
+
+            await createNotification({
+                user_id: request.requested_by,
+                title: 'Resource allocated',
+                message: `Your resource request ${request.request_number} has been allocated.`,
+                entity_id: id
+            });
+
+            res.json({
+                success: true,
+                message: 'Resource allocated successfully'
+            });
+        } catch (error) {
+            console.error('Error allocating resource request:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to allocate resource request'
+            });
+        }
+    });
+
+    /**
+     * PUT /api/resources/requests/:id/return
+     * Confirm return of an allocated resource
+     */
+    router.put('/requests/:id/return', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { return_condition, return_notes } = req.body || {};
+
+            const requestRows = await db.query(
+                `SELECT * FROM resource_requests WHERE id = ? AND deleted_at IS NULL`,
+                [id]
+            );
+
+            if (requestRows.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Resource request not found'
+                });
+            }
+
+            const request = requestRows[0];
+
+            if (!['allocated', 'in_use', 'returned'].includes(request.status)) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Request is not in a returnable state'
+                });
+            }
+
+            await db.query(
+                `UPDATE resource_requests
+                 SET
+                    status = 'returned',
+                    actual_return_date = CURDATE(),
+                    return_condition = COALESCE(?, return_condition),
+                    return_notes = COALESCE(?, return_notes),
+                    updated_at = NOW()
+                 WHERE id = ? AND deleted_at IS NULL`,
+                [return_condition || null, return_notes || null, id]
+            );
+
+            if (request.resource_id) {
+                await db.query(
+                    `UPDATE resources
+                     SET
+                        availability_status = 'available',
+                        assigned_to_program = NULL,
+                        assignment_date = NULL,
+                        updated_at = NOW()
+                     WHERE id = ?`,
+                    [request.resource_id]
+                );
+            }
+
+            await createNotification({
+                user_id: request.requested_by,
+                title: 'Resource returned',
+                message: `Resource request ${request.request_number} has been marked as returned.`,
+                entity_id: id
+            });
+
+            res.json({
+                success: true,
+                message: 'Resource return confirmed'
+            });
+        } catch (error) {
+            console.error('Error returning resource:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to confirm resource return'
+            });
+        }
+    });
+
+    /**
+     * GET /api/resources/requests/:id/comments
+     * Get comments for a resource request
+     */
+    router.get('/requests/:id/comments', async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            const query = `
+                SELECT
+                    c.id,
+                    c.comment_text,
+                    c.created_at,
+                    c.updated_at,
+                    c.created_by as created_by_id,
+                    u.full_name as created_by_name
+                FROM comments c
+                LEFT JOIN users u ON c.created_by = u.id
+                WHERE c.entity_type = 'resource_request'
+                AND c.entity_id = ?
+                AND c.deleted_at IS NULL
+                ORDER BY c.created_at ASC
+            `;
+
+            const comments = await db.query(query, [id]);
+
+            res.json({
+                success: true,
+                data: comments || []
+            });
+        } catch (error) {
+            console.error('Error fetching resource request comments:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch comments'
+            });
+        }
+    });
+
+    /**
+     * POST /api/resources/requests/:id/comments
+     * Add comment to a resource request
+     */
+    router.post('/requests/:id/comments', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { comment_text } = req.body;
+
+            if (!comment_text || !comment_text.trim()) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Comment text is required'
+                });
+            }
+
+            const insertQuery = `
+                INSERT INTO comments (
+                    entity_type,
+                    entity_id,
+                    comment_text,
+                    created_by,
+                    created_at
+                ) VALUES ('resource_request', ?, ?, ?, NOW())
+            `;
+
+            const result = await db.query(insertQuery, [id, comment_text, req.user.id]);
+
+            const requestRows = await db.query(
+                `SELECT requested_by, request_number FROM resource_requests WHERE id = ?`,
+                [id]
+            );
+
+            if (requestRows.length > 0 && requestRows[0].requested_by !== req.user.id) {
+                await createNotification({
+                    user_id: requestRows[0].requested_by,
+                    title: 'New comment on resource request',
+                    message: `A new comment was added to request ${requestRows[0].request_number}.`,
+                    entity_id: id
+                });
+            }
+
+            res.json({
+                success: true,
+                data: { id: result.insertId },
+                message: 'Comment added successfully'
+            });
+        } catch (error) {
+            console.error('Error adding resource request comment:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to add comment'
             });
         }
     });

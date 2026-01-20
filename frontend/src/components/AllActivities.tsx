@@ -5,6 +5,7 @@ import ActivityObjectivesModal from './ActivityObjectivesModal';
 import ActivityVerificationModal from './ActivityVerificationModal';
 import ActivityOutcomeModal from './ActivityOutcomeModal';
 import BudgetRequestForm from './BudgetRequestForm';
+import AddResourceRequestModal from './AddResourceRequestModal';
 import { authFetch } from '../config/api';
 
 interface Activity {
@@ -90,6 +91,7 @@ const AllActivities: React.FC = () => {
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [showOutcomeModal, setShowOutcomeModal] = useState(false);
   const [showBudgetRequestModal, setShowBudgetRequestModal] = useState(false);
+  const [showResourceRequestModal, setShowResourceRequestModal] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
 
   // Dropdown state
@@ -286,6 +288,12 @@ const AllActivities: React.FC = () => {
   const handleOpenBudgetRequest = (activity: Activity) => {
     setSelectedActivity(activity);
     setShowBudgetRequestModal(true);
+    setOpenDropdownId(null);
+  };
+
+  const handleOpenResourceRequest = (activity: Activity) => {
+    setSelectedActivity(activity);
+    setShowResourceRequestModal(true);
     setOpenDropdownId(null);
   };
 
@@ -661,6 +669,13 @@ const AllActivities: React.FC = () => {
                           <span className="font-medium">Request Budget</span>
                         </button>
                         <button
+                          onClick={() => handleOpenResourceRequest(activity)}
+                          className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-2 text-sm text-gray-700"
+                        >
+                          <span className="text-lg">🧰</span>
+                          <span className="font-medium">Request Resource</span>
+                        </button>
+                        <button
                           onClick={() => handleViewActivity(activity.id)}
                           className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-2 text-sm text-gray-700 border-t border-gray-100"
                         >
@@ -884,6 +899,13 @@ const AllActivities: React.FC = () => {
                             >
                               <span className="text-lg">💰</span>
                               <span className="font-medium">Request Budget</span>
+                            </button>
+                            <button
+                              onClick={() => handleOpenResourceRequest(activity)}
+                              className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-2 text-sm text-gray-700"
+                            >
+                              <span className="text-lg">🧰</span>
+                              <span className="font-medium">Request Resource</span>
                             </button>
                             <button
                               onClick={() => handleViewActivity(activity.id)}

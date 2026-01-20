@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../config/api';
-import { useAuth } from '../contexts/AuthContext';
 
 interface AddResourceRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  activityId?: number;
+  programModuleId?: number;
 }
 
 interface Resource {
@@ -21,15 +22,20 @@ interface ProgramModule {
   name: string;
 }
 
-const AddResourceRequestModal: React.FC<AddResourceRequestModalProps> = ({ isOpen, onClose, onSuccess }) => {
-  const { user } = useAuth();
+const AddResourceRequestModal: React.FC<AddResourceRequestModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  activityId,
+  programModuleId
+}) => {
   const [loading, setLoading] = useState(false);
   const [resources, setResources] = useState<Resource[]>([]);
   const [programModules, setProgramModules] = useState<ProgramModule[]>([]);
 
-  const [formData, setFormData] = useState({
+  const getDefaultFormData = () => ({
     resource_id: '',
-    program_module_id: '',
+    program_module_id: programModuleId ? String(programModuleId) : '',
     request_type: 'allocation',
     quantity_requested: '1',
     purpose: '',
@@ -38,16 +44,19 @@ const AddResourceRequestModal: React.FC<AddResourceRequestModalProps> = ({ isOpe
     priority: 'medium'
   });
 
+  const [formData, setFormData] = useState(getDefaultFormData());
+
   useEffect(() => {
     if (isOpen) {
       fetchResources();
       fetchProgramModules();
+      setFormData(getDefaultFormData());
     }
-  }, [isOpen]);
+  }, [isOpen, programModuleId]);
 
   const fetchResources = async () => {
     try {
-      const response = await authFetch('/api/resources?availability_status=available');
+      const response = await authFetch('/api/resources');
       if (response.ok) {
         const data = await response.json();
         setResources(data.data || []);
@@ -82,10 +91,21 @@ const AddResourceRequestModal: React.FC<AddResourceRequestModalProps> = ({ isOpe
           resource_id: formData.resource_id ? parseInt(formData.resource_id) : null,
           program_module_id: formData.program_module_id ? parseInt(formData.program_module_id) : null,
           quantity_requested: parseInt(formData.quantity_requested) || 1,
+          activity_id: activityId || null
         })
       });
 
       if (response.ok) {
+        const data = await response.json();
+        const requestData = data?.data;
+        if (requestData?.has_conflict || (requestData?.queue_position && requestData.queue_position > 1)) {
+          const queueText = requestData.queue_position
+            ? `Queue position: ${requestData.queue_position}.`
+            : '';
+          alert(`Request submitted with a scheduling conflict. ${queueText}`.trim());
+        } else {
+          alert('Resource request submitted successfully.');
+        }
         onSuccess();
         onClose();
         resetForm();
@@ -102,16 +122,7 @@ const AddResourceRequestModal: React.FC<AddResourceRequestModalProps> = ({ isOpe
   };
 
   const resetForm = () => {
-    setFormData({
-      resource_id: '',
-      program_module_id: '',
-      request_type: 'allocation',
-      quantity_requested: '1',
-      purpose: '',
-      start_date: '',
-      end_date: '',
-      priority: 'medium'
-    });
+    setFormData(getDefaultFormData());
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -135,6 +146,11 @@ const AddResourceRequestModal: React.FC<AddResourceRequestModalProps> = ({ isOpe
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {activityId && (
+            <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+              Requesting resource for this activity (ID: {activityId}).
+            </div>
+          )}
           {/* Request Type */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -173,7 +189,7 @@ const AddResourceRequestModal: React.FC<AddResourceRequestModalProps> = ({ isOpe
                 </option>
                 {resources.map(resource => (
                   <option key={resource.id} value={resource.id}>
-                    {resource.name} ({resource.resource_code})
+                    {resource.name} ({resource.resource_code}) • {resource.availability_status}
                   </option>
                 ))}
               </select>
@@ -191,6 +207,7 @@ const AddResourceRequestModal: React.FC<AddResourceRequestModalProps> = ({ isOpe
                 value={formData.program_module_id}
                 onChange={handleChange}
                 required
+                disabled={!!programModuleId}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select Program Module</option>

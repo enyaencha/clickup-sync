@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
 import { authFetch } from '../config/api';
 import AddResourceModal from './AddResourceModal';
 import AddResourceRequestModal from './AddResourceRequestModal';
@@ -22,21 +21,40 @@ interface Resource {
 interface ResourceRequest {
   id: number;
   request_number: string;
+  resource_id?: number;
   resource_name: string;
   request_type: string;
   quantity_requested: number;
   purpose: string;
   status: string;
   priority: string;
-  start_date: string;
+  start_date?: string;
   end_date?: string;
   requester_name: string;
+  program_module_name?: string;
+  resource_status?: string;
+  has_conflict?: boolean;
+  queue_position?: number | null;
+  conflict_details?: {
+    request_number: string;
+    status: string;
+    start_date: string;
+    end_date: string;
+    requester_name?: string;
+  } | null;
 }
 
 interface ResourceType {
   id: number;
   name: string;
   category: string;
+}
+
+interface ResourceComment {
+  id: number;
+  comment_text: string;
+  created_at: string;
+  created_by_name?: string;
 }
 
 const ResourceManagement: React.FC = () => {
@@ -55,7 +73,9 @@ const ResourceManagement: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showTypeModal, setShowTypeModal] = useState(false);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
-  const { user } = useAuth();
+  const [commentThreads, setCommentThreads] = useState<Record<number, ResourceComment[]>>({});
+  const [expandedComments, setExpandedComments] = useState<Record<number, boolean>>({});
+  const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({});
 
   useEffect(() => {
     fetchResourceData();
@@ -93,7 +113,7 @@ const ResourceManagement: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status?: string) => {
     const colors: { [key: string]: string } = {
       'available': 'bg-green-100 text-green-800',
       'in_use': 'bg-blue-100 text-blue-800',
@@ -102,13 +122,15 @@ const ResourceManagement: React.FC = () => {
       'retired': 'bg-gray-100 text-gray-800',
       'pending': 'bg-yellow-100 text-yellow-800',
       'approved': 'bg-green-100 text-green-800',
+      'allocated': 'bg-purple-100 text-purple-800',
+      'returned': 'bg-gray-100 text-gray-800',
       'rejected': 'bg-red-100 text-red-800',
       'completed': 'bg-blue-100 text-blue-800',
     };
-    return colors[status.toLowerCase()] || 'bg-gray-100 text-gray-800';
+    return colors[(status || '').toLowerCase()] || 'bg-gray-100 text-gray-800';
   };
 
-  const getConditionColor = (condition: string) => {
+  const getConditionColor = (condition?: string) => {
     const colors: { [key: string]: string } = {
       'excellent': 'text-green-600',
       'good': 'text-blue-600',
@@ -116,10 +138,10 @@ const ResourceManagement: React.FC = () => {
       'poor': 'text-orange-600',
       'damaged': 'text-red-600',
     };
-    return colors[condition.toLowerCase()] || 'text-gray-600';
+    return colors[(condition || '').toLowerCase()] || 'text-gray-600';
   };
 
-  const getCategoryIcon = (category: string) => {
+  const getCategoryIcon = (category?: string) => {
     const icons: { [key: string]: string } = {
       'equipment': '🖥️',
       'vehicle': '🚗',
@@ -129,7 +151,7 @@ const ResourceManagement: React.FC = () => {
       'human_resource': '👤',
       'other': '📋',
     };
-    return icons[category.toLowerCase()] || '📋';
+    return icons[(category || '').toLowerCase()] || '📋';
   };
 
   const handleApproveRequest = async (requestId: number) => {
@@ -185,6 +207,114 @@ const ResourceManagement: React.FC = () => {
     }
   };
 
+  const handleAllocateRequest = async (requestId: number) => {
+    if (!window.confirm('Allocate this resource now?')) {
+      return;
+    }
+
+    try {
+      const response = await authFetch(`/api/resources/requests/${requestId}/allocate`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to allocate request');
+      }
+
+      alert('Resource allocated successfully!');
+      await fetchResourceData();
+    } catch (error) {
+      console.error('Error allocating resource request:', error);
+      alert(error instanceof Error ? error.message : 'Failed to allocate request');
+    }
+  };
+
+  const handleReturnRequest = async (requestId: number) => {
+    if (!window.confirm('Confirm that this resource has been returned?')) {
+      return;
+    }
+
+    try {
+      const response = await authFetch(`/api/resources/requests/${requestId}/return`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to confirm return');
+      }
+
+      alert('Resource return confirmed.');
+      await fetchResourceData();
+    } catch (error) {
+      console.error('Error confirming resource return:', error);
+      alert(error instanceof Error ? error.message : 'Failed to confirm return');
+    }
+  };
+
+  const toggleComments = async (requestId: number) => {
+    const isOpen = !!expandedComments[requestId];
+    if (isOpen) {
+      setExpandedComments((prev) => ({ ...prev, [requestId]: false }));
+      return;
+    }
+
+    if (!commentThreads[requestId]) {
+      try {
+        const response = await authFetch(`/api/resources/requests/${requestId}/comments`);
+        if (response.ok) {
+          const data = await response.json();
+          setCommentThreads((prev) => ({
+            ...prev,
+            [requestId]: data.data || []
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to fetch comments:', error);
+      }
+    }
+
+    setExpandedComments((prev) => ({ ...prev, [requestId]: true }));
+  };
+
+  const handleAddComment = async (requestId: number) => {
+    const text = (commentDrafts[requestId] || '').trim();
+    if (!text) {
+      alert('Please enter a comment before submitting.');
+      return;
+    }
+
+    try {
+      const response = await authFetch(`/api/resources/requests/${requestId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment_text: text })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add comment');
+      }
+
+      setCommentDrafts((prev) => ({ ...prev, [requestId]: '' }));
+
+      const refreshed = await authFetch(`/api/resources/requests/${requestId}/comments`);
+      if (refreshed.ok) {
+        const data = await refreshed.json();
+        setCommentThreads((prev) => ({
+          ...prev,
+          [requestId]: data.data || []
+        }));
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      alert(error instanceof Error ? error.message : 'Failed to add comment');
+    }
+  };
+
   const handleEditResource = (resource: Resource) => {
     setEditingResource(resource);
     setShowEditModal(true);
@@ -196,8 +326,8 @@ const ResourceManagement: React.FC = () => {
   };
 
   const filteredResources = resources.filter(resource => {
-    const matchesSearch = resource.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         resource.resource_code.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (resource.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (resource.resource_code || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = filterCategory === 'all' || resource.category === filterCategory;
     const matchesStatus = filterStatus === 'all' || resource.availability_status === filterStatus;
     return matchesSearch && matchesCategory && matchesStatus;
@@ -213,8 +343,13 @@ const ResourceManagement: React.FC = () => {
     ];
     return values
       .filter(Boolean)
-      .some((value) => value.toLowerCase().includes(requestSearchTerm.toLowerCase()));
+      .some((value) => (value as string).toLowerCase().includes(requestSearchTerm.toLowerCase()));
   });
+
+  const pendingRequests = requests.filter(r => r.status === 'pending');
+  const availableResources = resources.filter(r => r.availability_status === 'available');
+  const inUseResources = resources.filter(r => r.availability_status === 'in_use');
+  const maintenanceResources = resources.filter(r => r.availability_status === 'under_maintenance');
 
   const filteredMaintenance = maintenanceResources.filter((resource) => {
     if (!maintenanceSearchTerm.trim()) return true;
@@ -226,13 +361,8 @@ const ResourceManagement: React.FC = () => {
     ];
     return values
       .filter(Boolean)
-      .some((value) => value.toLowerCase().includes(maintenanceSearchTerm.toLowerCase()));
+      .some((value) => (value as string).toLowerCase().includes(maintenanceSearchTerm.toLowerCase()));
   });
-
-  const pendingRequests = requests.filter(r => r.status === 'pending');
-  const availableResources = resources.filter(r => r.availability_status === 'available');
-  const inUseResources = resources.filter(r => r.availability_status === 'in_use');
-  const maintenanceResources = resources.filter(r => r.availability_status === 'under_maintenance');
 
   if (loading) {
     return (
@@ -509,22 +639,54 @@ const ResourceManagement: React.FC = () => {
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold text-lg">{request.resource_name}</h3>
+                            <h3 className="font-semibold text-lg">{request.resource_name || 'New Resource Request'}</h3>
                             <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(request.status)}`}>
                               {request.status}
                             </span>
                           </div>
                           <p className="text-sm text-gray-600 mb-2">
-                            {request.request_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            {(request.request_type || 'request')
+                              .replace(/_/g, ' ')
+                              .replace(/\b\w/g, l => l.toUpperCase())}
                           </p>
                           <p className="text-sm text-gray-700 mb-2">{request.purpose}</p>
+                          {request.has_conflict && request.conflict_details && (
+                            <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-2">
+                              Conflict with {request.conflict_details.request_number} ({new Date(request.conflict_details.start_date).toLocaleDateString()} - {new Date(request.conflict_details.end_date).toLocaleDateString()})
+                            </div>
+                          )}
+                          {request.status === 'pending' && request.queue_position && request.queue_position > 1 && (
+                            <div className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-md px-3 py-2 mb-2">
+                              Queue position: {request.queue_position}
+                            </div>
+                          )}
                           <div className="flex items-center gap-4 text-sm text-gray-500">
                             <span>{request.request_number}</span>
                             <span>•</span>
                             <span>Requested by: {request.requester_name}</span>
-                            <span>•</span>
-                            <span>{new Date(request.start_date).toLocaleDateString()}</span>
+                            {request.start_date && (
+                              <>
+                                <span>•</span>
+                                <span>{new Date(request.start_date).toLocaleDateString()}</span>
+                              </>
+                            )}
+                            {request.end_date && (
+                              <>
+                                <span>•</span>
+                                <span>{new Date(request.end_date).toLocaleDateString()}</span>
+                              </>
+                            )}
                           </div>
+                          {request.program_module_name && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              Program: {request.program_module_name}
+                            </div>
+                          )}
+                          {request.resource_status && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              Resource status: {request.resource_status}
+                            </div>
+                          )}
                         </div>
                         <div className="text-right">
                           <p className="text-lg font-bold text-gray-900">Qty: {request.quantity_requested}</p>
@@ -544,8 +706,73 @@ const ResourceManagement: React.FC = () => {
                               </button>
                             </div>
                           )}
+                          {request.status === 'approved' && (
+                            <div className="flex gap-2 mt-3">
+                              <button
+                                onClick={() => handleAllocateRequest(request.id)}
+                                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm"
+                              >
+                                Allocate
+                              </button>
+                            </div>
+                          )}
+                          {['allocated', 'in_use', 'returned'].includes(request.status) && (
+                            <div className="flex gap-2 mt-3">
+                              <button
+                                onClick={() => handleReturnRequest(request.id)}
+                                className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 text-sm"
+                              >
+                                Confirm Return
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
+                      <div className="mt-3">
+                        <button
+                          onClick={() => toggleComments(request.id)}
+                          className="text-sm text-blue-600 hover:text-blue-800"
+                        >
+                          {expandedComments[request.id] ? 'Hide Comments' : 'View Comments'}
+                        </button>
+                      </div>
+                      {expandedComments[request.id] && (
+                        <div className="mt-3 border rounded-lg p-3 bg-gray-50">
+                          <div className="space-y-2">
+                            {(commentThreads[request.id] || []).map((comment) => (
+                              <div key={comment.id} className="text-sm text-gray-700 bg-white rounded-md p-2 border">
+                                <div className="text-xs text-gray-500 mb-1">
+                                  {comment.created_by_name || 'User'} • {new Date(comment.created_at).toLocaleString()}
+                                </div>
+                                <div>{comment.comment_text}</div>
+                              </div>
+                            ))}
+                            {(commentThreads[request.id] || []).length === 0 && (
+                              <div className="text-sm text-gray-500">No comments yet.</div>
+                            )}
+                          </div>
+                          <div className="mt-3 flex gap-2">
+                            <input
+                              type="text"
+                              value={commentDrafts[request.id] || ''}
+                              onChange={(e) =>
+                                setCommentDrafts((prev) => ({
+                                  ...prev,
+                                  [request.id]: e.target.value
+                                }))
+                              }
+                              placeholder="Write a comment..."
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            />
+                            <button
+                              onClick={() => handleAddComment(request.id)}
+                              className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+                            >
+                              Send
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                   {filteredRequests.length === 0 && (

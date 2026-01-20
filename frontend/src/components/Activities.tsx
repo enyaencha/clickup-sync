@@ -8,6 +8,7 @@ import ActivityOutcomeModal from './ActivityOutcomeModal';
 import ActivityChecklist from './ActivityChecklist';
 import BudgetRequestForm from './BudgetRequestForm';
 import ActivityExpenditureTracking from './ActivityExpenditureTracking';
+import AddResourceRequestModal from './AddResourceRequestModal';
 import { authFetch } from '../config/api';
 
 interface Activity {
@@ -85,6 +86,7 @@ const Activities: React.FC = () => {
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [showOutcomeModal, setShowOutcomeModal] = useState(false);
   const [showBudgetRequestModal, setShowBudgetRequestModal] = useState(false);
+  const [showResourceRequestModal, setShowResourceRequestModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
 
@@ -305,6 +307,12 @@ const Activities: React.FC = () => {
   const handleOpenBudgetRequest = (activity: Activity) => {
     setSelectedActivity(activity);
     setShowBudgetRequestModal(true);
+    setOpenDropdownId(null);
+  };
+
+  const handleOpenResourceRequest = (activity: Activity) => {
+    setSelectedActivity(activity);
+    setShowResourceRequestModal(true);
     setOpenDropdownId(null);
   };
 
@@ -685,6 +693,13 @@ const Activities: React.FC = () => {
                               <span className="font-medium">Request Budget</span>
                             </button>
                             <button
+                              onClick={() => handleOpenResourceRequest(activity)}
+                              className="w-full px-4 py-3 text-left hover:bg-orange-50 transition-colors flex items-center gap-3"
+                            >
+                              <span className="text-xl">🧰</span>
+                              <span className="font-medium">Request Resource</span>
+                            </button>
+                            <button
                               onClick={() => handleOpenExpense(activity)}
                               className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors flex items-center gap-3"
                             >
@@ -965,6 +980,12 @@ const Activities: React.FC = () => {
                                       <span>💰</span> Request Budget
                                     </button>
                                     <button
+                                      onClick={() => handleOpenResourceRequest(activity)}
+                                      className="w-full px-4 py-2.5 text-left hover:bg-orange-50 transition-colors flex items-center gap-2 text-sm"
+                                    >
+                                      <span>🧰</span> Request Resource
+                                    </button>
+                                    <button
                                       onClick={() => handleOpenExpense(activity)}
                                       className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center gap-2 text-sm"
                                     >
@@ -1072,6 +1093,22 @@ const Activities: React.FC = () => {
                 setSelectedActivity(null);
                 fetchData(); // Refresh activities after budget request
               }}
+            />
+          )}
+
+          {showResourceRequestModal && (
+            <AddResourceRequestModal
+              isOpen={showResourceRequestModal}
+              onClose={() => {
+                setShowResourceRequestModal(false);
+                setSelectedActivity(null);
+              }}
+              onSuccess={() => {
+                setShowResourceRequestModal(false);
+                setSelectedActivity(null);
+              }}
+              activityId={selectedActivity.id}
+              programModuleId={programId ? parseInt(programId) : undefined}
             />
           )}
 
