@@ -1,14 +1,30 @@
 /**
  * Database Connection Manager
- * Handles MySQL connection pooling and query execution
+ * Handles MySQL and PostgreSQL connection pooling
  */
 
-const mysql = require('mysql2/promise');
 const logger = require('../utils/logger');
+
+// Detect database type from DATABASE_URL
+const isDatabasePostgres = process.env.DATABASE_URL && process.env.DATABASE_URL.includes('postgres');
+
+let dbLib;
+if (isDatabasePostgres) {
+    // Use PostgreSQL
+    const { Pool } = require('pg');
+    dbLib = { Pool, type: 'postgres' };
+    logger.info('🐘 Using PostgreSQL database');
+} else {
+    // Use MySQL
+    const mysql = require('mysql2/promise');
+    dbLib = { mysql, type: 'mysql' };
+    logger.info('🐬 Using MySQL database');
+}
 
 class DatabaseManager {
     constructor() {
         this.pool = null;
+        this.dbType = dbLib.type;
     }
 
     /**
@@ -16,32 +32,64 @@ class DatabaseManager {
      */
     async initialize(config = {}) {
         try {
-            const poolConfig = {
-                host: config.host || process.env.DB_HOST || 'localhost',
-                user: config.user || process.env.DB_USER || 'root',
-                password: config.password || process.env.DB_PASSWORD || '',
-                database: config.database || process.env.DB_NAME || 'me_clickup_system',
-                waitForConnections: true,
-                connectionLimit: config.connectionLimit || 10,
-                queueLimit: 0,
-                enableKeepAlive: true,
-                keepAliveInitialDelay: 0,
-                charset: 'utf8mb4'
-            };
+            if (this.dbType === 'postgres') {
+                // PostgreSQL configuration
+                const poolConfig = {
+                    connectionString: process.env.DATABASE_URL,
+                    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+                    max: config.connectionLimit || 10,
+                    idleTimeoutMillis: 30000,
+                    connectionTimeoutMillis: 2000,
+                };
 
-            this.pool = mysql.createPool(poolConfig);
+                this.pool = new dbLib.Pool(poolConfig);
 
-            // Test connection
-            const connection = await this.pool.getConnection();
-            await connection.ping();
-            connection.release();
+                // Test connection
+                const client = await this.pool.connect();
+                await client.query('SELECT 1');
+                client.release();
 
-            logger.info('Database connection pool initialized successfully');
+                logger.info('✅ PostgreSQL connection pool initialized successfully');
+            } else {
+                // MySQL configuration
+                const poolConfig = {
+                    host: config.host || process.env.DB_HOST || 'localhost',
+                    user: config.user || process.env.DB_USER || 'root',
+                    password: config.password || process.env.DB_PASSWORD || '',
+                    database: config.database || process.env.DB_NAME || 'me_clickup_system',
+                    waitForConnections: true,
+                    connectionLimit: config.connectionLimit || 10,
+                    queueLimit: 0,
+                    enableKeepAlive: true,
+                    keepAliveInitialDelay: 0,
+                    charset: 'utf8mb4'
+                };
+
+                this.pool = dbLib.mysql.createPool(poolConfig);
+
+                // Test connection
+                const connection = await this.pool.getConnection();
+                await connection.ping();
+                connection.release();
+
+                logger.info('✅ MySQL connection pool initialized successfully');
+            }
+
             return true;
         } catch (error) {
-            logger.error('Failed to initialize database connection:', error);
+            logger.error('❌ Failed to initialize database connection:', error);
             throw error;
         }
+    }
+
+    /**
+     * Convert MySQL-style placeholders (?) to PostgreSQL-style ($1, $2, $3)
+     */
+    convertPlaceholders(sql) {
+        if (this.dbType !== 'postgres') return sql;
+
+        let index = 1;
+        return sql.replace(/\?/g, () => `$${index++}`);
     }
 
     /**
@@ -52,10 +100,16 @@ class DatabaseManager {
      */
     async query(sql, params = []) {
         try {
-            const [results] = await this.pool.execute(sql, params);
-            return results;
+            if (this.dbType === 'postgres') {
+                const convertedSql = this.convertPlaceholders(sql);
+                const result = await this.pool.query(convertedSql, params);
+                return result.rows;
+            } else {
+                const [results] = await this.pool.execute(sql, params);
+                return results;
+            }
         } catch (error) {
-            logger.error('Database query error:', { sql, params, error: error.message });
+            logger.error('Database query error:', { sql, params: params.length, error: error.message });
             throw error;
         }
     }
@@ -76,9 +130,15 @@ class DatabaseManager {
      * @returns {Promise<Connection>} Database connection
      */
     async beginTransaction() {
-        const connection = await this.pool.getConnection();
-        await connection.beginTransaction();
-        return connection;
+        if (this.dbType === 'postgres') {
+            const client = await this.pool.connect();
+            await client.query('BEGIN');
+            return client;
+        } else {
+            const connection = await this.pool.getConnection();
+            await connection.beginTransaction();
+            return connection;
+        }
     }
 
     /**
@@ -86,8 +146,13 @@ class DatabaseManager {
      * @param {Connection} connection - Database connection
      */
     async commit(connection) {
-        await connection.commit();
-        connection.release();
+        if (this.dbType === 'postgres') {
+            await connection.query('COMMIT');
+            connection.release();
+        } else {
+            await connection.commit();
+            connection.release();
+        }
     }
 
     /**
@@ -95,8 +160,13 @@ class DatabaseManager {
      * @param {Connection} connection - Database connection
      */
     async rollback(connection) {
-        await connection.rollback();
-        connection.release();
+        if (this.dbType === 'postgres') {
+            await connection.query('ROLLBACK');
+            connection.release();
+        } else {
+            await connection.rollback();
+            connection.release();
+        }
     }
 
     /**
@@ -133,11 +203,19 @@ class DatabaseManager {
     getPoolStats() {
         if (!this.pool) return null;
 
-        return {
-            totalConnections: this.pool._allConnections.length,
-            freeConnections: this.pool._freeConnections.length,
-            queueLength: this.pool._connectionQueue.length
-        };
+        if (this.dbType === 'postgres') {
+            return {
+                totalConnections: this.pool.totalCount,
+                idleConnections: this.pool.idleCount,
+                waitingRequests: this.pool.waitingCount
+            };
+        } else {
+            return {
+                totalConnections: this.pool._allConnections.length,
+                freeConnections: this.pool._freeConnections.length,
+                queueLength: this.pool._connectionQueue.length
+            };
+        }
     }
 
     /**
