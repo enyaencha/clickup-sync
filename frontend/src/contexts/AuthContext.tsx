@@ -129,11 +129,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     console.log('📥 Login response status:', response.status);
 
-    const data = await response.json();
+    const rawResponse = await response.text();
+    let data: any = null;
+
+    if (rawResponse) {
+      try {
+        data = JSON.parse(rawResponse);
+      } catch (parseError) {
+        console.error('Login response is not valid JSON:', parseError, rawResponse.slice(0, 300));
+        throw new Error(
+          `Login API returned invalid response (HTTP ${response.status}). Check VITE_API_URL and backend logs.`
+        );
+      }
+    }
+
     console.log('📦 Login response data:', data);
 
     if (!response.ok) {
-      throw new Error(data.error || 'Login failed');
+      throw new Error(data?.error || `Login failed (HTTP ${response.status})`);
+    }
+
+    if (!data?.data?.token || !data?.data?.refreshToken || !data?.data?.user) {
+      throw new Error('Login API response is missing required authentication data');
     }
 
     // Store token and user data
