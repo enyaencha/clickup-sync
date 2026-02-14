@@ -1,55 +1,48 @@
 services:
-  # Backend Service
   - type: web
     name: clickup-sync-backend
-    env: node
+    runtime: node
     plan: free
     region: oregon
     buildCommand: cd backend && npm install
-    startCommand: cd backend && node ../scripts/init-db-render.js && npm start
+    startCommand: cd backend && npm start
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 3000
       - key: DB_HOST
-        fromDatabase:
-          name: clickup-mysql
-          property: host
-      - key: DB_USER
-        fromDatabase:
-          name: clickup-mysql
-          property: user
-      - key: DB_PASSWORD
-        fromDatabase:
-          name: clickup-mysql
-          property: password
-      - key: DB_NAME
-        fromDatabase:
-          name: clickup-mysql
-          property: database
+        sync: false
       - key: DB_PORT
-        fromDatabase:
-          name: clickup-mysql
-          property: port
-      - key: DATABASE_URL
-        fromDatabase:
-          name: clickup-mysql
-          property: connectionString
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_SSL
+        value: "false"
+      - key: DB_SSL_CA
+        sync: false
+      - key: DB_SSL_CA_PATH
+        sync: false
       - key: JWT_SECRET
         generateValue: true
+      - key: ENCRYPTION_KEY
+        sync: false
       - key: CLICKUP_API_TOKEN
         sync: false
-      - key: ENCRYPTION_KEY
-        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
       - key: ALLOWED_ORIGINS
-        value: https://clickup-sync-frontend.onrender.com
+        sync: false
+      - key: LOG_VERBOSE_REQUESTS
+        value: "false"
     autoDeploy: true
 
-  # Frontend Service (Static Site)
   - type: web
     name: clickup-sync-frontend
+    runtime: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: ./frontend/dist
     routes:
@@ -65,13 +58,5 @@ services:
         value: nosniff
     envVars:
       - key: VITE_API_URL
-        value: https://clickup-sync-backend.onrender.com
+        sync: false
     autoDeploy: true
-
-databases:
-  # MySQL Database - Free tier on Render (PostgreSQL) or external MySQL
-  # For true MySQL, use PlanetScale (free) or Railway
-  - name: clickup-mysql
-    databaseName: me_clickup_system
-    user: clickup_user
-    plan: free

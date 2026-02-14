@@ -10,7 +10,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, canAccessFeature } = useAuth();
   const [isExpanded, setIsExpanded] = useState(true);
 
   const isActive = (path: string) => location.pathname === path;
@@ -49,13 +49,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           icon: '🏠',
           label: 'Dashboard',
           path: '/dashboard',
-          description: 'Overview & Analytics'
+          description: 'Overview & Analytics',
+          feature: 'dashboard'
         },
         {
           icon: '📊',
           label: 'Programs',
           path: '/',
-          description: 'Program Modules'
+          description: 'Program Modules',
+          feature: 'programs'
         }
       ]
     },
@@ -66,43 +68,50 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           icon: '✓',
           label: 'Activities',
           path: '/activities',
-          description: 'Field Activities'
+          description: 'Field Activities',
+          feature: 'activities'
         },
         {
           icon: '👥',
           label: 'Beneficiaries',
           path: '/beneficiaries',
-          description: 'Beneficiary Registry'
+          description: 'Beneficiary Registry',
+          feature: 'beneficiaries'
         },
         {
           icon: '👪',
           label: 'SHG Groups',
           path: '/shg',
-          description: 'Self-Help Groups'
+          description: 'Self-Help Groups',
+          feature: 'shg'
         },
         {
           icon: '💰',
           label: 'Loans',
           path: '/loans',
-          description: 'Loan Management'
+          description: 'Loan Management',
+          feature: 'loans'
         },
         {
           icon: '⚖️',
           label: 'GBV Cases',
           path: '/gbv',
-          description: 'GBV Case Management'
+          description: 'GBV Case Management',
+          feature: 'gbv'
         },
         {
           icon: '🎁',
           label: 'Relief',
           path: '/relief',
-          description: 'Relief Distribution'
+          description: 'Relief Distribution',
+          feature: 'relief'
         },
         {
           icon: '🥗',
           label: 'Nutrition',
           path: '/nutrition',
-          description: 'Nutrition Assessment'
+          description: 'Nutrition Assessment',
+          feature: 'nutrition'
         }
       ]
     },
@@ -113,13 +122,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           icon: '💰',
           label: 'Finance',
           path: '/finance',
-          description: 'Budget & Expenditure'
+          description: 'Budget & Expenditure',
+          feature: 'finance'
         },
         {
           icon: '🏗️',
           label: 'Resources',
           path: '/resources',
-          description: 'Asset Management'
+          description: 'Asset Management',
+          feature: 'resources'
         }
       ]
     },
@@ -130,37 +141,43 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           icon: '📐',
           label: 'Logframe Dashboard',
           path: '/logframe',
-          description: 'RBM Overview'
+          description: 'RBM Overview',
+          feature: 'logframe'
         },
         {
           icon: '📊',
           label: 'Indicators',
           path: '/logframe/indicators',
-          description: 'SMART Indicators'
+          description: 'SMART Indicators',
+          feature: 'indicators'
         },
         {
           icon: '🔗',
           label: 'Results Chain',
           path: '/logframe/results-chain',
-          description: 'Contribution Links'
+          description: 'Contribution Links',
+          feature: 'results_chain'
         },
         {
           icon: '📋',
           label: 'Verification',
           path: '/logframe/verification',
-          description: 'Evidence & MoV'
+          description: 'Evidence & MoV',
+          feature: 'verification'
         },
         {
           icon: '⚠️',
           label: 'Assumptions',
           path: '/logframe/assumptions',
-          description: 'Risk Management'
+          description: 'Risk Management',
+          feature: 'assumptions'
         },
         {
           icon: '✅',
           label: 'Approvals',
           path: '/approvals',
-          description: 'Review Activities'
+          description: 'Review Activities',
+          feature: 'approvals'
         }
       ]
     },
@@ -171,7 +188,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           icon: '📈',
           label: 'Reports & Analytics',
           path: '/reports',
-          description: 'AI-Powered Insights'
+          description: 'AI-Powered Insights',
+          feature: 'reports'
         }
       ]
     },
@@ -182,11 +200,17 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
           icon: '⚙️',
           label: 'Settings',
           path: '/settings',
-          description: 'System Settings'
+          description: 'System Settings',
+          feature: 'settings'
         }
       ]
     }
   ];
+
+  const filteredMenuItems = menuItems.map(section => ({
+    ...section,
+    items: section.items.filter(item => canAccessFeature(item.feature))
+  })).filter(section => section.items.length > 0);
 
   return (
     <>
@@ -264,7 +288,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
 
         {/* Navigation Menu */}
         <nav className="overflow-y-auto h-[calc(100vh-180px)] lg:h-[calc(100vh-140px)] py-4 custom-scrollbar">
-          {menuItems.map((section, idx) => (
+          {filteredMenuItems.map((section, idx) => (
             <div key={idx} className="mb-6">
               {isExpanded && (
                 <h3 className="px-6 text-xs font-semibold uppercase tracking-wider mb-2 opacity-60">

@@ -103,39 +103,30 @@ const Activities: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      // Fetch program info
-      const programsRes = await authFetch('/api/programs');
-      const programsData = await programsRes.json();
-      const foundProgram = programsData.data.find((p: any) => p.id === parseInt(programId!));
-      setProgram(foundProgram);
+      const [programsRes, projectsRes, componentsRes, activitiesRes] = await Promise.all([
+        authFetch('/api/programs'),
+        authFetch(`/api/sub-programs?module_id=${programId}`),
+        authFetch(`/api/components?sub_program_id=${projectId}`),
+        authFetch(`/api/activities?component_id=${componentId}`)
+      ]);
 
-      // Fetch project info
-      const projectsRes = await authFetch(`/api/sub-programs?module_id=${programId}`);
-      const projectsData = await projectsRes.json();
-      const foundProject = projectsData.data.find((p: any) => p.id === parseInt(projectId!));
-      setProject(foundProject);
-
-      // Fetch component info
-      const componentsRes = await authFetch(`/api/components?sub_program_id=${projectId}`);
-      const componentsData = await componentsRes.json();
-      const foundComponent = componentsData.data.find((c: any) => c.id === parseInt(componentId!));
-      setComponent(foundComponent);
-
-      // Fetch activities
-      const activitiesRes = await authFetch(`/api/activities?component_id=${componentId}`);
       if (!activitiesRes.ok) throw new Error('Failed to fetch activities');
-      const activitiesData = await activitiesRes.json();
-      const fetchedActivities = activitiesData.data || [];
-      const expenditureTotals = await fetchActivityExpenditureTotals(fetchedActivities);
-      const enrichedActivities = fetchedActivities.map((activity: Activity) => {
-        const totalSpent = expenditureTotals.get(activity.id) ?? 0;
-        return {
-          ...activity,
-          budget_spent_expenditures: totalSpent,
-          budget_spent: totalSpent || activity.budget_spent
-        };
-      });
-      setActivities(enrichedActivities);
+
+      const [programsData, projectsData, componentsData, activitiesData] = await Promise.all([
+        programsRes.json(),
+        projectsRes.json(),
+        componentsRes.json(),
+        activitiesRes.json()
+      ]);
+
+      const foundProgram = programsData.data.find((p: any) => p.id === parseInt(programId!));
+      const foundProject = projectsData.data.find((p: any) => p.id === parseInt(projectId!));
+      const foundComponent = componentsData.data.find((c: any) => c.id === parseInt(componentId!));
+
+      setProgram(foundProgram);
+      setProject(foundProject);
+      setComponent(foundComponent);
+      setActivities(activitiesData.data || []);
       setLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -152,30 +143,6 @@ const Activities: React.FC = () => {
     } catch (err) {
       console.error('Failed to fetch statistics:', err);
     }
-  };
-
-  const fetchActivityExpenditureTotals = async (activitiesList: Activity[]) => {
-    const totals = await Promise.all(
-      activitiesList.map(async (activity) => {
-        try {
-          const response = await authFetch(`/api/budget-requests/activity/${activity.id}/expenditures`);
-          if (!response.ok) {
-            return { id: activity.id, total: 0 };
-          }
-          const data = await response.json();
-          const total = (data.data || []).reduce(
-            (sum: number, exp: { amount: number }) => sum + (exp.amount || 0),
-            0
-          );
-          return { id: activity.id, total };
-        } catch (error) {
-          console.error('Failed to fetch expenditures:', error);
-          return { id: activity.id, total: 0 };
-        }
-      })
-    );
-
-    return new Map(totals.map(({ id, total }) => [id, total]));
   };
 
   const formatCurrency = (amount: number) => {

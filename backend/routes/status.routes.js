@@ -7,6 +7,32 @@ const express = require('express');
 const router = express.Router();
 
 module.exports = (statusCalculatorService) => {
+    const normalizeActivityStatus = (value) => {
+        const allowed = new Set([
+            'not-started',
+            'in-progress',
+            'completed',
+            'blocked',
+            'cancelled',
+            'on-track',
+            'at-risk',
+            'delayed',
+            'off-track',
+            'on-hold'
+        ]);
+
+        const aliases = {
+            planned: 'not-started',
+            pending: 'not-started',
+            ongoing: 'in-progress',
+            in_progress: 'in-progress'
+        };
+
+        const normalized = String(value || '').trim().toLowerCase();
+        const mapped = aliases[normalized] || normalized;
+        return allowed.has(mapped) ? mapped : null;
+    };
+
     /**
      * Recalculate status for a single activity
      * POST /api/status/activity/:activityId/recalculate
@@ -182,6 +208,14 @@ module.exports = (statusCalculatorService) => {
                 });
             }
 
+            const normalizedStatus = normalizeActivityStatus(status);
+            if (!normalizedStatus) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Invalid activity status'
+                });
+            }
+
             // Get current status for history
             const current = await statusCalculatorService.db.queryOne(
                 'SELECT status, progress_percentage FROM activities WHERE id = ?',
@@ -197,7 +231,7 @@ module.exports = (statusCalculatorService) => {
                      status_reason = ?,
                      last_status_update = CURRENT_TIMESTAMP
                  WHERE id = ?`,
-                [status, status, reason || 'Manual override', parseInt(activityId)]
+                [normalizedStatus, normalizedStatus, reason || 'Manual override', parseInt(activityId)]
             );
 
             // Record in history
@@ -209,7 +243,7 @@ module.exports = (statusCalculatorService) => {
                 [
                     parseInt(activityId),
                     current.status,
-                    status,
+                    normalizedStatus,
                     current.progress_percentage,
                     current.progress_percentage,
                     reason || 'Manual override',
@@ -222,7 +256,7 @@ module.exports = (statusCalculatorService) => {
                 message: 'Activity status manually overridden',
                 data: {
                     activityId: parseInt(activityId),
-                    newStatus: status,
+                    newStatus: normalizedStatus,
                     reason
                 }
             });

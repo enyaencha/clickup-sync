@@ -132,7 +132,6 @@ CREATE TABLE `activities` (
   KEY `idx_gps` (`gps_latitude`,`gps_longitude`),
   KEY `idx_auto_status` (`auto_status`),
   KEY `idx_risk_level` (`risk_level`),
-  KEY `idx_module_specific_data` ((cast(`module_specific_data` as char(255) charset utf8mb4))),
   CONSTRAINT `fk_activities_component` FOREIGN KEY (`component_id`) REFERENCES `project_components` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_activities_subprogram` FOREIGN KEY (`project_id`) REFERENCES `sub_programs` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=35 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

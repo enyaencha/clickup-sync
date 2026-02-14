@@ -4,8 +4,9 @@ import UserManagement from './settings/UserManagement';
 import WorkflowSettings from './settings/WorkflowSettings';
 import SystemSettings from './settings/SystemSettings';
 import ThemeSettings from './settings/ThemeSettings';
+import AccountSettings from './settings/AccountSettings';
 
-type TabType = 'users' | 'workflow' | 'system' | 'theme';
+type TabType = 'users' | 'workflow' | 'system' | 'theme' | 'account';
 
 interface Tab {
   id: TabType;
@@ -28,6 +29,13 @@ const Settings: React.FC = () => {
       icon: '🎨',
       component: ThemeSettings,
       description: 'Choose your preferred color theme'
+    },
+    {
+      id: 'account',
+      label: 'Account',
+      icon: '🔐',
+      component: AccountSettings,
+      description: 'Update your password'
     },
     {
       id: 'users',
@@ -57,6 +65,7 @@ const Settings: React.FC = () => {
 
   // Filter tabs based on permissions
   const availableTabs = tabs.filter(tab => {
+    if (tab.id === 'account' && user?.is_system_admin) return false;
     if (!tab.requiredPermission) return true;
     const [resource, action] = tab.requiredPermission.split('.');
     return user?.is_system_admin || hasPermission(resource, action);

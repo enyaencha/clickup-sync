@@ -9,6 +9,7 @@ interface ProtectedRouteProps {
     action: string;
   };
   requireRole?: string;
+  requireFeature?: string;
   allowWithModuleAccess?: boolean; // Allow access if user has module assignments
 }
 
@@ -16,9 +17,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requirePermission,
   requireRole,
+  requireFeature,
   allowWithModuleAccess = false,
 }) => {
-  const { isAuthenticated, isLoading, user, hasPermission, hasRole } = useAuth();
+  const { isAuthenticated, isLoading, user, hasPermission, hasRole, canAccessFeature } = useAuth();
   const location = useLocation();
 
   // Show loading state while checking authentication
@@ -79,6 +81,24 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           </p>
           <p className="text-sm text-gray-500">
             Required role: <span className="font-mono">{requireRole}</span>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check for required feature
+  if (requireFeature && !canAccessFeature(requireFeature)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-8 text-center">
+          <div className="text-red-600 text-6xl mb-4">🔒</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600 mb-6">
+            You don't have access to this area.
+          </p>
+          <p className="text-sm text-gray-500">
+            Required feature: <span className="font-mono">{requireFeature}</span>
           </p>
         </div>
       </div>

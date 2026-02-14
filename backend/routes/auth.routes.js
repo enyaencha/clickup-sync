@@ -1,4 +1,5 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const router = express.Router();
 
 module.exports = (authService) => {
@@ -221,6 +222,84 @@ module.exports = (authService) => {
             res.status(400).json({
                 success: false,
                 error: error.message || 'Permission check failed'
+            });
+        }
+    });
+
+    /**
+     * POST /api/auth/change-password
+     * Change current user's password
+     */
+    router.post('/change-password', async (req, res) => {
+        try {
+            const token = req.headers.authorization?.replace('Bearer ', '');
+            const { current_password, new_password } = req.body;
+
+            if (!token) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'No token provided'
+                });
+            }
+
+            if (!current_password || !new_password) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Current password and new password are required'
+                });
+            }
+
+            if (new_password.length < 8) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'New password must be at least 8 characters long'
+                });
+            }
+
+            const decoded = authService.verifyToken(token);
+            if (!decoded) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'Invalid token'
+                });
+            }
+
+            const users = await authService.db.query(
+                'SELECT id, password_hash FROM users WHERE id = ? AND is_active = true',
+                [decoded.userId]
+            );
+
+            if (!users || users.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'User not found'
+                });
+            }
+
+            const user = users[0];
+            const isValid = await bcrypt.compare(current_password, user.password_hash);
+            if (!isValid) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Current password is incorrect'
+                });
+            }
+
+            const passwordHash = await bcrypt.hash(new_password, 10);
+            await authService.db.query(
+                'UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ?',
+                [passwordHash, user.id]
+            );
+
+            res.json({
+                success: true,
+                message: 'Password updated successfully'
+            });
+        } catch (error) {
+            console.error('Change password error:', error);
+            res.status(400).json({
+                success: false,
+                error: error.message || 'Failed to update password'
             });
         }
     });

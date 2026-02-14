@@ -136,6 +136,7 @@ interface MenuItem {
   label: string;
   path: string;
   description: string;
+  feature: string;
   permission?: string; // Permission required to view this menu item
   resource?: string; // Resource name for permission check
   action?: string; // Action name for permission check
@@ -149,7 +150,7 @@ interface MenuSection {
 const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, hasPermission } = useAuth();
+  const { user, logout, canAccessFeature } = useAuth();
   const [isExpanded, setIsExpanded] = useState(true);
 
   const isActive = (path: string) => location.pathname === path;
@@ -191,95 +192,8 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
     // System admins have access to everything
     if (user.is_system_admin) return true;
 
-    // Check if user has module assignments - users with modules can access module-related features
-    const hasModuleAssignments = user.module_assignments && user.module_assignments.length > 0;
-
-    if (hasModuleAssignments) {
-      // Module-related menu items that should be accessible to users with module assignments
-      const moduleRelatedResources = ['modules', 'activities', 'reports', 'settings'];
-
-      if (moduleRelatedResources.includes(item.resource)) {
-        // Check if user has appropriate permission in their module assignments
-        const hasModulePermission = user.module_assignments.some(assignment => {
-          // Map actions to module permission flags
-          if (item.action === 'read') return assignment.can_view;
-          if (item.action === 'create') return assignment.can_create;
-          if (item.action === 'update') return assignment.can_edit;
-          if (item.action === 'delete') return assignment.can_delete;
-          if (item.action === 'approve') return assignment.can_approve;
-          return false;
-        });
-
-        if (hasModulePermission) return true;
-      }
-    }
-
-    // Check role-based access
-    if (user.roles && Array.isArray(user.roles)) {
-      // Role-based menu access mapping - comprehensive for all 29 roles
-      const roleResourceMap: Record<string, string[]> = {
-        // Level 1: System Administration
-        'system_admin': ['dashboard', 'programs', 'activities', 'logframe', 'indicators', 'results_chain',
-                        'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations',
-                        'settings', 'sync', 'approvals'],
-
-        // Level 2: Directors & Senior Management
-        'me_director': ['dashboard', 'programs', 'activities', 'logframe', 'indicators', 'results_chain',
-                       'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations', 'approvals', 'settings'],
-        'program_director': ['dashboard', 'programs', 'activities', 'logframe', 'indicators', 'results_chain',
-                            'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations', 'approvals'],
-        'module_manager': ['dashboard', 'programs', 'activities', 'logframe', 'indicators', 'results_chain',
-                          'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations', 'approvals'],
-
-        // Level 3: Managers & Coordinators
-        'me_manager': ['dashboard', 'programs', 'activities', 'logframe', 'indicators', 'results_chain',
-                      'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations', 'approvals'],
-        'program_manager': ['dashboard', 'programs', 'activities', 'indicators', 'reports', 'beneficiaries', 'locations'],
-        'finance_manager': ['dashboard', 'programs', 'activities', 'reports', 'beneficiaries'],
-        'logistics_manager': ['dashboard', 'programs', 'activities', 'reports', 'beneficiaries', 'locations'],
-        'relief_coordinator': ['dashboard', 'programs', 'activities', 'reports', 'beneficiaries', 'locations'],
-        'seep_coordinator': ['dashboard', 'programs', 'activities', 'reports', 'beneficiaries', 'locations'],
-
-        // Level 4: Officers & Specialists
-        'me_officer': ['dashboard', 'programs', 'activities', 'logframe', 'indicators', 'results_chain',
-                      'means_of_verification', 'assumptions', 'reports', 'beneficiaries', 'locations'],
-        'data_analyst': ['dashboard', 'programs', 'activities', 'indicators', 'reports'],
-        'finance_officer': ['programs', 'activities', 'reports', 'beneficiaries'],
-        'procurement_officer': ['programs', 'activities', 'reports', 'beneficiaries'],
-        'program_officer': ['dashboard', 'programs', 'activities', 'reports', 'beneficiaries', 'locations'],
-        'technical_advisor': ['dashboard', 'programs', 'activities', 'indicators', 'reports', 'beneficiaries', 'locations'],
-        'module_coordinator': ['programs', 'activities', 'indicators', 'beneficiaries', 'locations', 'reports'],
-
-        // Specialists (Program-specific)
-        'gbv_specialist': ['programs', 'activities', 'beneficiaries', 'locations', 'reports'],
-        'nutrition_specialist': ['programs', 'activities', 'beneficiaries', 'locations', 'reports'],
-        'agriculture_specialist': ['programs', 'activities', 'beneficiaries', 'locations', 'reports'],
-
-        // Level 5: Field Staff
-        'field_officer': ['programs', 'activities', 'beneficiaries', 'locations'],
-        'community_mobilizer': ['programs', 'activities', 'beneficiaries', 'locations'],
-        'data_entry_officer': ['programs', 'activities', 'beneficiaries', 'locations'],
-        'data_entry_clerk': ['programs', 'activities', 'beneficiaries', 'locations'],
-        'enumerator': ['programs', 'activities', 'beneficiaries', 'locations'],
-
-        // Level 6: Specialized & Restricted Roles
-        'approver': ['approvals', 'programs', 'activities', 'reports'], // Only approvals + limited context
-        'verification_officer': ['approvals', 'means_of_verification', 'programs', 'activities'], // Verification focus
-        'report_viewer': ['dashboard', 'reports'], // Read-only reports
-        'module_viewer': ['programs', 'reports'], // Read-only module data
-        'external_auditor': ['dashboard', 'reports', 'programs', 'activities'], // Audit view
-      };
-
-      for (const userRole of user.roles) {
-        const allowedResources = roleResourceMap[userRole.name];
-        if (allowedResources && allowedResources.includes(item.resource)) {
-          return true;
-        }
-      }
-    }
-
-    // Finally, check specific permission from role_permissions
-    return hasPermission(item.resource, item.action);
+    // Enforce feature-level access (role-based)
+    return canAccessFeature(item.feature);
   };
 
   const menuSections: MenuSection[] = [
@@ -291,6 +205,7 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Dashboard',
           path: '/dashboard',
           description: 'Overview & Analytics',
+          feature: 'dashboard',
           resource: 'reports',
           action: 'read',
         },
@@ -299,6 +214,7 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Programs',
           path: '/',
           description: 'Program Modules',
+          feature: 'programs',
           resource: 'modules',
           action: 'read',
         }
@@ -312,6 +228,7 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Activities',
           path: '/activities',
           description: 'Field Activities',
+          feature: 'activities',
           resource: 'activities',
           action: 'read',
         },
@@ -320,6 +237,7 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Beneficiaries',
           path: '/beneficiaries',
           description: 'Beneficiary Registry',
+          feature: 'beneficiaries',
           resource: 'activities',
           action: 'read',
         },
@@ -328,6 +246,7 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'SHG Groups',
           path: '/shg',
           description: 'Self-Help Groups',
+          feature: 'shg',
           resource: 'activities',
           action: 'read',
         },
@@ -336,6 +255,7 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Loans',
           path: '/loans',
           description: 'Loan Management',
+          feature: 'loans',
           resource: 'activities',
           action: 'read',
         },
@@ -344,6 +264,7 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'GBV Cases',
           path: '/gbv',
           description: 'GBV Case Management',
+          feature: 'gbv',
           resource: 'activities',
           action: 'read',
         },
@@ -352,6 +273,7 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Relief',
           path: '/relief',
           description: 'Relief Distribution',
+          feature: 'relief',
           resource: 'activities',
           action: 'read',
         },
@@ -360,6 +282,7 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Nutrition',
           path: '/nutrition',
           description: 'Nutrition Assessment',
+          feature: 'nutrition',
           resource: 'activities',
           action: 'read',
         },
@@ -368,6 +291,7 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Agriculture',
           path: '/agriculture',
           description: 'Agriculture Monitoring',
+          feature: 'agriculture',
           resource: 'activities',
           action: 'read',
         },
@@ -376,6 +300,7 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Locations',
           path: '/locations',
           description: 'Geographic Areas',
+          feature: 'locations',
           resource: 'modules',
           action: 'read',
         }
@@ -389,6 +314,7 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Logframe Dashboard',
           path: '/logframe',
           description: 'RBM Overview',
+          feature: 'logframe',
           resource: 'modules',
           action: 'read',
         },
@@ -397,6 +323,7 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Indicators',
           path: '/logframe/indicators',
           description: 'SMART Indicators',
+          feature: 'indicators',
           resource: 'modules',
           action: 'read',
         },
@@ -405,6 +332,7 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Results Chain',
           path: '/logframe/results-chain',
           description: 'Contribution Links',
+          feature: 'results_chain',
           resource: 'modules',
           action: 'read',
         },
@@ -413,6 +341,7 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Verification',
           path: '/logframe/verification',
           description: 'Evidence & MoV',
+          feature: 'verification',
           resource: 'modules',
           action: 'read',
         },
@@ -421,6 +350,7 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Assumptions',
           path: '/logframe/assumptions',
           description: 'Risk Management',
+          feature: 'assumptions',
           resource: 'modules',
           action: 'read',
         },
@@ -429,6 +359,7 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Approvals',
           path: '/approvals',
           description: 'Review Activities',
+          feature: 'approvals',
           resource: 'activities',
           action: 'approve',
         }
@@ -442,6 +373,7 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Analytics',
           path: '/reports',
           description: 'Analytics & Reports',
+          feature: 'reports',
           resource: 'reports',
           action: 'read',
         }
@@ -455,6 +387,7 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Settings',
           path: '/settings',
           description: 'System Settings',
+          feature: 'settings',
           resource: 'settings',
           action: 'read',
         },
@@ -463,6 +396,7 @@ const SidebarRefactored: React.FC<SidebarProps> = ({ isMobileOpen, onClose }) =>
           label: 'Sync Status',
           path: '/sync',
           description: 'ClickUp Integration',
+          feature: 'sync',
           resource: 'settings',
           action: 'read',
         }

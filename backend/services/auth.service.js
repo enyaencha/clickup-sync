@@ -206,11 +206,11 @@ class AuthService {
     async getUserModuleAssignments(userId) {
         try {
             const assignments = await this.db.query(
-                `SELECT uma.module_id, p.name as module_name,
+                `SELECT uma.module_id, pm.name as module_name,
                         uma.can_view, uma.can_create, uma.can_edit,
                         uma.can_delete, uma.can_approve
                  FROM user_module_assignments uma
-                 JOIN programs p ON uma.module_id = p.id
+                 JOIN program_modules pm ON uma.module_id = pm.id
                  WHERE uma.user_id = ?`,
                 [userId]
             );

@@ -165,7 +165,7 @@ const Approvals: React.FC = () => {
       })
     );
 
-    setChecklistStatuses(statuses);
+    setChecklistStatuses((prev) => ({ ...prev, ...statuses }));
   };
 
   const fetchChecklistItems = async (activityIds: number[]) => {
@@ -185,7 +185,7 @@ const Approvals: React.FC = () => {
       })
     );
 
-    setChecklistItems(items);
+    setChecklistItems((prev) => ({ ...prev, ...items }));
   };
 
   const handleToggleChecklistItem = async (activityId: number, itemId: number) => {
@@ -207,11 +207,14 @@ const Approvals: React.FC = () => {
     }
   };
 
-  const toggleChecklistExpanded = (activityId: number) => {
+  const toggleChecklistExpanded = async (activityId: number) => {
     const newExpanded = new Set(expandedChecklists);
     if (newExpanded.has(activityId)) {
       newExpanded.delete(activityId);
     } else {
+      if (!checklistItems[activityId]) {
+        await fetchChecklistItems([activityId]);
+      }
       newExpanded.add(activityId);
     }
     setExpandedChecklists(newExpanded);
@@ -230,12 +233,15 @@ const Approvals: React.FC = () => {
       const data = await response.json();
       const activitiesData = data.data || [];
       setActivities(activitiesData);
+      setExpandedChecklists(new Set());
+      setChecklistItems({});
 
       // Fetch checklist statuses and items for all activities
       if (activitiesData.length > 0) {
         const activityIds = activitiesData.map((a: Activity) => a.id);
         await fetchChecklistStatuses(activityIds);
-        await fetchChecklistItems(activityIds);
+      } else {
+        setChecklistStatuses({});
       }
 
       setLoading(false);
@@ -688,19 +694,17 @@ const Approvals: React.FC = () => {
                       )}
 
                       {/* Show/Hide Checklist Items Button */}
-                      {checklistItems[activity.id] && checklistItems[activity.id].length > 0 && (
-                        <button
-                          onClick={() => toggleChecklistExpanded(activity.id)}
-                          className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
-                        >
-                          {expandedChecklists.has(activity.id) ? '▼ Hide Checklist Items' : '▶ Show Checklist Items'}
-                        </button>
-                      )}
+                      <button
+                        onClick={() => toggleChecklistExpanded(activity.id)}
+                        className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        {expandedChecklists.has(activity.id) ? '▼ Hide Checklist Items' : '▶ Show Checklist Items'}
+                      </button>
                     </div>
                   )}
 
                   {/* Detailed Checklist Items */}
-                  {showChecklistProgress && expandedChecklists.has(activity.id) && checklistItems[activity.id] && checklistItems[activity.id].length > 0 && (
+                  {showChecklistProgress && expandedChecklists.has(activity.id) && (
                     <div className="mb-4 p-3 bg-white rounded-lg border border-gray-200">
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="text-sm font-semibold text-gray-800">Implementation Checklist</h4>
@@ -711,30 +715,36 @@ const Approvals: React.FC = () => {
                           <span className="text-xs text-green-600 italic">✓ Can complete items</span>
                         )}
                       </div>
-                      <div className="space-y-2">
-                        {checklistItems[activity.id].map((item) => (
-                          <div
-                            key={item.id}
-                            className="flex items-center gap-3 p-2 bg-gray-50 rounded border hover:border-gray-300 transition-colors"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={item.is_completed}
-                              onChange={() => handleToggleChecklistItem(activity.id, item.id)}
-                              disabled={!allowApproverToComplete}
-                              className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 disabled:opacity-50 cursor-pointer"
-                              title={allowApproverToComplete ? 'Click to toggle' : 'View only - enable in Settings'}
-                            />
-                            <span
-                              className={`flex-1 text-sm ${
-                                item.is_completed ? 'line-through text-gray-500' : 'text-gray-900'
-                              }`}
+                      {!checklistItems[activity.id] ? (
+                        <p className="text-sm text-gray-500">Loading checklist items...</p>
+                      ) : checklistItems[activity.id].length === 0 ? (
+                        <p className="text-sm text-gray-500">No checklist items for this activity.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {checklistItems[activity.id].map((item) => (
+                            <div
+                              key={item.id}
+                              className="flex items-center gap-3 p-2 bg-gray-50 rounded border hover:border-gray-300 transition-colors"
                             >
-                              {item.item_name}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                              <input
+                                type="checkbox"
+                                checked={item.is_completed}
+                                onChange={() => handleToggleChecklistItem(activity.id, item.id)}
+                                disabled={!allowApproverToComplete}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 disabled:opacity-50 cursor-pointer"
+                                title={allowApproverToComplete ? 'Click to toggle' : 'View only - enable in Settings'}
+                              />
+                              <span
+                                className={`flex-1 text-sm ${
+                                  item.is_completed ? 'line-through text-gray-500' : 'text-gray-900'
+                                }`}
+                              >
+                                {item.item_name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 

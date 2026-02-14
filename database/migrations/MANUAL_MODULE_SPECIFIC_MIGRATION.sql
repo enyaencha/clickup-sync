@@ -25,15 +25,9 @@ PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
--- Add index if column was added (skip if column already existed)
-SET @index_sql = IF(@column_exists = 0,
-    'ALTER TABLE activities ADD INDEX idx_module_specific_data ((CAST(module_specific_data AS CHAR(255))))',
-    'SELECT ''Index skipped - column already existed'' AS status'
-);
-
-PREPARE stmt2 FROM @index_sql;
-EXECUTE stmt2;
-DEALLOCATE PREPARE stmt2;
+-- NOTE:
+-- Avoid adding a functional index on module_specific_data.
+-- CAST(JSON AS CHAR(255)) can truncate valid payloads and fail inserts/updates.
 
 -- Verify the migration
 SELECT

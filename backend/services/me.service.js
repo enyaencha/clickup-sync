@@ -10,6 +10,62 @@ class MEService {
         this.db = db;
     }
 
+    normalizeActivityStatus(value, fallback = 'not-started') {
+        const allowed = new Set([
+            'not-started',
+            'in-progress',
+            'completed',
+            'blocked',
+            'cancelled',
+            'on-track',
+            'at-risk',
+            'delayed',
+            'off-track',
+            'on-hold'
+        ]);
+
+        const aliases = {
+            planned: 'not-started',
+            pending: 'not-started',
+            ongoing: 'in-progress',
+            in_progress: 'in-progress'
+        };
+
+        if (value === undefined || value === null || value === '') {
+            return fallback;
+        }
+
+        const normalized = String(value).trim().toLowerCase();
+        const mapped = aliases[normalized] || normalized;
+        return allowed.has(mapped) ? mapped : fallback;
+    }
+
+    normalizeModuleSpecificData(value) {
+        if (value === undefined || value === null || value === '') {
+            return null;
+        }
+
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            if (!trimmed) {
+                return null;
+            }
+
+            try {
+                JSON.parse(trimmed);
+                return trimmed;
+            } catch (error) {
+                throw new Error('module_specific_data must be valid JSON');
+            }
+        }
+
+        if (typeof value === 'object') {
+            return JSON.stringify(value);
+        }
+
+        return JSON.stringify(value);
+    }
+
     // ==============================================
     // PROGRAM MODULES
     // ==============================================
@@ -302,6 +358,8 @@ class MEService {
     async createActivity(data) {
         // Helper to convert undefined to null
         const toNull = (value) => value === undefined ? null : value;
+        const activityStatus = this.normalizeActivityStatus(data.status, 'not-started');
+        const moduleSpecificData = this.normalizeModuleSpecificData(data.module_specific_data);
 
         // Look up the component to get its sub_program_id (project_id)
         const [component] = await this.db.query(`
@@ -342,11 +400,11 @@ class MEService {
             toNull(data.target_beneficiaries),
             toNull(data.beneficiary_type),
             toNull(data.budget_allocated),
-            data.status || 'planned',
+            activityStatus,
             data.approval_status || 'draft',
             data.priority || 'normal',
             toNull(data.created_by),
-            toNull(data.module_specific_data)
+            moduleSpecificData
         ]);
 
         const activityId = result.insertId;
@@ -358,23 +416,14 @@ class MEService {
     async updateActivity(id, data) {
         // Helper to convert undefined to null
         const toNull = (value) => value === undefined ? null : value;
-
-        // Debug logging
-        console.log('🔧 updateActivity called with data:', {
-            id,
-            outcome_notes: data.outcome_notes ? `"${data.outcome_notes.substring(0, 50)}..."` : 'NULL/EMPTY',
-            challenges_faced: data.challenges_faced ? `"${data.challenges_faced.substring(0, 50)}..."` : 'NULL/EMPTY',
-            lessons_learned: data.lessons_learned ? `"${data.lessons_learned.substring(0, 50)}..."` : 'NULL/EMPTY',
-            recommendations: data.recommendations ? `"${data.recommendations.substring(0, 50)}..."` : 'NULL/EMPTY',
-            immediate_objectives: data.immediate_objectives ? `"${data.immediate_objectives.substring(0, 50)}..."` : 'NULL/EMPTY',
-            expected_results: data.expected_results ? `"${data.expected_results.substring(0, 50)}..."` : 'NULL/EMPTY',
-        });
+        const activityStatus = this.normalizeActivityStatus(data.status, 'not-started');
+        const moduleSpecificData = this.normalizeModuleSpecificData(data.module_specific_data);
 
         const queryParams = [
             data.name,
             data.description,
             toNull(data.activity_date),
-            data.status,
+            activityStatus,
             data.approval_status,
             toNull(data.actual_beneficiaries),
             toNull(data.budget_spent),
@@ -385,18 +434,9 @@ class MEService {
             toNull(data.recommendations),
             toNull(data.immediate_objectives),
             toNull(data.expected_results),
-            toNull(data.module_specific_data),
+            moduleSpecificData,
             id
         ];
-
-        console.log('🔧 SQL params (outcome fields):', {
-            param9_outcome_notes: queryParams[8],
-            param10_challenges: queryParams[9],
-            param11_lessons: queryParams[10],
-            param12_recommendations: queryParams[11],
-            param13_objectives: queryParams[12],
-            param14_results: queryParams[13],
-        });
 
         await this.db.query(`
             UPDATE activities
@@ -415,8 +455,6 @@ class MEService {
             WHERE id = ?
         `, queryParams);
 
-        console.log('✅ SQL UPDATE executed successfully for activity', id);
-
         await this.queueForSync('activity', id, 'update', 3);
         return id;
     }
@@ -433,12 +471,14 @@ class MEService {
     }
 
     async updateActivityStatus(id, status) {
+        const activityStatus = this.normalizeActivityStatus(status, 'not-started');
+
         // Update user's status choice in the status column
         await this.db.query(`
             UPDATE activities
             SET status = ?, updated_at = NOW()
             WHERE id = ?
-        `, [status, id]);
+        `, [activityStatus, id]);
 
         await this.queueForSync('activity', id, 'update', 3);
         return id;
@@ -458,7 +498,7 @@ class MEService {
 
     async getActivities(filters = {}) {
         let query = `
-            SELECT DISTINCT a.*,
+            SELECT a.*,
                    pc.name AS component_name,
                    pc.id AS component_id,
                    sp.name AS sub_program_name,
@@ -469,12 +509,23 @@ class MEService {
                    ab.approved_budget AS activity_budget_approved,
                    ab.spent_budget AS activity_budget_spent,
                    ab.committed_budget AS activity_budget_committed,
-                   ab.remaining_budget AS activity_budget_remaining
+                   ab.remaining_budget AS activity_budget_remaining,
+                   COALESCE(ae_totals.expenditure_total, 0) AS activity_expenditure_spent_total
             FROM activities a
             INNER JOIN project_components pc ON a.component_id = pc.id
             INNER JOIN sub_programs sp ON pc.sub_program_id = sp.id
             INNER JOIN program_modules pm ON sp.module_id = pm.id
-            LEFT JOIN activity_budgets ab ON a.id = ab.activity_id
+            LEFT JOIN (
+                SELECT activity_id, MAX(id) AS latest_budget_id
+                FROM activity_budgets
+                GROUP BY activity_id
+            ) ab_latest ON ab_latest.activity_id = a.id
+            LEFT JOIN activity_budgets ab ON ab.id = ab_latest.latest_budget_id
+            LEFT JOIN (
+                SELECT activity_id, SUM(amount) AS expenditure_total
+                FROM activity_expenditures
+                GROUP BY activity_id
+            ) ae_totals ON ae_totals.activity_id = a.id
         `;
         let params = [];
 
@@ -541,7 +592,8 @@ class MEService {
         return activities.map((activity) => ({
             ...activity,
             budget_allocated: activity.activity_budget_allocated ?? activity.budget_allocated,
-            budget_spent: activity.activity_budget_spent ?? activity.budget_spent,
+            budget_spent_expenditures: Number(activity.activity_expenditure_spent_total || 0),
+            budget_spent: activity.activity_expenditure_spent_total ?? activity.activity_budget_spent ?? activity.budget_spent,
             budget_approved: activity.activity_budget_approved ?? null,
             budget_committed: activity.activity_budget_committed ?? null,
             budget_remaining: activity.activity_budget_remaining ?? null
@@ -557,12 +609,23 @@ class MEService {
                    ab.approved_budget AS activity_budget_approved,
                    ab.spent_budget AS activity_budget_spent,
                    ab.committed_budget AS activity_budget_committed,
-                   ab.remaining_budget AS activity_budget_remaining
+                   ab.remaining_budget AS activity_budget_remaining,
+                   COALESCE(ae_totals.expenditure_total, 0) AS activity_expenditure_spent_total
             FROM activities a
             INNER JOIN project_components pc ON a.component_id = pc.id
             INNER JOIN sub_programs sp ON pc.sub_program_id = sp.id
             INNER JOIN program_modules pm ON sp.module_id = pm.id
-            LEFT JOIN activity_budgets ab ON a.id = ab.activity_id
+            LEFT JOIN (
+                SELECT activity_id, MAX(id) AS latest_budget_id
+                FROM activity_budgets
+                GROUP BY activity_id
+            ) ab_latest ON ab_latest.activity_id = a.id
+            LEFT JOIN activity_budgets ab ON ab.id = ab_latest.latest_budget_id
+            LEFT JOIN (
+                SELECT activity_id, SUM(amount) AS expenditure_total
+                FROM activity_expenditures
+                GROUP BY activity_id
+            ) ae_totals ON ae_totals.activity_id = a.id
             WHERE a.id = ? AND a.deleted_at IS NULL
         `, [id]);
 
@@ -573,7 +636,8 @@ class MEService {
         return {
             ...activity,
             budget_allocated: activity.activity_budget_allocated ?? activity.budget_allocated,
-            budget_spent: activity.activity_budget_spent ?? activity.budget_spent,
+            budget_spent_expenditures: Number(activity.activity_expenditure_spent_total || 0),
+            budget_spent: activity.activity_expenditure_spent_total ?? activity.activity_budget_spent ?? activity.budget_spent,
             budget_approved: activity.activity_budget_approved ?? null,
             budget_committed: activity.activity_budget_committed ?? null,
             budget_remaining: activity.activity_budget_remaining ?? null
@@ -734,15 +798,11 @@ class MEService {
     }
 
     async getProgramStatistics(moduleId, user = null) {
-        console.log('getProgramStatistics called with moduleId:', moduleId, 'user:', user?.id);
-
         // Get sub-programs for this module
         const subPrograms = await this.db.query(`
             SELECT id FROM sub_programs
             WHERE module_id = ? AND deleted_at IS NULL
         `, [moduleId]);
-
-        console.log('Found sub-programs:', subPrograms.length);
 
         if (!subPrograms || subPrograms.length === 0) {
             return {
@@ -755,7 +815,6 @@ class MEService {
         }
 
         const subProgramIds = subPrograms.map(sp => sp.id);
-        console.log('Sub-program IDs:', subProgramIds);
 
         // Create placeholders for IN clause
         const subProgramPlaceholders = subProgramIds.map(() => '?').join(',');
@@ -766,18 +825,13 @@ class MEService {
             WHERE sub_program_id IN (${subProgramPlaceholders}) AND deleted_at IS NULL
         `, subProgramIds);
 
-        console.log('Component count result:', componentCount);
-
         // Get component IDs
         const components = await this.db.query(`
             SELECT id FROM project_components
             WHERE sub_program_id IN (${subProgramPlaceholders}) AND deleted_at IS NULL
         `, subProgramIds);
 
-        console.log('Found components:', components.length);
-
         const componentIds = components && components.length > 0 ? components.map(c => c.id) : [];
-        console.log('Component IDs:', componentIds);
 
         let activityCount = 0;
         let activities = [];
@@ -803,8 +857,6 @@ class MEService {
             `, queryParams);
             activityCount = actCount[0]?.count || 0;
 
-            console.log('Activity count result:', actCount, 'extracted:', activityCount);
-
             // Get activity status breakdown
             activityByStatus = await this.db.query(`
                 SELECT status, COUNT(*) as count
@@ -813,15 +865,11 @@ class MEService {
                 GROUP BY status
             `, queryParams);
 
-            console.log('Activity by status:', activityByStatus);
-
             // Get all activities for progress calculation
             activities = await this.db.query(`
                 SELECT status FROM activities
                 WHERE component_id IN (${placeholders}) AND deleted_at IS NULL${userFilter}
             `, queryParams);
-
-            console.log('Activities for progress calc:', activities.length);
         }
 
         // Calculate overall progress for this program

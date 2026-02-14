@@ -8,9 +8,9 @@ USE me_clickup_system;
 ALTER TABLE activities
 ADD COLUMN module_specific_data JSON DEFAULT NULL COMMENT 'JSON field for module-specific data (Finance, Resources, etc.)';
 
--- Add index for better query performance when filtering by module-specific data
-ALTER TABLE activities
-ADD INDEX idx_module_specific_data ((CAST(module_specific_data AS CHAR(255))));
+-- NOTE:
+-- Do not add a functional index on the full JSON payload.
+-- Casting JSON to a fixed CHAR(N) can trigger truncation errors for valid payloads.
 
 -- Examples of module_specific_data structure:
 --

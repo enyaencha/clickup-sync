@@ -4,7 +4,9 @@
  */
 
 console.log('Loading M&E server...');
-require('dotenv').config({ path: __dirname + '/../config/.env' });
+if (process.env.NODE_ENV !== 'production') {
+    require('dotenv').config({ path: __dirname + '/../config/.env' });
+}
 console.log('Environment loaded');
 
 console.log('Loading dependencies...');
@@ -119,18 +121,21 @@ app.use((req, res, next) => {
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Enhanced request/response logging
+const verboseRequestLogs = String(process.env.LOG_VERBOSE_REQUESTS || '').toLowerCase() === 'true';
 app.use((req, res, next) => {
     const startTime = Date.now();
 
-    // Log incoming request
-    console.log('\n========================================');
-    console.log(`📥 INCOMING: ${req.method} ${req.path}`);
-    console.log('========================================');
-    if (Object.keys(req.query).length > 0) {
-        console.log('Query params:', req.query);
-    }
-    if (req.body && Object.keys(req.body).length > 0) {
-        console.log('Request body:', JSON.stringify(req.body, null, 2));
+    if (verboseRequestLogs) {
+        // Optional verbose request logs for local debugging.
+        console.log('\n========================================');
+        console.log(`📥 INCOMING: ${req.method} ${req.path}`);
+        console.log('========================================');
+        if (Object.keys(req.query).length > 0) {
+            console.log('Query params:', req.query);
+        }
+        if (req.body && Object.keys(req.body).length > 0) {
+            console.log('Request body:', JSON.stringify(req.body, null, 2));
+        }
     }
 
     logger.info(`${req.method} ${req.path}`, {
@@ -142,11 +147,15 @@ app.use((req, res, next) => {
     const originalSend = res.send;
     res.send = function(data) {
         const duration = Date.now() - startTime;
-        console.log(`📤 RESPONSE: ${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
-        if (res.statusCode >= 400) {
+        if (verboseRequestLogs || res.statusCode >= 400) {
+            console.log(`📤 RESPONSE: ${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
+        }
+        if (res.statusCode >= 400 && verboseRequestLogs) {
             console.error('Error response:', typeof data === 'string' ? data : JSON.stringify(data, null, 2));
         }
-        console.log('========================================\n');
+        if (verboseRequestLogs) {
+            console.log('========================================\n');
+        }
         return originalSend.call(this, data);
     };
 

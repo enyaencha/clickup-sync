@@ -154,12 +154,12 @@ module.exports = (db, authService, authMiddleware) => {
                     uma.can_edit,
                     uma.can_delete,
                     uma.can_approve,
-                    p.name as module_name,
-                    p.description as module_description
+                    pm.name as module_name,
+                    pm.description as module_description
                 FROM user_module_assignments uma
-                JOIN programs p ON uma.module_id = p.id
+                JOIN program_modules pm ON uma.module_id = pm.id
                 WHERE uma.user_id = ?
-                ORDER BY p.name
+                ORDER BY pm.name
             `, [userId]);
 
             res.json({

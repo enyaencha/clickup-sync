@@ -192,46 +192,12 @@ const AllActivities: React.FC = () => {
       const response = await authFetch(`/api/activities?${params.toString()}`);
       if (!response.ok) throw new Error('Failed to fetch activities');
       const data = await response.json();
-      const fetchedActivities = data.data || [];
-      const expenditureTotals = await fetchActivityExpenditureTotals(fetchedActivities);
-      const enrichedActivities = fetchedActivities.map((activity: Activity) => {
-        const totalSpent = expenditureTotals.get(activity.id) ?? 0;
-        return {
-          ...activity,
-          budget_spent_expenditures: totalSpent,
-          budget_spent: totalSpent || activity.budget_spent
-        };
-      });
-      setActivities(enrichedActivities);
+      setActivities(data.data || []);
       setLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setLoading(false);
     }
-  };
-
-  const fetchActivityExpenditureTotals = async (activitiesList: Activity[]) => {
-    const totals = await Promise.all(
-      activitiesList.map(async (activity) => {
-        try {
-          const response = await authFetch(`/api/budget-requests/activity/${activity.id}/expenditures`);
-          if (!response.ok) {
-            return { id: activity.id, total: 0 };
-          }
-          const responseData = await response.json();
-          const total = (responseData.data || []).reduce(
-            (sum: number, exp: { amount: number }) => sum + (exp.amount || 0),
-            0
-          );
-          return { id: activity.id, total };
-        } catch (error) {
-          console.error('Failed to fetch expenditures:', error);
-          return { id: activity.id, total: 0 };
-        }
-      })
-    );
-
-    return new Map(totals.map(({ id, total }) => [id, total]));
   };
 
   const handleResetFilters = () => {

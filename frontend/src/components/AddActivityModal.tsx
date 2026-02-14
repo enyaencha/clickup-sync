@@ -34,7 +34,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
     target_beneficiaries: '',
     beneficiary_type: '',
     budget_allocated: '',
-    status: 'planned',
+    status: 'not-started',
     approval_status: 'draft',
     priority: 'normal',
   });
@@ -150,6 +150,13 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
         moduleSpecificData = resourceData;
       }
 
+      const statusAliases: Record<string, string> = {
+        planned: 'not-started',
+        ongoing: 'in-progress',
+        in_progress: 'in-progress',
+      };
+      const normalizedStatus = statusAliases[formData.status] || formData.status;
+
       const payload = {
         component_id: componentId,
         code: `ACT-${Date.now()}`, // Generate unique code
@@ -170,7 +177,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
           : null,
         beneficiary_type: formData.beneficiary_type || null,
         budget_allocated: parseNumberInput(formData.budget_allocated),
-        status: formData.status,
+        status: normalizedStatus,
         approval_status: formData.approval_status,
         priority: formData.priority,
         module_specific_data: moduleSpecificData ? JSON.stringify(moduleSpecificData) : null,
@@ -219,7 +226,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
       target_beneficiaries: '',
       beneficiary_type: '',
       budget_allocated: '',
-      status: 'planned',
+      status: 'not-started',
       approval_status: 'draft',
       priority: 'normal',
     });
@@ -847,9 +854,10 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
                       onChange={handleChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
-                      <option value="planned">Planned</option>
-                      <option value="ongoing">Ongoing</option>
+                      <option value="not-started">Not Started</option>
+                      <option value="in-progress">In Progress</option>
                       <option value="completed">Completed</option>
+                      <option value="blocked">Blocked</option>
                       <option value="cancelled">Cancelled</option>
                     </select>
                   </div>
