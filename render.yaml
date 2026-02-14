@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: clickup-sync-backend
+    name: clickup-backend
     runtime: node
     plan: free
     region: oregon
@@ -41,7 +41,7 @@ services:
     autoDeploy: true
 
   - type: web
-    name: clickup-sync-frontend
+    name: me-system
     runtime: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: ./frontend/dist
