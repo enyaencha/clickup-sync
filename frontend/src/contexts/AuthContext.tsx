@@ -149,17 +149,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       throw new Error(data?.error || `Login failed (HTTP ${response.status})`);
     }
 
-    if (!data?.data?.token || !data?.data?.refreshToken || !data?.data?.user) {
+    const payload = data?.data ?? data ?? {};
+    const tokenValue = payload.token;
+    const refreshTokenValue = payload.refreshToken || payload.token;
+    const userValue = payload.user;
+
+    if (!tokenValue || !userValue) {
       throw new Error('Login API response is missing required authentication data');
     }
 
     // Store token and user data
-    localStorage.setItem('token', data.data.token);
-    localStorage.setItem('refreshToken', data.data.refreshToken);
-    localStorage.setItem('user', JSON.stringify(data.data.user));
+    localStorage.setItem('token', tokenValue);
+    localStorage.setItem('refreshToken', refreshTokenValue);
+    localStorage.setItem('user', JSON.stringify(userValue));
 
-    setToken(data.data.token);
-    setUser(data.data.user);
+    setToken(tokenValue);
+    setUser(userValue);
   };
 
   const logout = async () => {
