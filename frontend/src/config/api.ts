@@ -3,8 +3,19 @@
  * Centralized configuration for API endpoints
  */
 
-// Get the API URL from environment variables, fallback to localhost
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const resolveDefaultApiBaseUrl = (): string => {
+  // In browser, mirror the current host so localhost and LAN IP both work in dev.
+  if (typeof window !== 'undefined') {
+    const protocol = window.location.protocol || 'http:';
+    const hostname = window.location.hostname || 'localhost';
+    return `${protocol}//${hostname}:4000`;
+  }
+
+  return 'http://localhost:4000';
+};
+
+// Get API URL from env; fallback adapts to current host in browser/dev.
+export const API_BASE_URL = import.meta.env.VITE_API_URL || resolveDefaultApiBaseUrl();
 
 // API endpoint helpers
 export const getApiUrl = (path: string): string => {
