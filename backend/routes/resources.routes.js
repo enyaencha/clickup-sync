@@ -249,6 +249,17 @@ module.exports = (db) => {
                     };
                 }
 
+                // Conflict checks are only needed for pending requests.
+                // This avoids expensive N+1 queries for historical approved/returned rows.
+                if (request.status !== 'pending') {
+                    return {
+                        ...request,
+                        has_conflict: false,
+                        queue_position: null,
+                        conflict_details: null
+                    };
+                }
+
                 const conflictQuery = `
                     SELECT
                         rr.id,
@@ -274,32 +285,27 @@ module.exports = (db) => {
                     ...overlapParams(request.start_date, request.end_date)
                 ]);
 
-                let queuePosition = null;
-                if (request.status === 'pending') {
-                    const queueQuery = `
-                        SELECT COUNT(*) as queue_count
-                        FROM resource_requests rr
-                        WHERE rr.resource_id = ?
-                        AND rr.status = 'pending'
-                        AND rr.deleted_at IS NULL
-                        ${overlapClause}
-                        AND rr.created_at < ?
-                    `;
+                const queueQuery = `
+                    SELECT COUNT(*) as queue_count
+                    FROM resource_requests rr
+                    WHERE rr.resource_id = ?
+                    AND rr.status = 'pending'
+                    AND rr.deleted_at IS NULL
+                    ${overlapClause}
+                    AND rr.created_at < ?
+                `;
 
-                    const queueResults = await db.query(queueQuery, [
-                        request.resource_id,
-                        ...overlapParams(request.start_date, request.end_date),
-                        request.created_at
-                    ]);
-
-                    queuePosition = (queueResults[0]?.queue_count || 0) + 1;
-                }
+                const queueResults = await db.query(queueQuery, [
+                    request.resource_id,
+                    ...overlapParams(request.start_date, request.end_date),
+                    request.created_at
+                ]);
 
                 return {
                     ...request,
                     has_conflict: conflicts.length > 0,
                     conflict_details: conflicts.length > 0 ? conflicts[0] : null,
-                    queue_position: queuePosition
+                    queue_position: (queueResults[0]?.queue_count || 0) + 1
                 };
             }));
 
