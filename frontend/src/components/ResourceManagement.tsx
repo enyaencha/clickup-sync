@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { authFetch } from '../config/api';
 import AddResourceModal from './AddResourceModal';
 import AddResourceRequestModal from './AddResourceRequestModal';
@@ -62,7 +62,9 @@ const ResourceManagement: React.FC = () => {
   const [requests, setRequests] = useState<ResourceRequest[]>([]);
   const [resourceTypes, setResourceTypes] = useState<ResourceType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingRequests, setLoadingRequests] = useState(false);
   const [activeTab, setActiveTab] = useState<'inventory' | 'requests' | 'maintenance'>('inventory');
+  const [requestsLoaded, setRequestsLoaded] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -77,41 +79,63 @@ const ResourceManagement: React.FC = () => {
   const [expandedComments, setExpandedComments] = useState<Record<number, boolean>>({});
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({});
 
-  useEffect(() => {
-    fetchResourceData();
-  }, []);
-
-  const fetchResourceData = async () => {
+  const fetchResourceCoreData = useCallback(async () => {
     try {
       setLoading(true);
 
-      // Fetch resources inventory
-      const resourcesResponse = await authFetch('/api/resources');
+      const [resourcesResponse, typesResponse] = await Promise.all([
+        authFetch('/api/resources'),
+        authFetch('/api/resources/types')
+      ]);
+
       if (resourcesResponse.ok) {
         const resourcesData = await resourcesResponse.json();
         setResources(resourcesData.data || []);
       }
 
-      // Fetch resource requests
+      if (typesResponse.ok) {
+        const typesData = await typesResponse.json();
+        setResourceTypes(typesData.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch resource inventory data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchResourceRequests = useCallback(async () => {
+    try {
+      setLoadingRequests(true);
       const requestsResponse = await authFetch('/api/resources/requests');
       if (requestsResponse.ok) {
         const requestsData = await requestsResponse.json();
         setRequests(requestsData.data || []);
       }
-
-      // Fetch resource types
-      const typesResponse = await authFetch('/api/resources/types');
-      if (typesResponse.ok) {
-        const typesData = await typesResponse.json();
-        setResourceTypes(typesData.data || []);
-      }
-
-      setLoading(false);
+      setRequestsLoaded(true);
     } catch (error) {
-      console.error('Failed to fetch resource data:', error);
-      setLoading(false);
+      console.error('Failed to fetch resource requests:', error);
+    } finally {
+      setLoadingRequests(false);
     }
-  };
+  }, []);
+
+  const fetchResourceData = useCallback(async (options: { includeRequests?: boolean } = {}) => {
+    await fetchResourceCoreData();
+    if (options.includeRequests) {
+      await fetchResourceRequests();
+    }
+  }, [fetchResourceCoreData, fetchResourceRequests]);
+
+  useEffect(() => {
+    fetchResourceData();
+  }, [fetchResourceData]);
+
+  useEffect(() => {
+    if ((activeTab === 'requests' || activeTab === 'maintenance') && !requestsLoaded && !loadingRequests) {
+      fetchResourceRequests();
+    }
+  }, [activeTab, fetchResourceRequests, loadingRequests, requestsLoaded]);
 
   const getStatusColor = (status?: string) => {
     const colors: { [key: string]: string } = {
@@ -171,7 +195,7 @@ const ResourceManagement: React.FC = () => {
       }
 
       alert('Resource request approved successfully!');
-      await fetchResourceData();
+      await fetchResourceData({ includeRequests: true });
     } catch (error) {
       console.error('Error approving resource request:', error);
       alert(error instanceof Error ? error.message : 'Failed to approve request');
@@ -200,7 +224,7 @@ const ResourceManagement: React.FC = () => {
       }
 
       alert('Resource request rejected');
-      await fetchResourceData();
+      await fetchResourceData({ includeRequests: true });
     } catch (error) {
       console.error('Error rejecting resource request:', error);
       alert(error instanceof Error ? error.message : 'Failed to reject request');
@@ -224,7 +248,7 @@ const ResourceManagement: React.FC = () => {
       }
 
       alert('Resource allocated successfully!');
-      await fetchResourceData();
+      await fetchResourceData({ includeRequests: true });
     } catch (error) {
       console.error('Error allocating resource request:', error);
       alert(error instanceof Error ? error.message : 'Failed to allocate request');
@@ -248,7 +272,7 @@ const ResourceManagement: React.FC = () => {
       }
 
       alert('Resource return confirmed.');
-      await fetchResourceData();
+      await fetchResourceData({ includeRequests: true });
     } catch (error) {
       console.error('Error confirming resource return:', error);
       alert(error instanceof Error ? error.message : 'Failed to confirm return');
@@ -325,15 +349,15 @@ const ResourceManagement: React.FC = () => {
     setEditingResource(null);
   };
 
-  const filteredResources = resources.filter(resource => {
+  const filteredResources = useMemo(() => resources.filter(resource => {
     const matchesSearch = (resource.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (resource.resource_code || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = filterCategory === 'all' || resource.category === filterCategory;
     const matchesStatus = filterStatus === 'all' || resource.availability_status === filterStatus;
     return matchesSearch && matchesCategory && matchesStatus;
-  });
+  }), [resources, searchTerm, filterCategory, filterStatus]);
 
-  const filteredRequests = requests.filter((request) => {
+  const filteredRequests = useMemo(() => requests.filter((request) => {
     if (!requestSearchTerm.trim()) return true;
     const values = [
       request.resource_name,
@@ -344,14 +368,14 @@ const ResourceManagement: React.FC = () => {
     return values
       .filter(Boolean)
       .some((value) => (value as string).toLowerCase().includes(requestSearchTerm.toLowerCase()));
-  });
+  }), [requests, requestSearchTerm]);
 
-  const pendingRequests = requests.filter(r => r.status === 'pending');
-  const availableResources = resources.filter(r => r.availability_status === 'available');
-  const inUseResources = resources.filter(r => r.availability_status === 'in_use');
-  const maintenanceResources = resources.filter(r => r.availability_status === 'under_maintenance');
+  const pendingRequests = useMemo(() => requests.filter(r => r.status === 'pending'), [requests]);
+  const availableResources = useMemo(() => resources.filter(r => r.availability_status === 'available'), [resources]);
+  const inUseResources = useMemo(() => resources.filter(r => r.availability_status === 'in_use'), [resources]);
+  const maintenanceResources = useMemo(() => resources.filter(r => r.availability_status === 'under_maintenance'), [resources]);
 
-  const filteredMaintenance = maintenanceResources.filter((resource) => {
+  const filteredMaintenance = useMemo(() => maintenanceResources.filter((resource) => {
     if (!maintenanceSearchTerm.trim()) return true;
     const values = [
       resource.name,
@@ -362,7 +386,7 @@ const ResourceManagement: React.FC = () => {
     return values
       .filter(Boolean)
       .some((value) => (value as string).toLowerCase().includes(maintenanceSearchTerm.toLowerCase()));
-  });
+  }), [maintenanceResources, maintenanceSearchTerm]);
 
   if (loading) {
     return (
@@ -623,6 +647,9 @@ const ResourceManagement: React.FC = () => {
 
             {activeTab === 'requests' && (
               <div>
+                {loadingRequests && (
+                  <div className="mb-4 text-sm text-gray-500">Loading requests...</div>
+                )}
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
                   <h2 className="text-xl font-semibold">Resource Requests</h2>
                   <input
@@ -787,6 +814,9 @@ const ResourceManagement: React.FC = () => {
 
             {activeTab === 'maintenance' && (
               <div>
+                {loadingRequests && !requestsLoaded && (
+                  <div className="mb-4 text-sm text-gray-500">Loading maintenance data...</div>
+                )}
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
                   <h2 className="text-xl font-semibold">Maintenance Schedule</h2>
                   <input
@@ -831,23 +861,23 @@ const ResourceManagement: React.FC = () => {
       <AddResourceModal
         isOpen={showResourceModal}
         onClose={() => setShowResourceModal(false)}
-        onSuccess={fetchResourceData}
+        onSuccess={() => fetchResourceData({ includeRequests: requestsLoaded })}
       />
       <AddResourceRequestModal
         isOpen={showRequestModal}
         onClose={() => setShowRequestModal(false)}
-        onSuccess={fetchResourceData}
+        onSuccess={() => fetchResourceData({ includeRequests: true })}
       />
       <EditResourceModal
         isOpen={showEditModal}
         onClose={handleCloseEditModal}
-        onSuccess={fetchResourceData}
+        onSuccess={() => fetchResourceData({ includeRequests: requestsLoaded })}
         resource={editingResource}
       />
       <ResourceTypeModal
         isOpen={showTypeModal}
         onClose={() => setShowTypeModal(false)}
-        onSuccess={fetchResourceData}
+        onSuccess={() => fetchResourceData({ includeRequests: requestsLoaded })}
       />
     </div>
   );

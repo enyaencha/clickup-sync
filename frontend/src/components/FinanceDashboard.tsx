@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { authFetch } from '../config/api';
 import AddBudgetModal from './AddBudgetModal';
@@ -71,7 +71,9 @@ const FinanceDashboard: React.FC = () => {
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
   const [pendingExpenditures, setPendingExpenditures] = useState<PendingExpenditure[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingApprovals, setLoadingApprovals] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'approvals' | 'budget-requests'>('overview');
+  const [approvalsLoaded, setApprovalsLoaded] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterProgram, setFilterProgram] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -81,51 +83,62 @@ const FinanceDashboard: React.FC = () => {
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const { user } = useAuth();
 
-  useEffect(() => {
-    fetchFinanceData();
-    fetchConversationNotifications();
-    // Poll for new conversation notifications every 30 seconds
-    const interval = setInterval(fetchConversationNotifications, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchFinanceData = async () => {
+  const fetchFinanceCoreData = useCallback(async () => {
     try {
       setLoading(true);
 
-      // Fetch budget summary
-      const budgetResponse = await authFetch('/api/finance/budget-summary');
+      const [budgetResponse, transactionsResponse] = await Promise.all([
+        authFetch('/api/finance/budget-summary'),
+        authFetch('/api/finance/transactions?limit=10')
+      ]);
+
       if (budgetResponse.ok) {
         const budgetData = await budgetResponse.json();
         setBudgetSummary(budgetData.data || []);
       }
 
-      // Fetch recent transactions
-      const transactionsResponse = await authFetch('/api/finance/transactions?limit=10');
       if (transactionsResponse.ok) {
         const transactionsData = await transactionsResponse.json();
         setRecentTransactions(transactionsData.data || []);
       }
+    } catch (error) {
+      console.error('Failed to fetch finance dashboard core data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-      // Fetch pending approvals
-      const approvalsResponse = await authFetch('/api/finance/approvals?status=pending');
+  const fetchApprovalsData = useCallback(async () => {
+    try {
+      setLoadingApprovals(true);
+      const [approvalsResponse, expendituresResponse] = await Promise.all([
+        authFetch('/api/finance/approvals?status=pending'),
+        authFetch('/api/budget-requests/expenditures?status=pending')
+      ]);
+
       if (approvalsResponse.ok) {
         const approvalsData = await approvalsResponse.json();
         setPendingApprovals(approvalsData.data || []);
       }
 
-      const expendituresResponse = await authFetch('/api/budget-requests/expenditures?status=pending');
       if (expendituresResponse.ok) {
         const expendituresData = await expendituresResponse.json();
         setPendingExpenditures(expendituresData.data || []);
       }
-
-      setLoading(false);
+      setApprovalsLoaded(true);
     } catch (error) {
-      console.error('Failed to fetch finance data:', error);
-      setLoading(false);
+      console.error('Failed to fetch approvals data:', error);
+    } finally {
+      setLoadingApprovals(false);
     }
-  };
+  }, []);
+
+  const fetchFinanceData = useCallback(async (options: { includeApprovals?: boolean } = {}) => {
+    await fetchFinanceCoreData();
+    if (options.includeApprovals) {
+      await fetchApprovalsData();
+    }
+  }, [fetchApprovalsData, fetchFinanceCoreData]);
 
   const fetchConversationNotifications = async () => {
     try {
@@ -138,6 +151,21 @@ const FinanceDashboard: React.FC = () => {
       console.error('Error fetching conversation notifications:', error);
     }
   };
+
+
+  useEffect(() => {
+    fetchFinanceData();
+    fetchConversationNotifications();
+    // Poll for new conversation notifications every 30 seconds
+    const interval = setInterval(fetchConversationNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchFinanceData]);
+
+  useEffect(() => {
+    if (activeTab === 'approvals' && !approvalsLoaded && !loadingApprovals) {
+      fetchApprovalsData();
+    }
+  }, [activeTab, approvalsLoaded, loadingApprovals, fetchApprovalsData]);
 
   const handleOpenConversation = (requestId: number, activityName: string) => {
     // Emit custom event for Layout to handle (to use the global ConversationSidePanel)
@@ -198,7 +226,7 @@ const FinanceDashboard: React.FC = () => {
       }
 
       alert('Approval approved successfully!');
-      await fetchFinanceData();
+      await fetchFinanceData({ includeApprovals: true });
     } catch (error) {
       console.error('Error approving finance approval:', error);
       alert(error instanceof Error ? error.message : 'Failed to approve');
@@ -227,7 +255,7 @@ const FinanceDashboard: React.FC = () => {
       }
 
       alert('Approval rejected');
-      await fetchFinanceData();
+      await fetchFinanceData({ includeApprovals: true });
     } catch (error) {
       console.error('Error rejecting finance approval:', error);
       alert(error instanceof Error ? error.message : 'Failed to reject');
@@ -251,7 +279,7 @@ const FinanceDashboard: React.FC = () => {
       }
 
       alert('Expenditure approved successfully!');
-      await fetchFinanceData();
+      await fetchFinanceData({ includeApprovals: true });
     } catch (error) {
       console.error('Error approving expenditure:', error);
       alert(error instanceof Error ? error.message : 'Failed to approve expenditure');
@@ -278,20 +306,20 @@ const FinanceDashboard: React.FC = () => {
       }
 
       alert('Expenditure rejected');
-      await fetchFinanceData();
+      await fetchFinanceData({ includeApprovals: true });
     } catch (error) {
       console.error('Error rejecting expenditure:', error);
       alert(error instanceof Error ? error.message : 'Failed to reject expenditure');
     }
   };
 
-  const filteredTransactions = recentTransactions.filter(transaction => {
+  const filteredTransactions = useMemo(() => recentTransactions.filter(transaction => {
     const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          transaction.payee_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          transaction.transaction_number.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || transaction.approval_status === filterStatus;
     return matchesSearch && matchesStatus;
-  });
+  }), [recentTransactions, searchTerm, filterStatus]);
 
   if (loading) {
     return (
@@ -521,6 +549,12 @@ const FinanceDashboard: React.FC = () => {
                 Transactions
               </button>
               <button
+                onMouseEnter={() => {
+                  if (!approvalsLoaded && !loadingApprovals) fetchApprovalsData();
+                }}
+                onFocus={() => {
+                  if (!approvalsLoaded && !loadingApprovals) fetchApprovalsData();
+                }}
                 onClick={() => setActiveTab('approvals')}
                 className={`py-4 px-6 font-medium text-sm border-b-2 transition-colors relative ${
                   activeTab === 'approvals'
@@ -813,12 +847,12 @@ const FinanceDashboard: React.FC = () => {
       <AddBudgetModal
         isOpen={showBudgetModal}
         onClose={() => setShowBudgetModal(false)}
-        onSuccess={fetchFinanceData}
+        onSuccess={() => fetchFinanceData({ includeApprovals: approvalsLoaded })}
       />
       <AddTransactionModal
         isOpen={showTransactionModal}
         onClose={() => setShowTransactionModal(false)}
-        onSuccess={fetchFinanceData}
+        onSuccess={() => fetchFinanceData({ includeApprovals: approvalsLoaded })}
       />
     </div>
   );
