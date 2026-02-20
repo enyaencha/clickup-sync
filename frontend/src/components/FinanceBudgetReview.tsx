@@ -12,7 +12,7 @@ interface BudgetRequest {
   requested_amount: number;
   approved_amount: number | null;
   justification: string;
-  breakdown: any;
+  breakdown: Record<string, number>;
   priority: string;
   status: string;
   finance_notes: string | null;
@@ -24,11 +24,62 @@ interface BudgetRequest {
   reviewed_at: string | null;
 }
 
+const toNumber = (value: unknown): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const parseBreakdown = (value: unknown): Record<string, number> => {
+  if (!value) return {};
+
+  let parsedValue: unknown = value;
+  if (typeof value === 'string') {
+    try {
+      parsedValue = JSON.parse(value);
+    } catch {
+      return {};
+    }
+  }
+
+  if (!parsedValue || typeof parsedValue !== 'object' || Array.isArray(parsedValue)) {
+    return {};
+  }
+
+  return Object.entries(parsedValue as Record<string, unknown>).reduce<Record<string, number>>((accumulator, [key, amount]) => {
+    accumulator[key] = toNumber(amount);
+    return accumulator;
+  }, {});
+};
+
+const extractRequestsArray = (payload: unknown): any[] => {
+  if (Array.isArray(payload)) return payload;
+
+  if (!payload || typeof payload !== 'object') return [];
+
+  const typedPayload = payload as Record<string, unknown>;
+  const directCandidates = [typedPayload.data, typedPayload.rows, typedPayload.requests, typedPayload.results];
+
+  for (const candidate of directCandidates) {
+    if (Array.isArray(candidate)) return candidate;
+  }
+
+  if (typedPayload.data && typeof typedPayload.data === 'object') {
+    const nestedData = typedPayload.data as Record<string, unknown>;
+    const nestedCandidates = [nestedData.data, nestedData.rows, nestedData.requests, nestedData.results];
+    for (const candidate of nestedCandidates) {
+      if (Array.isArray(candidate)) return candidate;
+    }
+  }
+
+  return [];
+};
+
 const FinanceBudgetReview: React.FC = () => {
   const { user } = useAuth();
   const [requests, setRequests] = useState<BudgetRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState<string>('submitted');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedRequest, setSelectedRequest] = useState<BudgetRequest | null>(null);
   const [showActionModal, setShowActionModal] = useState(false);
   const [actionType, setActionType] = useState<'approve' | 'reject' | 'return' | 'edit' | 'revise'>('approve');
@@ -44,19 +95,38 @@ const FinanceBudgetReview: React.FC = () => {
   });
 
   useEffect(() => {
-    fetchRequests();
+    void fetchRequests();
   }, [filterStatus]);
 
   const fetchRequests = async () => {
     setLoading(true);
+    setErrorMessage(null);
     try {
-      const response = await authFetch(`/api/budget-requests?status=${filterStatus}`);
-      if (response.ok) {
-        const data = await response.json();
-        setRequests(data.data || []);
+      const statusQuery = filterStatus === 'all' ? '' : `?status=${encodeURIComponent(filterStatus)}`;
+      const response = await authFetch(`/api/budget-requests${statusQuery}`);
+      const rawResponse = await response.text();
+      const responseData = rawResponse ? JSON.parse(rawResponse) : {};
+
+      if (!response.ok) {
+        setErrorMessage(responseData?.error || `Failed to fetch budget requests (HTTP ${response.status}).`);
+        setRequests([]);
+        return;
       }
+
+      const requestRows = extractRequestsArray(responseData);
+      const normalizedRequests = requestRows.map((request) => ({
+        ...request,
+        requested_amount: toNumber(request.requested_amount),
+        approved_amount: request.approved_amount === null ? null : toNumber(request.approved_amount),
+        breakdown: parseBreakdown(request.breakdown),
+        status: (request.status || '').toLowerCase()
+      })) as BudgetRequest[];
+      setRequests(normalizedRequests);
     } catch (error) {
       console.error('Error fetching budget requests:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      setErrorMessage(`Unable to load budget requests. ${message}`);
+      setRequests([]);
     } finally {
       setLoading(false);
     }
@@ -65,14 +135,16 @@ const FinanceBudgetReview: React.FC = () => {
   const openActionModal = (request: BudgetRequest, action: typeof actionType) => {
     setSelectedRequest(request);
     setActionType(action);
+    const requestedAmount = toNumber(request.requested_amount);
+    const approvedAmount = request.approved_amount === null ? null : toNumber(request.approved_amount);
     setActionData({
-      approved_amount: formatNumberInput(request.requested_amount.toString()),
+      approved_amount: formatNumberInput(requestedAmount.toString()),
       finance_notes: '',
       rejection_reason: '',
       amendment_notes: '',
-      requested_amount: formatNumberInput(request.requested_amount.toString()),
+      requested_amount: formatNumberInput(requestedAmount.toString()),
       justification: request.justification,
-      new_amount: formatNumberInput((request.approved_amount ?? request.requested_amount).toString()),
+      new_amount: formatNumberInput((approvedAmount ?? requestedAmount).toString()),
       revision_reason: ''
     });
     setShowActionModal(true);
@@ -197,7 +269,7 @@ const FinanceBudgetReview: React.FC = () => {
 
       alert(`Budget request ${actionType === 'revise' ? 'revised' : actionType + 'd'} successfully!`);
       closeActionModal();
-      fetchRequests();
+      await fetchRequests();
     } catch (error) {
       console.error(`Error ${actionType}ing request:`, error);
       alert(error instanceof Error ? error.message : `Failed to ${actionType} request`);
@@ -205,33 +277,45 @@ const FinanceBudgetReview: React.FC = () => {
   };
 
   const getPriorityColor = (priority: string) => {
+    const normalizedPriority = (priority || '').toLowerCase();
     const colors: { [key: string]: string } = {
       urgent: 'bg-red-100 text-red-800',
       high: 'bg-orange-100 text-orange-800',
       medium: 'bg-yellow-100 text-yellow-800',
       low: 'bg-gray-100 text-gray-800'
     };
-    return colors[priority] || colors.low;
+    return colors[normalizedPriority] || colors.low;
   };
 
   const getStatusColor = (status: string) => {
+    const normalizedStatus = (status || '').toLowerCase();
     const colors: { [key: string]: string } = {
+      pending: 'bg-blue-100 text-blue-800',
       submitted: 'bg-blue-100 text-blue-800',
       under_review: 'bg-purple-100 text-purple-800',
       approved: 'bg-green-100 text-green-800',
       rejected: 'bg-red-100 text-red-800',
       returned_for_amendment: 'bg-yellow-100 text-yellow-800'
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return colors[normalizedStatus] || 'bg-gray-100 text-gray-800';
   };
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: unknown) => {
     return new Intl.NumberFormat('en-KE', {
       style: 'currency',
       currency: 'KES',
       minimumFractionDigits: 2
-    }).format(amount);
+    }).format(toNumber(amount));
   };
+
+  const statusOptions = [
+    'all',
+    'submitted',
+    'under_review',
+    'approved',
+    'rejected',
+    'returned_for_amendment'
+  ];
 
   return (
     <div className="p-6">
@@ -242,7 +326,7 @@ const FinanceBudgetReview: React.FC = () => {
 
       {/* Status Filter */}
       <div className="mb-6 flex gap-2 overflow-x-auto">
-        {['submitted', 'under_review', 'approved', 'rejected', 'returned_for_amendment'].map((status) => (
+        {statusOptions.map((status) => (
           <button
             key={status}
             onClick={() => setFilterStatus(status)}
@@ -256,6 +340,12 @@ const FinanceBudgetReview: React.FC = () => {
           </button>
         ))}
       </div>
+
+      {errorMessage && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {errorMessage}
+        </div>
+      )}
 
       {/* Requests List */}
       {loading ? (
@@ -271,6 +361,12 @@ const FinanceBudgetReview: React.FC = () => {
         <div className="grid gap-4">
           {requests.map((request) => (
             <div key={request.id} className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+              {(() => {
+                const requestStatus = (request.status || '').toLowerCase();
+                const canTakePrimaryActions = requestStatus === 'submitted' || requestStatus === 'under_review' || requestStatus === 'pending';
+
+                return (
+                  <>
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
@@ -278,10 +374,10 @@ const FinanceBudgetReview: React.FC = () => {
                       {request.activity_name}
                     </h3>
                     <span className={`px-2 py-1 text-xs rounded ${getPriorityColor(request.priority)}`}>
-                      {request.priority.toUpperCase()}
+                      {(request.priority || 'medium').toUpperCase()}
                     </span>
                     <span className={`px-2 py-1 text-xs rounded ${getStatusColor(request.status)}`}>
-                      {request.status.replace(/_/g, ' ')}
+                      {(request.status || 'unknown').replace(/_/g, ' ')}
                     </span>
                   </div>
                   <p className="text-sm text-gray-600">Request #{request.request_number}</p>
@@ -293,7 +389,7 @@ const FinanceBudgetReview: React.FC = () => {
                   <p className="text-2xl font-bold text-gray-900">
                     {formatCurrency(request.requested_amount)}
                   </p>
-                  {request.approved_amount && (
+                  {request.approved_amount !== null && (
                     <p className="text-sm text-green-600 font-semibold">
                       Approved: {formatCurrency(request.approved_amount)}
                     </p>
@@ -357,7 +453,7 @@ const FinanceBudgetReview: React.FC = () => {
                 </button>
 
                 {/* Mark as Under Review - Only for submitted requests */}
-                {request.status === 'submitted' && (
+                {(requestStatus === 'submitted' || requestStatus === 'pending') && (
                   <button
                     onClick={() => handleMarkAsUnderReview(request.id)}
                     className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
@@ -367,7 +463,7 @@ const FinanceBudgetReview: React.FC = () => {
                 )}
 
                 {/* Action buttons for submitted or under_review */}
-                {(request.status === 'submitted' || request.status === 'under_review') && (
+                {canTakePrimaryActions && (
                   <>
                     <button
                       onClick={() => openActionModal(request, 'approve')}
@@ -397,7 +493,7 @@ const FinanceBudgetReview: React.FC = () => {
                 )}
 
                 {/* Revise button for approved requests */}
-                {request.status === 'approved' && (
+                {requestStatus === 'approved' && (
                   <button
                     onClick={() => openActionModal(request, 'revise')}
                     className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm flex items-center gap-2"
@@ -406,6 +502,9 @@ const FinanceBudgetReview: React.FC = () => {
                   </button>
                 )}
               </div>
+                  </>
+                );
+              })()}
             </div>
           ))}
         </div>

@@ -29,17 +29,101 @@ module.exports = (db) => {
                 SELECT
                     pb.program_module_id,
                     pm.name as program_name,
-                    SUM(pb.total_budget) as total_budget,
-                    SUM(pb.allocated_budget) as allocated_budget,
-                    SUM(pb.spent_budget) as spent_budget,
-                    SUM(pb.committed_budget) as committed_budget,
-                    SUM(pb.total_budget - pb.spent_budget - pb.committed_budget) as remaining_budget
+                    COALESCE(SUM(pb.total_budget), 0) as total_budget,
+                    COALESCE(SUM(pb.allocated_budget), 0) as allocated_budget,
+                    COALESCE(
+                        NULLIF(activity_finance_totals.spent_budget, 0),
+                        module_expenditure_totals.total_spent,
+                        0
+                    ) as spent_budget,
+                    CASE
+                        WHEN COALESCE(activity_finance_totals.spent_budget, 0) = 0
+                             AND COALESCE(module_expenditure_totals.total_spent, 0) > 0
+                        THEN 0
+                        ELSE COALESCE(activity_finance_totals.committed_budget, 0)
+                    END as committed_budget,
+                    (
+                        COALESCE(SUM(pb.total_budget), 0) -
+                        (
+                            COALESCE(
+                                NULLIF(activity_finance_totals.spent_budget, 0),
+                                module_expenditure_totals.total_spent,
+                                0
+                            ) +
+                            CASE
+                                WHEN COALESCE(activity_finance_totals.spent_budget, 0) = 0
+                                     AND COALESCE(module_expenditure_totals.total_spent, 0) > 0
+                                THEN 0
+                                ELSE COALESCE(activity_finance_totals.committed_budget, 0)
+                            END
+                        )
+                    ) as remaining_budget
                 FROM program_budgets pb
                 LEFT JOIN program_modules pm ON pb.program_module_id = pm.id
+                LEFT JOIN (
+                    SELECT
+                        sp.module_id,
+                        COALESCE(SUM(ae.amount), 0) AS total_spent
+                    FROM activity_expenditures ae
+                    INNER JOIN activities a ON ae.activity_id = a.id AND a.deleted_at IS NULL
+                    INNER JOIN project_components pc ON a.component_id = pc.id AND pc.deleted_at IS NULL
+                    INNER JOIN sub_programs sp ON pc.sub_program_id = sp.id AND sp.deleted_at IS NULL
+                    WHERE ae.deleted_at IS NULL
+                    GROUP BY sp.module_id
+                ) module_expenditure_totals ON module_expenditure_totals.module_id = pb.program_module_id
+                LEFT JOIN (
+                    SELECT
+                        totals.module_id,
+                        SUM(totals.spent_amount) as spent_budget,
+                        SUM(totals.committed_amount) as committed_budget
+                    FROM (
+                        SELECT
+                            sp.module_id as module_id,
+                            CASE
+                                WHEN LOWER(ae.status) = 'approved' THEN COALESCE(ae.amount, 0)
+                                ELSE 0
+                            END as spent_amount,
+                            CASE
+                                WHEN LOWER(ae.status) = 'pending' THEN COALESCE(ae.amount, 0)
+                                ELSE 0
+                            END as committed_amount
+                        FROM activity_expenditures ae
+                        LEFT JOIN activities a ON ae.activity_id = a.id
+                        LEFT JOIN project_components pc ON a.component_id = pc.id
+                        LEFT JOIN sub_programs sp ON pc.sub_program_id = sp.id
+                        WHERE ae.deleted_at IS NULL
+
+                        UNION ALL
+
+                        SELECT
+                            COALESCE(pbtx.program_module_id, sp2.module_id) as module_id,
+                            CASE
+                                WHEN LOWER(ft.approval_status) = 'approved' THEN COALESCE(ft.amount, 0)
+                                ELSE 0
+                            END as spent_amount,
+                            CASE
+                                WHEN LOWER(ft.approval_status) = 'pending' THEN COALESCE(ft.amount, 0)
+                                ELSE 0
+                            END as committed_amount
+                        FROM financial_transactions ft
+                        LEFT JOIN program_budgets pbtx ON ft.program_budget_id = pbtx.id
+                        LEFT JOIN activities a2 ON ft.activity_id = a2.id
+                        LEFT JOIN project_components pc2 ON a2.component_id = pc2.id
+                        LEFT JOIN sub_programs sp2 ON pc2.sub_program_id = sp2.id
+                        WHERE ft.deleted_at IS NULL
+                    ) totals
+                    WHERE totals.module_id IS NOT NULL
+                    GROUP BY totals.module_id
+                ) activity_finance_totals ON activity_finance_totals.module_id = pb.program_module_id
                 WHERE pb.deleted_at IS NULL
                 AND pb.status IN ('submitted', 'approved', 'active')
                 ${moduleFilter}
-                GROUP BY pb.program_module_id, pm.name
+                GROUP BY
+                    pb.program_module_id,
+                    pm.name,
+                    module_expenditure_totals.total_spent,
+                    activity_finance_totals.spent_budget,
+                    activity_finance_totals.committed_budget
                 ORDER BY pm.name
             `;
 

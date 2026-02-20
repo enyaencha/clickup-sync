@@ -1671,6 +1671,11 @@ const logframeExcelRoutes = require('./routes/logframe-excel.routes');
         app.use('/api/finance', financeRoutes(db));
         console.log('Finance routes registered: /api/finance');
 
+        // Budget Request Workflow routes
+        const budgetRequestsRoutes = require('./routes/budget-requests.routes');
+        app.use('/api/budget-requests', budgetRequestsRoutes(db));
+        console.log('Budget Request routes registered: /api/budget-requests');
+
         // Resource Management routes
         const resourcesRoutes = require('./routes/resources.routes');
         app.use('/api/resources', resourcesRoutes(db));

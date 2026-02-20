@@ -31,6 +31,7 @@ const FinanceDashboard = lazy(() => import('./components/FinanceDashboard'));
 const ResourceManagement = lazy(() => import('./components/ResourceManagement'));
 const ReportsAnalytics = lazy(() => import('./components/ReportsAnalytics'));
 const MyBudgetRequests = lazy(() => import('./components/MyBudgetRequests'));
+const TaskPage = lazy(() => import('./components/TaskPage'));
 
 const RouteLoadingFallback: React.FC = () => (
   <div className="min-h-[50vh] w-full flex items-center justify-center">
@@ -112,6 +113,14 @@ const App: React.FC = () => {
                           element={
                             <ProtectedRoute requireFeature="activities">
                               <AllActivities />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/tasks"
+                          element={
+                            <ProtectedRoute requireFeature="activities">
+                              <TaskPage />
                             </ProtectedRoute>
                           }
                         />
